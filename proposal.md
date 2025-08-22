@@ -26,18 +26,18 @@ INSERT TEXT
 Edit the list below (most deleting lines that you won't use) as appropriate for your project.
 
 Computer architectures to be used:
-- Serial (i.e., one core of one CPU; avaliable via Roar Collab)
-- Multi-core, Shared-memory (i.e., one compute node with multiple CPU cores which have access to a shared memory system avaliable via Roar Collab)
+- Serial (i.e., one core of one CPU)
+- Multi-core, Shared-memory (i.e., one compute node with multiple CPU cores which have access to a shared memory system)
 - For a third architecutre, I anticipate that most students will pick one of the following:
-  + Multi-core, Distributed-memory: using Roar Collab (e.g., multiple CPU cores, each of which has access to its own memory system avaliable via Roar Collab)
-  + CPU + GPU: (avaliable via Roar Collab)
-  + CPU + Multiple GPUs: (likely avaliable via Roar Collab, but may require a special request)
+  + Multi-core, Distributed-memory  (i.e., multiple CPU cores, each of which has access to its own memory system avaliable via Lynx cluster)
+  + CPU + GPU: (avaliable via Lynx cluster)
+  + CPU + Multiple GPUs: (potentially avaliable via Roar Collab, but may require a special request)
   + CPU + TPU: (see [this post](https://gweb-cloudblog-publish.appspot.com/products/ai-machine-learning/now-you-can-train-ml-models-faster-and-lower-cost-cloud-tpu-pods/amp/) for info, but would be on own for setting up access to tensor processing units)
   + Multi-core, Distributed-memory: Cloud (e.g., JuilaHub, AWS, Azure, Domino Data Lab; but you'd be on your own for setup and any cost)
 
 Rationale for above choices:
 
-I anticipate that most students will be able to have their computational needs met by Roar Collab.  
+I anticipate that most students will be able to have their computational needs met by the ICDS Lynx cluster.
 If you anticipate needing additional computing resources, describe your needs in more detail. 
 Do you need help getting access to those resources?
 

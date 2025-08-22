@@ -1,8 +1,16 @@
 *.jl.cov
 *.jl.*.cov
 *.jl.mem
+deps/deps.jl
+deps/build.log
 /docs/build/
 /docs/Manifest.toml
 /deps/build.log
 .vscode
+
+*.prof
+.ipynb_checkpoints
+src/.ipynb_checkpoints
+*backup*.jl
+core*
 
