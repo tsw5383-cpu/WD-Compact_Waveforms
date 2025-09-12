@@ -6,6 +6,8 @@ Recently, a low signal gravitational wave event was reported by LVK ([S250818k](
 
 If a compact object of $<1\,M_\odot$ were confirmed, it would require an overhaul of current understanding of the formation of such objects. As such, it is imperative to check all  possible sources for an apparent sub-solar mass detection. We seek to explore the possibility that a Neutron Star-White Dwarf (NS-WD) binary may produce a S250818k-like signature. 
 
+We seek to develop a semi-analytic NS-WD binary model to test this possibility. In particular, we aim to implement 2.5 Post-Newtonian effects alongside a point mass treatment of the stars and a fluid mechanical treatment of non-conservative unstable mass transfer. Our ultimate goal is to produce gravitational waveforms which can be analyzed following the LIGO pipeline to determine measured parameters from such an event, in particular whether such the WD companion may be labeled as sub-solar mass either correctly or incorrectly. If time allows, we may investigate EM counterparts due to super-eddington accretion on the NS primary. 
+
 ## Description of the inputs (0.5 point)
 
 INSERT TEXT
