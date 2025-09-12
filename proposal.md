@@ -14,6 +14,7 @@ We seek to develop a semi-analytic NS-WD binary model to test this possibility. 
   + NS and WD mass
   + Semi-major axis
   + Eccentricity
+  + True anomaly
 
 ## Description of the outputs (0.5 point)
 
