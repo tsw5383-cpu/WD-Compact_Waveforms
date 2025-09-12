@@ -2,7 +2,7 @@
 
 ## Project Goal
 
-Recently, a low signal gravitational wave event was reported by LVK ([S250818k](https://gcn.nasa.gov/circulars/events/ligovirgokagra-s250818k)). While it is likely that this detection is terrestrial in nature, if the source is indeed astrophysical, then preliminary analysis places a $>99%$ likelihood on a primary mass $<1 \,M_\odot$ with a sub-solar mass secondary. If confirmed, this would be the first sub-solar mass object detected via gravitational waves. In addition, a transient EM signal was detected within the sky localization band of the source, which would make S250818k the second multi-messenger event after GW170817.  
+Recently, a low signal gravitational wave event was reported by LVK ([S250818k](https://gcn.nasa.gov/circulars/events/ligovirgokagra-s250818k)). While it is likely that this detection is terrestrial in nature, if the source is indeed astrophysical, then preliminary analysis places a $>99\%$ likelihood on a primary mass $<1 \,M_\odot$ with a sub-solar mass secondary. If confirmed, this would be the first sub-solar mass object detected via gravitational waves. In addition, a transient EM signal was detected within the sky localization band of the source, which would make S250818k the second multi-messenger event after GW170817.  
 
 If a compact object of $<1\,M_\odot$ were confirmed, it would require an overhaul of current understanding of the formation of such objects. As such, it is imperative to check all possible sources for an apparent sub-solar mass detection. We seek to explore the possibility that a Neutron Star-White Dwarf (NS-WD) binary may produce a S250818k-like signature. 
 
@@ -26,7 +26,9 @@ We seek to develop a semi-analytic NS-WD binary model to test this possibility. 
 
 ## How will you test that your code is giving accurate results? (1 point)
 
-INSERT TEXT
+Closed form solutions for aspects of  gravitational wave radiation reaction (e.g., decay time, angular momentum loss, eccentricity evolution) alone are available. Similarly, for mass transfer and fluid mechanics alone, such metrics also exist (e.g., eccentricity evolution in the case of [mass transfer](https://ui.adsabs.harvard.edu/abs/2025arXiv250905243P/abstract); energy conservation, heat diffusion, [Kovansky flow](https://en.wikipedia.org/wiki/Kovasznay_flow) in fluid mechanics).  We will test each of these aspects alone before integrating them. 
+
+Due to the nature of the problem at hand, it will be more difficult to test whether the code is working once these aspects are interested. However, there are at least two known results that we can test against in the integrated code. From prior simulations of NS-WD interactions, it has been found that Ultra-Compact X-ray Binaries are expected to form if initial WD mass satisfies $M_{\rm WD}\lesssim 0.2\,M_\odot$; in systems with greater WD mass, total tidal disruption through unstable mass transfer is expected ([Bobrick et al. 2017](https://ui.adsabs.harvard.edu/abs/2017MNRAS.467.3556B/abstract)). Furthermore, in the case of non-conservative mass transfer (i.e., $-\dot M_{\rm WD}\gg \dot M_{\rm edd,\,NS}$), closed-form solutions are known for angular momentum loss in specific cases such as isentropic re-radiation ([Soberman et al. 1997](https://ui.adsabs.harvard.edu/abs/1997A%26A...327..620S/abstract)). Testing of these cases will provide reasonable tests of the functionality of our integrated code.   
 
 ## What will you vary to explore performance as a function the problem size?  Describe the relevant range of problem sizes. (1 point)
 
@@ -49,7 +51,7 @@ For our improved parallelized version of the multi-core, shared memory architect
 
 Programming language(s) to be used:
 
-Julia 
+Julia, Python (possibly; for use with REBOUND), C (possibly; for use with REBOUND) 
 
 List of any libraries/packages that you know will be needed for your project:  
 
@@ -57,10 +59,12 @@ List of any libraries/packages that you know will be needed for your project:
 - CUDA.jl (for NVIDIA GPUs) or AMDGPU.jl (for AMD GPUs) or oneAPI.jl (for Intel GPUs) (in Julia)
 - DifferentialEquations.jl for ODE/PDE solvers
 - Plots.jl for visualization
+- [REBOUND](https://rebound.readthedocs.io/en/latest/) (C-based RK15/symplectic integrator which integrates with Python
+  +Possibly for use if DifferentialEquations.jl does not give adequate precision)
 
 Optionally, list of any functionality that you need and suspect that you can find in an existing library/package, but you have not yet identified a specific library/package to meet that need:
 
-NA
+If there is an integrator in Julia specifically optimized for Navier-Stokes equations, this could be helpful.
 
 Rationale for above choices:
 
