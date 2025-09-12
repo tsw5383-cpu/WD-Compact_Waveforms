@@ -11,16 +11,17 @@ We seek to develop a semi-analytic NS-WD binary model to test this possibility. 
 ## Description of the inputs (0.5 point)
 
 - Initial orbital parameters
- + NS and WD mass
- + Semi-major axis
- + Eccentricity
+  + NS and WD mass
+  + Semi-major axis
+  + Eccentricity
 
 ## Description of the outputs (0.5 point)
 
 - Gravitational waveform
 - Derived parameters from waveform
- + Chirp mass (primary and secondary mass if degeneracies can be broken) 
- + Luminosity distance
+  + Chirp mass up to inclination
+  + Optimistically, primary and secondary mass
+  + Luminosity distance
 - EM counterpart signal (time permitting) 
 
 ## How will you test that your code is giving accurate results? (1 point)
