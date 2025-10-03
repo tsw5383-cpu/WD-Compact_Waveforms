@@ -56,107 +56,145 @@ For radiation decay and orbits, we know the answer, so these integration tests w
 # ╔═╡ 14bfa5a2-aa27-4c05-a1da-d4be8037139d
 md"Don't need to optimize code right now, just need to meet rubric. I might try and do some basic optimization and then profile/benchmark later."
 
-# ╔═╡ 931318ef-478f-4e6f-b415-85f735c6226a
-begin
-	function R_WD(M::Float64,mu=2::Float64)
+# ╔═╡ b7a2300a-bc8f-4387-a324-7f3de70d81fc
+function R_WD(M::Float64,mu=2::Float64)
 		#white dwarf radius in km as ftn of mass in M_odot and mean molecular weight/electron=2
 		return(10^4 * (M/0.7)^(-1/3) * (1-(M/1.4)^(4/3))^(1/2) * (mu/2)^(-5/3))
 	end
-	
-	function dynamical_timescale(M::Float64,R::Float64)
-		#returns dynamical timescale for perturbed white dwarf
-		#with radius R and mass M
-		return((R^3/(G*M))^(1/2))
-	end
-	
-	function Roche_Limit(r::Float64,M1::Float64,M2::Float64)
+
+# ╔═╡ d52feb78-6ddf-4b75-995e-4b2a1e452571
+function Roche_Limit(r::Float64,M1::Float64,M2::Float64)
 		#returns Roche limit of M1 for companion of mass M2 
 		#at a separation of distance r 
 		q=M1/M2
 		return(r * 0.49*q^(2/3)/(0.6*q^(2/3)+np.log(1+q^(1/3))))
 	end
+
+# ╔═╡ b7880c1c-dbd2-4bf3-b916-6165c27c7d81
+function dynamical_timescale(M::Float64,R::Float64)
+		#returns dynamical timescale for perturbed white dwarf
+		#with radius R and mass M
+		return((R^3/(G*M))^(1/2))
+	end
+
+# ╔═╡ 8cb6660f-7181-478f-8c2e-e67c908ad8b7
+function period(Mtot::Float64, a::Float64)::Float64
+    return sqrt(4.0 * π^2 * a^3 / (G * Mtot))
 end
 
-# ╔═╡ 52008ec4-ce3f-48f8-a78f-8c20687853a4
-begin
-	G=1.327e11 #km^3/M_\odot/s^2
-	c=2.998e5 #km/s
-	
-	function period(Mtot,a)
-	    return((4*np.pi^2*a^3/(G*Mtot))^(1/2))
-	end
-	
-	function decretion_rate(a,r,R1,M1,M2,A=10)
-	    #derivative of mass in M1 due to decretion onto M2
-	    #R1 is the radius of M1
-	    #a is semi major axis, r is instantaneous separation
-	    #A is a dimensionless constant of order ~10
-	    RL=Roche_Limit(r,M1,M2)
-	    if RL>R1:#no RL overflow
-	        #print("too small")
-	        #print(RL)
-	        return(0)
-	    return(-A * M1/(period(M1+M2,a))*((R1-RL)/RL)^3)
-	end
-	
-	function gamma(M1,M2,a_ring_frac=1,mode="Isotropic Re-emission")
-	    #returns fractional specific angular momentum of matter lost
-	    
-	    if (mode[0]=="j") or (mode[0]=="J")#Jeans Mode 
-	        return(M2/M1)
-	    if (mode[0]=="I") or (mode[0]=="i")#Isotropic re-emission
-	        return(M1/M2)
-	    if (mode[0]=="c") or (mode[0]=="C")
-	        return((M1+M2)^2/(M1*M2)*a_ring_frac^(1/2))
-	    raise(mode+" not functionined. Please use 'Jeans Mode', 'Isotropic Re-emission', or 'Circumbinary Ring'")
-	end
-	
-	function eddington_rate(M,mu_e=2,eta_acc=0.1)
-	    #Eddington accretion rate for mass M
-	    #mu_e is mass in amu per electron
-	    #eta_acc is accretion efficiency
-	    return(1.41e-15 * M * (mu_e/2) * (0.1/eta_acc))
-	end
-	
-	function beta(a,r,R1,M1,M2,A=10,mu_e=2,eta_acc=0.1)
-	    #beta coefficient (mass accretion fraction of neutron star)
-	    M_dot=-1*decretion_rate(a,r,R1,M1,M2,A=A)
-	    lam_edd=eddington_rate(M2,mu_e=mu_e,eta_acc=eta_acc)
-	    if M_dot<lam_edd:
-	        return 1
-	    return(lam_edd/M_dot)
-	end
-	
-	function J_dot(J,a,r,R1,M1,M2,A=10,mu_e=2,eta_acc=0.1,a_ring_frac=1,mode="Isotropic")
-	    #angular momentum lost due to non-conservative mass transfer
-	    g=gamma(M1,M2,a_ring_frac=a_ring_frac,mode=mode)
-	    b=beta(a,r,R1,M1,M2,A=A,mu_e=mu_e,eta_acc=eta_acc)
-	    m1_dot=decretion_rate(a,r,R1,M1,M2,A=10)
-	    return(J*g*(1-b)*m1_dot/(M1+M2))
-	end
-	
-	function a_dot(a,r,R1,M1,M2,A=10,mu_e=2,eta_acc=0.1,a_ring_frac=1,mode="Isotropic")
-	    #change in semi-major axis due to accretion only (no gravitational wave reaction yet)
-	    g=gamma(M1,M2,a_ring_frac=a_ring_frac,mode=mode)
-	    b=beta(a,r,R1,M1,M2,A=A,mu_e=mu_e,eta_acc=eta_acc)
-	    m1_dot=decretion_rate(a,r,R1,M1,M2,A=A)
-	    return(-2 * a * m1_dot/M1 * (1-b*M1/M2 - (1-b)*(g+1/2) * M1/(M1+M2)) )
-	end
-	
-	function dot_R_WD(M1,R1)
-	    #change of white dwarf radius on dynamical timescale
-	    natural_R=R_WD(M1)
-	    tau=dynamical_timescale(M1,R1)
-	    return((natural_R-R1)/tau)
-	end
-	
-	function dot_phi(J,r,M1,M2)
-	    #time derivative of theta as a function of angular momentum,
-	    #separation, and mass (useful in calculating quadrupole moment)
-	    mu=M1*M2/(M1+M2)
-	    return(J/(mu*r))
-	end
+# Decretion rate
+
+# ╔═╡ b5b5c7a1-3108-4a39-929b-f7af515b55c5
+function decretion_rate(a::Float64, r::Float64, R1::Float64,
+                        M1::Float64, M2::Float64; A::Float64=10.0)::Float64
+    RL::Float64 = Roche_Limit(r, M1, M2)
+    if RL > R1
+        return 0.0
+    end
+    return -A * M1 / period(M1 + M2, a) * ((R1 - RL) / RL)^3
 end
+
+# Gamma (specific angular momentum of lost matter)
+
+# ╔═╡ 11fa4c68-4fd8-496e-8603-8181dd3940a4
+function gamma(M1::Float64, M2::Float64; 
+               a_ring_frac::Float64=1.0, mode::String="Isotropic Re-emission")::Float64
+    first_char = lowercase(first(mode))
+    if first_char == 'j'
+        return M2 / M1
+    elseif first_char == 'i'
+        return M1 / M2
+    elseif first_char == 'c'
+        return (M1 + M2)^2 / (M1 * M2) * sqrt(a_ring_frac)
+    else
+        error("$mode not defined. Use 'Jeans Mode', 'Isotropic Re-emission', or 'Circumbinary Ring'")
+    end
+end
+
+# Eddington accretion rate
+
+# ╔═╡ 283caef4-4cac-44fd-8fe9-17507f14baf9
+function eddington_rate(M::Float64; mu_e::Float64=2.0, eta_acc::Float64=0.1)::Float64
+    return 1.41e-15 * M * (mu_e / 2.0) * (0.1 / eta_acc)
+end
+
+# Beta (fraction of accreted mass)
+
+# ╔═╡ 524b7699-c0f2-4904-993c-7943de80e821
+function beta(a::Float64, r::Float64, R1::Float64, M1::Float64, M2::Float64; 
+              A::Float64=10.0, mu_e::Float64=2.0, eta_acc::Float64=0.1)::Float64
+    M_dot::Float64 = -decretion_rate(a, r, R1, M1, M2; A=A)
+    lam_edd::Float64 = eddington_rate(M2; mu_e=mu_e, eta_acc=eta_acc)
+    if M_dot < lam_edd
+        return 1.0
+    end
+    return lam_edd / M_dot
+end
+
+# Angular momentum loss rate
+
+# ╔═╡ 6c2ec7e6-1868-4424-ac5a-0d3ee97e0979
+function J_dot(J::Float64, a::Float64, r::Float64, R1::Float64, M1::Float64, M2::Float64; 
+               A::Float64=10.0, mu_e::Float64=2.0, eta_acc::Float64=0.1, 
+               a_ring_frac::Float64=1.0, mode::String="Isotropic")::Float64
+    g::Float64 = gamma(M1, M2; a_ring_frac=a_ring_frac, mode=mode)
+    b::Float64 = beta(a, r, R1, M1, M2; A=A, mu_e=mu_e, eta_acc=eta_acc)
+    m1_dot::Float64 = decretion_rate(a, r, R1, M1, M2; A=A)
+    return J * g * (1.0 - b) * m1_dot / (M1 + M2)
+end
+
+# Semi-major axis change rate
+
+# ╔═╡ 760b9821-5596-46e5-b263-8101d0b2ea42
+function a_dot(a::Float64, r::Float64, R1::Float64, M1::Float64, M2::Float64; 
+               A::Float64=10.0, mu_e::Float64=2.0, eta_acc::Float64=0.1, 
+               a_ring_frac::Float64=1.0, mode::String="Isotropic")::Float64
+    g::Float64 = gamma(M1, M2; a_ring_frac=a_ring_frac, mode=mode)
+    b::Float64 = beta(a, r, R1, M1, M2; A=A, mu_e=mu_e, eta_acc=eta_acc)
+    m1_dot::Float64 = decretion_rate(a, r, R1, M1, M2; A=A)
+    return -2.0 * a * m1_dot / M1 * (1.0 - b * M1 / M2 - (1.0 - b) * (g + 0.5) * M1 / (M1 + M2))
+end
+
+# White dwarf radius change
+
+# ╔═╡ 65c9b6ea-de2f-4051-9305-6219cc814bd6
+function dot_R_WD(M1::Float64, R1::Float64)::Float64
+    natural_R::Float64 = R_WD(M1)
+    tau::Float64 = dynamical_timescale(M1, R1)
+    return (natural_R - R1) / tau
+end
+
+# Angular velocity derivative
+
+# ╔═╡ d589347d-e0f4-40f7-b79b-f10821e19534
+function dot_phi(J::Float64, r::Float64, M1::Float64, M2::Float64)::Float64
+    mu::Float64 = M1 * M2 / (M1 + M2)
+    return J / (mu * r)
+end
+
+# ╔═╡ 4e744fec-a122-489d-bc80-b0f16b01b3c7
+# ╠═╡ disabled = true
+#=╠═╡
+# Constants
+const G = 1.327e11   # km^3 / M⊙ / s^2
+  ╠═╡ =#
+
+# ╔═╡ 41d0d676-bef7-450b-9176-a36fb1189ad3
+# ╠═╡ disabled = true
+#=╠═╡
+const c = 2.998e5    # km/s
+
+# Orbital period
+  ╠═╡ =#
+
+# ╔═╡ b6999238-172b-439d-922f-e5e430306920
+const c::Float64 = 2.998e5    # km/s
+
+# Orbital period
+
+# ╔═╡ b313fdb0-3a5a-4999-a235-93cf20b3222a
+# Constants
+const G::Float64 = 1.327e11   # km^3 / M⊙ / s^2
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -634,7 +672,21 @@ version = "17.4.0+2"
 # ╟─0ee4cf56-090d-4b9b-a266-a592952e2c1e
 # ╟─14bfa5a2-aa27-4c05-a1da-d4be8037139d
 # ╠═0cac30f1-9101-4ba3-accc-52621bc1d16f
-# ╠═931318ef-478f-4e6f-b415-85f735c6226a
-# ╠═52008ec4-ce3f-48f8-a78f-8c20687853a4
+# ╠═b7a2300a-bc8f-4387-a324-7f3de70d81fc
+# ╠═b7880c1c-dbd2-4bf3-b916-6165c27c7d81
+# ╠═d52feb78-6ddf-4b75-995e-4b2a1e452571
+# ╠═4e744fec-a122-489d-bc80-b0f16b01b3c7
+# ╠═41d0d676-bef7-450b-9176-a36fb1189ad3
+# ╠═b313fdb0-3a5a-4999-a235-93cf20b3222a
+# ╠═b6999238-172b-439d-922f-e5e430306920
+# ╠═8cb6660f-7181-478f-8c2e-e67c908ad8b7
+# ╠═b5b5c7a1-3108-4a39-929b-f7af515b55c5
+# ╠═11fa4c68-4fd8-496e-8603-8181dd3940a4
+# ╠═283caef4-4cac-44fd-8fe9-17507f14baf9
+# ╠═524b7699-c0f2-4904-993c-7943de80e821
+# ╠═6c2ec7e6-1868-4424-ac5a-0d3ee97e0979
+# ╠═760b9821-5596-46e5-b263-8101d0b2ea42
+# ╠═65c9b6ea-de2f-4051-9305-6219cc814bd6
+# ╠═d589347d-e0f4-40f7-b79b-f10821e19534
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
