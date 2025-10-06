@@ -4,7 +4,7 @@ using ForwardDiff
 function dM_NS(a::Float64, R_WD::Float64, M_WD::Float64, M_NS::Float64;
         A::Float64=10, mu_e::Float64=2.0, eta_acc::Float64=0.1)::Float64
     t_dM_WD=decretion_rate(a,a,R_WD,M_WD,M_Ns,A=A)
-    t_edd=eddington_rate(M_NS; mu_e=mu_e, eta_acc=eta_acc)
+    t_edd=eddington_rate(M_NS, mu_e=mu_e, eta_acc=eta_acc)
     return(minimum(-t_dM_WD,t_edd))
 end
 
@@ -33,7 +33,23 @@ end
 
     
 #=Calculates time derivative of I_xx/I_xy from autodifferentiation=#
-function dI_xx(M_WD::Float64, M_NS::Float64, a::Float64, θ::Float64,t_dM_WD,t_dM_NS,t_da,t_dθ)::Float64
+function time_derivative(ftn::Function, ind_vars::Vector{Float64}, derivatives::Vector{Float64})::Float64
+    #ftn is the function to be taken a time derivative of
+    #ind_vars is an array with the values of the arguments of ftn
+    #derivatives is an array with the known time derivatives of ind_vars
+    
+    @assert length(ind_vars)==length(derivatives)
+    
+    grad=ForwardDiff.gradient(v->ftn(v[1],v[2],v[3],v[4]),ind_vars)
+    #Packages ftn to take an array of parameters as variables (e.g., ind_vars)
+    #then calculates the gradient of the function
+    
+    return(dot(grad,derivatives))#chain rule
+
+
+
+function dI_xx(M_WD::Float64, M_NS::Float64, a::Float64, θ::Float64,
+        t_dM_WD::Float64,t_dM_NS::Float64,t_da::Float64,t_dθ::Float64)::Float64
     @assert M_WD > 0 # In production-ready code, consider commenting this out
 	@assert M_NS > 0 # In production-ready code, consider commenting this out
     @assert a > 0 # In production-ready code, consider commenting this out
@@ -44,7 +60,8 @@ function dI_xx(M_WD::Float64, M_NS::Float64, a::Float64, θ::Float64,t_dM_WD,t_d
     return(dot(grad,[ t_dM_WD,t_dM_NS,t_da,t_dθ])) 
 end
 
-function dI_xy(M_WD::Float64, M_NS::Float64, a::Float64, θ::Float64,t_dM_WD,t_dM_NS,t_da,t_dθ)::Float64
+function dI_xy(M_WD::Float64, M_NS::Float64, a::Float64, θ::Float64,
+        t_dM_WD::Float64,t_dM::Float64_NS,t_da::Float64,t_dθ::Float64)::Float64
     @assert M_WD > 0 # In production-ready code, consider commenting this out
 	@assert M_NS > 0 # In production-ready code, consider commenting this out
     @assert a > 0 # In production-ready code, consider commenting this out
@@ -54,6 +71,8 @@ function dI_xy(M_WD::Float64, M_NS::Float64, a::Float64, θ::Float64,t_dM_WD,t_d
 
     return(dot(grad,[ t_dM_WD,t_dM_NS,t_da,t_dθ])) 
 end
+
+
                 
 #=function dI_xx(M_WD::Float64, M_NS::Float64, a::Float64, θ::Float64, R_WD::Float64, J::Float64; 
                     A::Float64=10.0, mu_e::Float64=2.0, eta_acc::Float64=0.1, 
