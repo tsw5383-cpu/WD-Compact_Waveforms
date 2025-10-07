@@ -8,10 +8,10 @@ end
     
 
 function dM_NS(a::Float64, R_WD::Float64, M_WD::Float64, M_NS::Float64;
-        A::Float64=10, mu_e::Float64=2.0, eta_acc::Float64=0.1)::Float64
+        A::Float64=10, mu_e::Float64=2.0, eta_acc::Float64=0.1, α::Float64=4)::Float64
     t_dM_WD=decretion_rate(a,a,R_WD,M_WD,M_Ns,A=A)
     t_edd=eddington_rate(M_NS, mu_e=mu_e, eta_acc=eta_acc)
-    return(minimum(-t_dM_WD,t_edd))
+    return(Boltzmann_Max(-t_dM_WD,t_edd,α=α))
 end
 
 function dθ(J::Float64,a::Float64,M_WD::Float64, M_NS::Float64)::Float64
@@ -65,19 +65,37 @@ function da_vector(theta::Vector{Float64};
             a_ring_frac=a_ring_frac,mode=mode))
 end
 
-function dM_WD_vector(theta::Vector{Float64}; A::Float64=10.0)
+function dM_WD_vector(theta::Vector{Float64}; A::Float64=10.0)::Float64
     a, M_WD, M_NS, R_WD, J, θ=theta
     return(decretion_rate(a, r, R_WD, M_WD, M_NS, A=A))
 end
 
+function dM_NS_vector(theta::Vector{Float64};
+        A::Float64=10, mu_e::Float64=2.0, eta_acc::Float64=0.1, α::Float64=4)::Float64
+    a, M_WD, M_NS, R_WD, J, θ=theta
+    return(dM_NS(a, R_WD, M_WD, M_NS;
+        A=a, mu_e=mu_e, eta_acc=eta_acc, α=α))
+end
 
+function dM_R_WD_vector(theta::Vector{Float64}; mu_e=2::Float64)::Float64
+    a, M_WD, M_NS, R_WD, J, θ=theta
+    return( R_WD(M_WD, mu_e=mu_e))
+end
     
+function dJ_vector(theta::Vector{Float64}; 
+               A::Float64=10.0, mu_e::Float64=2.0, eta_acc::Float64=0.1, 
+               a_ring_frac::Float64=1.0, mode::String="Isotropic")::Float64)::Float64
+    a, M_WD, M_NS, R_WD, J, θ=theta
+    return(J_dot(J, a, a, R_WD, M_WD, M_NS, 
+               A=A, mu_e=mu_e, eta_acc=eta_acc, 
+               a_ring_frac=a_ring_frac, mode=mode))
+end
+function dθ_vector(theta::Vector{Float64})::Float64
+    a, M_WD, M_NS, R_WD, J, θ=theta
+    return(dθ(J,a,M_WD, M_NS))
+end
 
-
-
-
-
-
+function 
 
 
     
