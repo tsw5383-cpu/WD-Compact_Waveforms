@@ -117,8 +117,10 @@ function next_derivative(in_ftn::Function; n::Integer=1)::Function
     #returns a function which is the next higher derivative of the in_ftn
     #n is the total derivatives past the given analytic form
     function ftn(gen_theta::Vector{Float64}, gen_dtheta::Vector{Float64})::Float64
-        @assert gen_theta==6*(1+n) 
+        @assert length(gen_theta)==length(gen_dtheta)==6*(1+n) 
+        @assert gen_theta[7:]==gen_dtheta[:-6]
         #requires gen_theta to be [theta, dtheta, d...dtheta] for n=number of ds
+        #requires gen_theta to be [dtheta, ddtheta d...ddtheta] for n+1=number of ds
         return(ftn(in_ftn, gentheta, gen_dtheta))
     end
     return ftn
@@ -166,44 +168,89 @@ end
 #=Central Engine of the integrator=#
 
 function acceleration(theta::Vector{Float64})::Vector{Float64}
+    theta_ddtheta=zeros(18)#holds theta and the first two time derivatives
+    theta_ddtheta[1:6]=theta
+        
     dtheta=zeros(6)
-    for i in range 1:6
+    #calculating first time derivatives due to MT only
+    for i in 1:6
         dtheta[i]=first_derivatives(theta)
     end
     
-    theta_dtheta=zeros(12)
-    theta_dtheta[1:6]=theta
-    theta_dtheta[7:12]=dtheta
+    #theta_dtheta=vcat(theta,dtheta)
+    theta_ddtheta[7:12]=dtheta
 
     ddtheta=zeros(6)
-    for i in range 1:6
-        ddtheta[i]=second_derivatives(theta_dtheta)
+    #calculating second time derivatives due to MT only
+    for i in 1:6
+        ddtheta[i]=second_derivatives(theta_dddtheta[1:12])
     end
 
-    theta_ddtheta=zeros(18)
-    theta_ddtheta[1:12]=theta_dtheta
-    theta_ddtheta[7:12]=ddtheta
+    theta_ddtheta[13:18]=ddtheta
 
     dddtheta=zeros(6)
-    for i in range 1:6
-        dddtheta[i]=theta_derivatives(theta_ddtheta)
+    #calculating third time derivatives due to MT only
+    for i in 1:6
+        dddtheta[i]=theta_derivatives(theta_dddtheta[1:18])
     end
 
-    theta_dddtheta=zeros(24)
-    theta_dddtheta[1:18]=theta_ddtheta
-    theta_dddtheta[7:12]=dddtheta
 
-    t_ddI=tensor_plus_times(ddI_xx(theta_dtheta,ddtheta),
-        ddI_xy(theta_dtheta,ddtheta)
+    
+    #using orbital elements and first and second time derivatives 
+    #to calculate second derivative of quadrupole moment
+    #(for use in calculating RR acceleration)
+    dtheta_ddtheta=vcat(dtheta,ddtheta)
+    t_ddI=tensor_plus_times(ddI_xx(theta_dtheta,dtheta_ddtheta),
+        ddI_xy(theta_dtheta,dtheta_ddtheta)
     )
-    t_dddI=tensor_plus_times(dddI_xx(theta_dtheta,dddtheta),
+
+    #using orbital elements and first through third time derivatives  
+    #to calculate third derivative of quadrupole moment 
+    #(for use in calculating RR acceleration)
+    dtheta_dddtheta=vcat(dtheta_ddtheta,dddtheta)
+    t_dddI=tensor_plus_times(dddI_xx(theta_ddtheta,dddtheta),
         dddI_xy(theta_ddtheta,dddtheta)
     )
-    
+
+    #forces due to RR
     t_dJ_rr=dJ_rr(t_ddI,t_dddI)
     t_da_rr=2.0 * theta[1] * dJ_rr(I2, I3) / theta[5]
 
-    dtheta[1]=t_dJ_rr
+    #adding RR forces to MT forces
+    dtheta[1]+=t_da_rr
+    dtheta[5]+=t_da_rr
+    return(dtheta)
+end
+
+
+#=The following functions are defined to initiate the orbit beginning at mass transfer
+for initial masses, take an integration step forward calculating waveform, and integrate
+until the White Dwarf dissipates completely=#
+
+function RL_contact(M_WD::Float64,M_NS::Float64;mu_e=2::Float64)::Float64
+    #returns separation at which a donor WD overflows its
+    #Roche Lobe
+    R1=R_WD(M_WD,mu_e=mu_e)
+    RL_a1=Roche_Limit(1,M1,M2) #roche limit at separation of 1 km
+    return(R1 / RL_a1)#initial separation in km
+end
+
+function circular_J(a::Float64,M_WD::Float64,M_NS::Float64)::Float64
+    #returns angular momentum for a circular orbit
+    return((2 * a * G * M_WD ^ 2 * M_NS ^ 2 / (M1 + M2))^(1/2))
+end
+
+function initial_circular_orbit(M_WD::Float64;M_NS::Float64=1.35,mu_e=2::Float64)::Float64
+    #returns keplerian orbital parameters, theta, at initial Roche Lobe overflow
+    #M_NS=1.35 M_\odot is typical NS mass 
+    a=initial_separation(M_WD,M_WD,frac=1e-1)
+    J=circular_J(a,M_WD,M_WD)
+    R1=R_WD(M_WD)
+    return([a M_WD M_NS R_1 J 0])
+end
+
+
+    
 
 
     
