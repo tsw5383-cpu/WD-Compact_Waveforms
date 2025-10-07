@@ -1,5 +1,8 @@
 using ForwardDiff
 #package used for chain rules of large derivatives
+using OrdinaryDiffEq
+using SciMLBase
+#for integrating differential equations
 
 #smooth approximation to the maximum function
 function Boltzmann_Max(x1::Float64, x2::Float64; α::Float64=4)::Float64
@@ -167,7 +170,10 @@ end
 
 #=Central Engine of the integrator=#
 
-function acceleration(theta::Vector{Float64})::Vector{Float64}
+function ddI_dddI_from_theta(theta::Vector{Float64};ddI_only::Boolean=false)::Vector{Float64}
+    #returns time derivatives of theta and second and third derivatives of 
+    #the quadrupole moment due to MT effects
+    
     theta_ddtheta=zeros(18)#holds theta and the first two time derivatives
     theta_ddtheta[1:6]=theta
         
@@ -188,10 +194,12 @@ function acceleration(theta::Vector{Float64})::Vector{Float64}
 
     theta_ddtheta[13:18]=ddtheta
 
-    dddtheta=zeros(6)
-    #calculating third time derivatives due to MT only
-    for i in 1:6
-        dddtheta[i]=theta_derivatives(theta_dddtheta[1:18])
+    if not ddI_only
+        dddtheta=zeros(6)
+        #calculating third time derivatives due to MT only
+        for i in 1:6
+            dddtheta[i]=theta_derivatives(theta_dddtheta[1:18])
+        end
     end
 
 
@@ -199,18 +207,28 @@ function acceleration(theta::Vector{Float64})::Vector{Float64}
     #using orbital elements and first and second time derivatives 
     #to calculate second derivative of quadrupole moment
     #(for use in calculating RR acceleration)
+    
     dtheta_ddtheta=vcat(dtheta,ddtheta)
     t_ddI=tensor_plus_times(ddI_xx(theta_dtheta,dtheta_ddtheta),
         ddI_xy(theta_dtheta,dtheta_ddtheta)
     )
+    if ddI_only
+        return(t_ddI)
+    else 
+        #using orbital elements and first through third time derivatives  
+        #to calculate third derivative of quadrupole moment 
+        #(for use in calculating RR acceleration)
+        dtheta_dddtheta=vcat(dtheta_ddtheta,dddtheta)
+        t_dddI=tensor_plus_times(dddI_xx(theta_ddtheta,dddtheta),
+            dddI_xy(theta_ddtheta,dddtheta)
+        )
+        return(dtheta,t_ddI,t_dddI)
+    end
+end
 
-    #using orbital elements and first through third time derivatives  
-    #to calculate third derivative of quadrupole moment 
-    #(for use in calculating RR acceleration)
-    dtheta_dddtheta=vcat(dtheta_ddtheta,dddtheta)
-    t_dddI=tensor_plus_times(dddI_xx(theta_ddtheta,dddtheta),
-        dddI_xy(theta_ddtheta,dddtheta)
-    )
+#I am confused on how ODE solving works in Julia...
+function acceleration!(du::Vector{Float64}, theta::Vector{Float64},p::Vector{Float64},t::Float64)::Vector{Float64}
+    dtheta,t_ddI,t_dddI=ddI_dddI_from_theta(theta)
 
     #forces due to RR
     t_dJ_rr=dJ_rr(t_ddI,t_dddI)
@@ -249,7 +267,37 @@ function initial_circular_orbit(M_WD::Float64;M_NS::Float64=1.35,mu_e=2::Float64
     return([a M_WD M_NS R_1 J 0])
 end
 
+#=I am confused as to whether I am treating ODEProblem correctly=#
 
+function one_step(theta::Float64; dt_period::Float64=1e-2, dt::Float64=-1)
+    if dt==-1
+        dt=dt_period*period(theta[2]+theta[3], theta[1])
+    end
+    prob = ODEProblem(acceleration,theta,(0,dt))
+    updated_theta = solve(prob, alg=KahanLi8())
+
+    #=Calculating ddI at the end of the step=#
+        
+    t_ddI=ddI_dddI_from_theta(updated_theta, ddI_only=true)
+    return(dt,updated_theta,t_ddI)
+end
+
+function integrate(M_WD::Float64; M_NS::Float64=1.35,mu_e=2::Float64, orbit_limit=1e5, step_limit=1e7)
+    #returns second derivatives of the quadrupole moment
+    t=0
+    theta=initial_circular_orbit(M_WD,M_NS=M_NS,mu_e=mu_e)
+    ts=np.zeros(step_limit)
+    ddIs=np.zeros(step_limit,2,2)
+    i=1
+    time_limit=orbit_limit*period(M_WD+M_NS,theta[1])
+    
+    while t<time_limit and i<step_limit and theta[2]>0
+        dt,theta,t_ddI=one_step(theta)
+        i+=1
+        ts=
+    
+    
+    
     
 
 
