@@ -90,16 +90,124 @@ function dJ_vector(theta::Vector{Float64};
                A=A, mu_e=mu_e, eta_acc=eta_acc, 
                a_ring_frac=a_ring_frac, mode=mode))
 end
+
 function dθ_vector(theta::Vector{Float64})::Float64
     a, M_WD, M_NS, R_WD, J, θ=theta
     return(dθ(J,a,M_WD, M_NS))
 end
 
-function 
+
+#=Same treatment, but for quadrupole moments=#
+function Ixx_vector(theta::Vector{Float64})::Float64
+    a, M_WD, M_NS, R_WD, J, θ=theta
+    return(I_xx(M_WD, M_NS, a, θ))
+end
+
+function Ixy_vector(theta::Vector{Float64})::Float64
+    a, M_WD, M_NS, R_WD, J, θ=theta
+    return(I_xy(M_WD, M_NS, a, θ))
+end
+
+
+
+#=Higher derivatives=#
+#=takes in values and time derivatives to calculate second derivative=#
+
+function next_derivative(in_ftn::Function; n::Integer=1)::Function
+    #returns a function which is the next higher derivative of the in_ftn
+    #n is the total derivatives past the given analytic form
+    function ftn(gen_theta::Vector{Float64}, gen_dtheta::Vector{Float64})::Float64
+        @assert gen_theta==6*(1+n) 
+        #requires gen_theta to be [theta, dtheta, d...dtheta] for n=number of ds
+        return(ftn(in_ftn, gentheta, gen_dtheta))
+    end
+    return ftn
+end
+
+#=all necessary higher derivatives to calculate up to dddI=#
+begin
+    dda=next_derivative(da_vector)
+    ddM_WD=next_derivative(dM_WD_vector)
+    ddM_NS=next_derivative(dM_WD_vector)
+    ddR_WD=next_derivative(dR_WD_vector)
+    ddJ=next_derivative(dJ_vector)
+    ddθ=next_derivative(dθ_vector)
+
+    ddda=next_derivative(dda_vector,n=2)
+    dddM_WD=next_derivative(ddM_WD_vector,n=2)
+    dddM_NS=next_derivative(ddM_NS_vector,n=2)
+    dddR_WD=next_derivative(ddR_WD_vector,n=2)
+    dddJ=next_derivative(ddJ_vector,n=2)
+    dddθ=next_derivative(ddθ_vector,n=2)
+
+    dI_xx=next_derivative(Ixx_vector)
+    ddI_xx=next_derivative(Ixx_vector,n=2)
+    dddI_xx=next_derivative(Ixx_vector,n=3)
+    
+    dI_xy=next_derivative(Ixy_vector)
+    ddI_xy=next_derivative(Ixy_vector,n=2)
+    dddI_xy=next_derivative(Ixy_vector,n=3)
+end;    
+
+#=bundling derivatives together which will prove convenient later=#
+begin
+    first_derivatives=[da_vector dM_WD_vector dM_WD_vector dR_WD_vector dJ_vector dθ_vector]
+    second_derivatives=[dda_vector ddM_WD_vector ddM_WD_vector ddR_WD_vector ddJ_vector ddθ_vector]
+    third_derivatives=[ddda_vector dddM_WD_vector dddM_WD_vector dddR_WD_vector dddJ_vector dddθ_vector]
+end;
+
+#=Constructs a symmetric 2x2 tensor from a plus and times polarization=#
+function tensor_plus_times(plus::Float64, times::Float64)::Vector{Float64}
+    return([plus times;
+            times -plus        
+    ])
+end
+
+#=Central Engine of the integrator=#
+
+function acceleration(theta::Vector{Float64})::Vector{Float64}
+    dtheta=zeros(6)
+    for i in range 1:6
+        dtheta[i]=first_derivatives(theta)
+    end
+    
+    theta_dtheta=zeros(12)
+    theta_dtheta[1:6]=theta
+    theta_dtheta[7:12]=dtheta
+
+    ddtheta=zeros(6)
+    for i in range 1:6
+        ddtheta[i]=second_derivatives(theta_dtheta)
+    end
+
+    theta_ddtheta=zeros(18)
+    theta_ddtheta[1:12]=theta_dtheta
+    theta_ddtheta[7:12]=ddtheta
+
+    dddtheta=zeros(6)
+    for i in range 1:6
+        dddtheta[i]=theta_derivatives(theta_ddtheta)
+    end
+
+    theta_dddtheta=zeros(24)
+    theta_dddtheta[1:18]=theta_ddtheta
+    theta_dddtheta[7:12]=dddtheta
+
+    t_ddI=tensor_plus_times(ddI_xx(theta_dtheta,ddtheta),
+        ddI_xy(theta_dtheta,ddtheta)
+    )
+    t_dddI=tensor_plus_times(dddI_xx(theta_dtheta,dddtheta),
+        dddI_xy(theta_ddtheta,dddtheta)
+    )
+    
+    t_dJ_rr=dJ_rr(t_ddI,t_dddI)
+    t_da_rr=2.0 * theta[1] * dJ_rr(I2, I3) / theta[5]
+
+    dtheta[1]=t_dJ_rr
 
 
     
-
+#=
 function dI_xx(M_WD::Float64, M_NS::Float64, a::Float64, θ::Float64,
         t_dM_WD::Float64,t_dM_NS::Float64,t_da::Float64,t_dθ::Float64)::Float64
     @assert M_WD > 0 # In production-ready code, consider commenting this out
