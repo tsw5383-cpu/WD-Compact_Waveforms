@@ -1,6 +1,12 @@
 using ForwardDiff
 #package used for chain rules of large derivatives
 
+#smooth approximation to the maximum function
+function Boltzmann_Max(x1::Float64, x2::Float64; α::Float64=4)::Float64
+    return((x1*exp(α*x1)+x2*exp(α*x2)/(exp(α*x1)+exp(α*x2))))
+end
+    
+
 function dM_NS(a::Float64, R_WD::Float64, M_WD::Float64, M_NS::Float64;
         A::Float64=10, mu_e::Float64=2.0, eta_acc::Float64=0.1)::Float64
     t_dM_WD=decretion_rate(a,a,R_WD,M_WD,M_Ns,A=A)
@@ -45,8 +51,36 @@ function time_derivative(ftn::Function, ind_vars::Vector{Float64}, derivatives::
     #then calculates the gradient of the function
     
     return(dot(grad,derivatives))#chain rule
+end
 
 
+#=The following functions wrap the original derivatives in vectors to make life easier 
+when taking derivatives due to mass transfer only=#    
+function da_vector(theta::Vector{Float64}; 
+               A::Float64=10.0, mu_e::Float64=2.0, eta_acc::Float64=0.1, 
+               a_ring_frac::Float64=1.0, mode::String="Isotropic")::Float64
+    a, M_WD, M_NS, R_WD, J, θ=theta
+    return(a_dot(a,a,M_WD,M_NS,R_WD,
+            A=A,mu_e=mu_e,eta_acc=eta_acc,
+            a_ring_frac=a_ring_frac,mode=mode))
+end
+
+function dM_WD_vector(theta::Vector{Float64}; A::Float64=10.0)
+    a, M_WD, M_NS, R_WD, J, θ=theta
+    return(decretion_rate(a, r, R_WD, M_WD, M_NS, A=A))
+end
+
+
+    
+
+
+
+
+
+
+
+
+    
 
 function dI_xx(M_WD::Float64, M_NS::Float64, a::Float64, θ::Float64,
         t_dM_WD::Float64,t_dM_NS::Float64,t_da::Float64,t_dθ::Float64)::Float64
