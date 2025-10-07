@@ -273,7 +273,7 @@ end
 function initial_circular_orbit(M_WD::Float64;M_NS::Float64=1.35,mu_e=2::Float64)::Float64
     #returns keplerian orbital parameters, theta, at initial Roche Lobe overflow
     #M_NS=1.35 M_\odot is typical NS mass
-    @assert M_WD<1.4 #
+    @assert M_WD<1.4 #Chandrasekar mass, beyond which we cannot calculate R_WD
     a=initial_separation(M_WD,M_WD,frac=1e-1)
     J=circular_J(a,M_WD,M_WD)
     R1=R_WD(M_WD)
