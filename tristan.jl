@@ -56,6 +56,22 @@ function time_derivative(ftn::Function, ind_vars::Vector{Float64}, derivatives::
     return(dot(grad,derivatives))#chain rule
 end
 
+#=Higher derivatives=#
+#=takes in values and time derivatives to calculate second derivative=#
+
+function next_derivative(in_ftn::Function; n::Integer=1)::Function
+    #returns a function which is the next higher derivative of the in_ftn
+    #n is the total derivatives past the given analytic form
+    function ftn(gen_theta::Vector{Float64}, gen_dtheta::Vector{Float64})::Float64
+        @assert length(gen_theta)==length(gen_dtheta)==6*n 
+        @assert gen_theta[7:]==gen_dtheta[:-6]
+        #requires gen_theta to be [theta, dtheta, d...dtheta] for n=number of ds
+        #requires gen_theta to be [dtheta, ddtheta d...ddtheta] for n+1=number of ds
+        return(ftn(in_ftn, gentheta, gen_dtheta))
+    end
+    return ftn
+end
+
 
 #=The following functions wrap the original derivatives in vectors to make life easier 
 when taking derivatives due to mass transfer only=#    
@@ -112,23 +128,6 @@ function Ixy_vector(theta::Vector{Float64})::Float64
 end
 
 
-
-#=Higher derivatives=#
-#=takes in values and time derivatives to calculate second derivative=#
-
-function next_derivative(in_ftn::Function; n::Integer=1)::Function
-    #returns a function which is the next higher derivative of the in_ftn
-    #n is the total derivatives past the given analytic form
-    function ftn(gen_theta::Vector{Float64}, gen_dtheta::Vector{Float64})::Float64
-        @assert length(gen_theta)==length(gen_dtheta)==6*(1+n) 
-        @assert gen_theta[7:]==gen_dtheta[:-6]
-        #requires gen_theta to be [theta, dtheta, d...dtheta] for n=number of ds
-        #requires gen_theta to be [dtheta, ddtheta d...ddtheta] for n+1=number of ds
-        return(ftn(in_ftn, gentheta, gen_dtheta))
-    end
-    return ftn
-end
-
 #=all necessary higher derivatives to calculate up to dddI=#
 begin
     dda=next_derivative(da_vector)
@@ -156,49 +155,42 @@ end;
 
 #=bundling derivatives together which will prove convenient later=#
 begin
-    first_derivatives=[da_vector dM_WD_vector dM_WD_vector dR_WD_vector dJ_vector dθ_vector]
-    second_derivatives=[dda_vector ddM_WD_vector ddM_WD_vector ddR_WD_vector ddJ_vector ddθ_vector]
-    third_derivatives=[ddda_vector dddM_WD_vector dddM_WD_vector dddR_WD_vector dddJ_vector dddθ_vector]
+    first_derivatives=[da_vector, dM_WD_vector, dM_WD_vector, dR_WD_vector, dJ_vector, dθ_vector]
+    second_derivatives=[dda_vector, ddM_WD_vector, ddM_WD_vector, ddR_WD_vector, ddJ_vector, ddθ_vector]
+    third_derivatives=[ddda_vector, dddM_WD_vector, dddM_WD_vector, dddR_WD_vector, dddJ_vector, dddθ_vector]
 end;
 
 #=Constructs a symmetric 2x2 tensor from a plus and times polarization=#
 function tensor_plus_times(plus::Float64, times::Float64)::Vector{Float64}
-    return([plus times;
-            times -plus        
+    return([plus, times;
+            times, -plus        
     ])
 end
 
 #=Central Engine of the integrator=#
 
-function ddI_dddI_from_theta(theta::Vector{Float64};ddI_only::Boolean=false)::Vector{Float64}
-    #returns time derivatives of theta and second and third derivatives of 
-    #the quadrupole moment due to MT effects
-    
-    theta_ddtheta=zeros(18)#holds theta and the first two time derivatives
-    theta_ddtheta[1:6]=theta
-        
+function ddI_helper(theta::Vector{Float64})::Tuple{Vector{Float64},Vector{Float64},Vector{Float64},Vector{Float64},Matrix{Float64}}
+    #calulates a list of values which will be helpful in the next two functions
     dtheta=zeros(6)
     #calculating first time derivatives due to MT only
     for i in 1:6
         dtheta[i]=first_derivatives(theta)
     end
-    
-    #theta_dtheta=vcat(theta,dtheta)
-    theta_ddtheta[7:12]=dtheta
 
     ddtheta=zeros(6)
     #calculating second time derivatives due to MT only
     for i in 1:6
-        ddtheta[i]=second_derivatives(theta_dddtheta[1:12])
+        ddtheta[i]=second_derivatives(theta,dtheta)
     end
 
-    theta_ddtheta[13:18]=ddtheta
+    theta_dtheta=vcat(theta,dtheta)
+    dtheta_ddtheta=vcat(dtheta,ddtheta)
 
     if not ddI_only
         dddtheta=zeros(6)
         #calculating third time derivatives due to MT only
         for i in 1:6
-            dddtheta[i]=theta_derivatives(theta_dddtheta[1:18])
+            dddtheta[i]=theta_derivatives(theta_dtheta,dtheta_ddtheta)
         end
     end
 
@@ -208,26 +200,43 @@ function ddI_dddI_from_theta(theta::Vector{Float64};ddI_only::Boolean=false)::Ve
     #to calculate second derivative of quadrupole moment
     #(for use in calculating RR acceleration)
     
-    dtheta_ddtheta=vcat(dtheta,ddtheta)
+    
     t_ddI=tensor_plus_times(ddI_xx(theta_dtheta,dtheta_ddtheta),
         ddI_xy(theta_dtheta,dtheta_ddtheta)
     )
-    if ddI_only
-        return(t_ddI)
-    else 
-        #using orbital elements and first through third time derivatives  
-        #to calculate third derivative of quadrupole moment 
-        #(for use in calculating RR acceleration)
-        dtheta_dddtheta=vcat(dtheta_ddtheta,dddtheta)
-        t_dddI=tensor_plus_times(dddI_xx(theta_ddtheta,dddtheta),
-            dddI_xy(theta_ddtheta,dddtheta)
-        )
-        return(dtheta,t_ddI,t_dddI)
+    return(dtheta, ddtheta, theta_dtheta, dtheta_ddtheta, t_ddI)
+
+end
+
+function ddI_from_theta(theta::Vector{Float64})::Matrix{Float64}
+    return(ddI_helper(theta)[5])
+end
+    
+
+
+function ddI_dddI_from_theta(theta::Vector{Float64};ddI_only::Boolean=false)::Tuple{Vector{Float64},Matrix{Float64},Matrix{Float64}}
+    #returns time derivatives of theta and second and third derivatives of 
+    #the quadrupole moment due to MT effects
+    
+    dtheta, ddtheta, theta_dtheta, dtheta_ddtheta, t_ddI = ddI_helper(theta)
+    #using orbital elements and first through third time derivatives  
+    #to calculate third derivative of quadrupole moment 
+    #(for use in calculating RR acceleration)
+    theta_ddtheta=vcat(theta_dtheta,ddtheta)
+    dtheta_dddtheta=vcat(dtheta_ddtheta,dddtheta)
+
+    t_dddI=tensor_plus_times(dddI_xx(theta_ddtheta,dddtheta),
+        dddI_xy(theta_ddtheta,dddtheta)
+    )
+    return(dtheta,t_ddI,t_dddI)
     end
 end
 
-#I am confused on how ODE solving works in Julia...
-function acceleration!(du::Vector{Float64}, theta::Vector{Float64},p::Vector{Float64},t::Float64)::Vector{Float64}
+
+
+
+#Below is an "in place" implementation of a function to be integrated 
+function acceleration!(du::Vector{Float64}, theta::Vector{Float64},p,t)
     dtheta,t_ddI,t_dddI=ddI_dddI_from_theta(theta)
 
     #forces due to RR
@@ -237,6 +246,9 @@ function acceleration!(du::Vector{Float64}, theta::Vector{Float64},p::Vector{Flo
     #adding RR forces to MT forces
     dtheta[1]+=t_da_rr
     dtheta[5]+=t_da_rr
+
+    #mutate du
+    du .= dtheta
     return(dtheta)
 end
 
@@ -260,35 +272,38 @@ end
 
 function initial_circular_orbit(M_WD::Float64;M_NS::Float64=1.35,mu_e=2::Float64)::Float64
     #returns keplerian orbital parameters, theta, at initial Roche Lobe overflow
-    #M_NS=1.35 M_\odot is typical NS mass 
+    #M_NS=1.35 M_\odot is typical NS mass
+    @assert M_WD<1.4 #
     a=initial_separation(M_WD,M_WD,frac=1e-1)
     J=circular_J(a,M_WD,M_WD)
     R1=R_WD(M_WD)
-    return([a M_WD M_NS R_1 J 0])
+    return([a, M_WD, M_NS, R_1, J, 0.])
 end
 
 #=I am confused as to whether I am treating ODEProblem correctly=#
 
-function one_step(theta::Float64; dt_period::Float64=1e-2, dt::Float64=-1)
+function one_step(theta::Float64; dt_period::Float64=1e-2, dt::Float64=-1)::Tuple{Float64, Vector{Float64}, Matrix{Float64}}
+    #integrates forward one step with time interval either given explicitly (dt!=-1)
+    #or as a fraction of the orbital period determined by dt_period
     if dt==-1
         dt=dt_period*period(theta[2]+theta[3], theta[1])
     end
-    prob = ODEProblem(acceleration,theta,(0,dt))
-    updated_theta = solve(prob, alg=KahanLi8())
+    prob = ODEProblem(acceleration,theta,(0,dt),[])
+    updated_theta = solve(prob, alg=KahanLi8()).u[end]
 
     #=Calculating ddI at the end of the step=#
         
-    t_ddI=ddI_dddI_from_theta(updated_theta, ddI_only=true)
+    t_ddI=ddI_from_theta(updated_theta)
     return(dt,updated_theta,t_ddI)
 end
 
 function integrate(M_WD::Float64; M_NS::Float64=1.35,mu_e=2::Float64, 
-        orbit_limit::Float64=1e5, step_limit::Int=10^7)
+        orbit_limit::Float64=1e5, step_limit::Int=10^7)::Tuple{Vector{Float64}, Matrix{Float64}}
     #returns time series second derivatives of the quadrupole moment
     t=0.
     theta=initial_circular_orbit(M_WD,M_NS=M_NS,mu_e=mu_e)
     ts=np.zeros(step_limit)
-    =np.zeros(step_limit,2,2)
+    ddIs=np.zeros(step_limit,2,2)
     i=0
     time_limit=orbit_limit*period(M_WD+M_NS,theta[1])
     
@@ -300,7 +315,7 @@ function integrate(M_WD::Float64; M_NS::Float64=1.35,mu_e=2::Float64,
         ts[i]=t
 
         theta=t_theta
-        ddIs[i, :, :].=ddI_dddI_from_theta(theta,ddI_only=true)
+        ddIs[i, :, :].=ddI_from_theta(theta)
     end
 
     return(ts[1:i],ddIs[1:i, :, :])
@@ -312,8 +327,8 @@ function gravitational_waveform_ftn(i::Float64, φ::Float64, DL::Float64 )::Func
     @assert 0<=i<=π
     @assert 0<=φ<2π
     @assert DL<10000 #Ensure correct units for DL
-    e1=[cos(i)*cos(φ)   sin(i)*sin(φ)  cos(i)  ]
-    e2=[-sin(φ)  cos(φ)  0]
+    e1=[cos(i)*cos(φ), sin(i)*sin(φ), cos(i)]
+    e2=[-sin(φ),  cos(φ),  0]
     es=[e1,e2]
 
     matrices=zeros(4,2,2)
@@ -323,7 +338,7 @@ function gravitational_waveform_ftn(i::Float64, φ::Float64, DL::Float64 )::Func
         end
     end
 
-    factor= 2*G/c^4
+    factor= 2*G*3.2e-20/c^4 #for conversion from Mpc to km
     
     function ftn(ddI::Vector{Float64})::Vector{Float64}
         #given fixed outer products, calculate strain
@@ -334,7 +349,9 @@ function gravitational_waveform_ftn(i::Float64, φ::Float64, DL::Float64 )::Func
             end
         end
         prod_TT=prod .- (prod[1,1]+prod[2,2]) .* [1 0; 0 1] #traceless
-        return((factor/DL))
+        return((factor/DL).*prod_TT)
+    end
+end
     
     
     
