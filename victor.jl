@@ -81,29 +81,29 @@ TO-DO: add assertions (e.g. mass of white dwarf, radius of white dwarf, q)
 "
 
 # ╔═╡ b7a2300a-bc8f-4387-a324-7f3de70d81fc
-function R_WD(M::Float64,mu=2::Float64)
-	@assert M > 0 # In production ready code, consider commenting out assertion
-	@assert mu > 0 # In production ready code, consider commenting out assertion
+function R_WD(M_WD::Float64;mu_e=2::Float64)::Float64
+	@assert M_WD > 0 # In production ready code, consider commenting out assertion
+	@assert mu_e > 0 # In production ready code, consider commenting out assertion
 	#white dwarf radius in km as ftn of mass in M_odot and mean molecular weight/electron=2
-	return(10^4 * (M/0.7)^(-1/3) * (1-(M/1.4)^(4/3))^(1/2) * (mu/2)^(-5/3))
+	return(10^4 * (M_WD/0.7)^(-1/3) * (1-(M_WD/1.4)^(4/3))^(1/2) * (mu_e/2)^(-5/3))
 end
 
 # ╔═╡ b7880c1c-dbd2-4bf3-b916-6165c27c7d81
-function dynamical_timescale(M::Float64,R::Float64)
-	@assert M > 0 # In production ready code, consider commenting out assertion
-	@assert R > 0 # In production ready code, consider commenting out assertion
+function dynamical_timescale(M_WD::Float64,R_WD::Float64)::Float64
+	@assert M_WD > 0 # In production ready code, consider commenting out assertion
+	@assert R_WD > 0 # In production ready code, consider commenting out assertion
 	#returns dynamical timescale for perturbed white dwarf
 	#with radius R and mass M
-	return((R^3/(G*M))^(1/2))
+	return((R_WD^3/(G*M_WD))^(1/2))
 end
 
 # ╔═╡ d52feb78-6ddf-4b75-995e-4b2a1e452571
-function Roche_Limit(r::Float64,M1::Float64,M2::Float64)
-	@assert M1 < M2 # In production ready code, consider commenting out assertion
+function Roche_Limit(r::Float64,M_WD::Float64,M_WD::Float64)
+	#@assert M1 < M2 # In production ready code, consider commenting out assertion
 	@assert r > 0 # In production ready code, consider commenting out assertion
 	#returns Roche limit of M1 for companion of mass M2 
 	#at a separation of distance r 
-	q=M1/M2
+	q=M_WD/M_WD
 	return(r * 0.49*q^(2/3)/(0.6*q^(2/3)+log(1+q^(1/3))))
 end
 
