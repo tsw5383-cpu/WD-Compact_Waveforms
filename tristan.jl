@@ -282,20 +282,59 @@ function one_step(theta::Float64; dt_period::Float64=1e-2, dt::Float64=-1)
     return(dt,updated_theta,t_ddI)
 end
 
-function integrate(M_WD::Float64; M_NS::Float64=1.35,mu_e=2::Float64, orbit_limit=1e5, step_limit=1e7)
-    #returns second derivatives of the quadrupole moment
-    t=0
+function integrate(M_WD::Float64; M_NS::Float64=1.35,mu_e=2::Float64, 
+        orbit_limit::Float64=1e5, step_limit::Int=10^7)
+    #returns time series second derivatives of the quadrupole moment
+    t=0.
     theta=initial_circular_orbit(M_WD,M_NS=M_NS,mu_e=mu_e)
     ts=np.zeros(step_limit)
-    ddIs=np.zeros(step_limit,2,2)
-    i=1
+    =np.zeros(step_limit,2,2)
+    i=0
     time_limit=orbit_limit*period(M_WD+M_NS,theta[1])
     
-    while t<time_limit and i<step_limit and theta[2]>0
-        dt,theta,t_ddI=one_step(theta)
+    while t<time_limit && i<step_limit && theta[2]>0
+        #integrate until time or step limit are elapsed or WD completely dissipates
+        dt,t_theta,t_ddI=one_step(theta)
         i+=1
-        ts=
+        t+=dt
+        ts[i]=t
+
+        theta=t_theta
+        ddIs[i, :, :].=ddI_dddI_from_theta(theta,ddI_only=true)
+    end
+
+    return(ts[1:i],ddIs[1:i, :, :])
+end
     
+function gravitational_waveform_ftn(i::Float64, φ::Float64, DL::Float64 )::Function
+    #fixes a function to return gravitational wave given orientation and distance
+    #DL is in Mpc
+    @assert 0<=i<=π
+    @assert 0<=φ<2π
+    @assert DL<10000 #Ensure correct units for DL
+    e1=[cos(i)*cos(φ)   sin(i)*sin(φ)  cos(i)  ]
+    e2=[-sin(φ)  cos(φ)  0]
+    es=[e1,e2]
+
+    matrices=zeros(4,2,2)
+    for i in 1:2
+        for j in 1:2
+            matrices[2*(i-1)+j ,:,:] = es[i] * es[j] #OUTER PRODUCT OF VECTORS
+        end
+    end
+
+    factor= 2*G/c^4
+    
+    function ftn(ddI::Vector{Float64})::Vector{Float64}
+        #given fixed outer products, calculate strain
+        prod=zeros(2,2) #will end up being in transverse gauge
+        for i in 1:2
+            for j in 1:2
+                prod[i,j] = sum(matrices[i,j]) #OUTER PRODUCT OF VECTORS    
+            end
+        end
+        prod_TT=prod .- (prod[1,1]+prod[2,2]) .* [1 0; 0 1] #traceless
+        return((factor/DL))
     
     
     
