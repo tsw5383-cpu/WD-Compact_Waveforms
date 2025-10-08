@@ -81,7 +81,7 @@ TO-DO: add assertions (e.g. mass of white dwarf, radius of white dwarf, q)
 "
 
 # ╔═╡ b7a2300a-bc8f-4387-a324-7f3de70d81fc
-function R_WD(M_WD::Float64;mu_e=2::Float64)::Float64
+function R0_WD(M_WD::Float64;mu_e=2::Float64)::Float64
 	@assert M_WD > 0 # In production ready code, consider commenting out assertion
 	@assert mu_e > 0 # In production ready code, consider commenting out assertion
 	#white dwarf radius in km as ftn of mass in M_odot and mean molecular weight/electron=2
@@ -98,12 +98,12 @@ function dynamical_timescale(M_WD::Float64,R_WD::Float64)::Float64
 end
 
 # ╔═╡ d52feb78-6ddf-4b75-995e-4b2a1e452571
-function Roche_Limit(r::Float64,M_WD::Float64,M_WD::Float64)
-	#@assert M1 < M2 # In production ready code, consider commenting out assertion
+function Roche_Limit(r::Float64,M_WD::Float64,M_NS::Float64)
+	#@assert M_WD < M_NS # In production ready code, consider commenting out assertion
 	@assert r > 0 # In production ready code, consider commenting out assertion
-	#returns Roche limit of M1 for companion of mass M2 
+	#returns Roche limit of M_WD for companion of mass M_NS 
 	#at a separation of distance r 
-	q=M_WD/M_WD
+	q=M_WD/M_NS
 	return(r * 0.49*q^(2/3)/(0.6*q^(2/3)+log(1+q^(1/3))))
 end
 
@@ -117,30 +117,30 @@ end
 
 # ╔═╡ b5b5c7a1-3108-4a39-929b-f7af515b55c5
 # Decretion rate
-function decretion_rate(a::Float64, r::Float64, R1::Float64,
-                        M1::Float64, M2::Float64; A::Float64=10.0)::Float64
-	@assert R1 > 0 # In production ready code, consider commenting out assertion
-    RL::Float64 = Roche_Limit(r, M1, M2)
-    if RL > R1
+function decretion_rate(a::Float64, r::Float64, R_WD::Float64,
+                        M_WD::Float64, M_NS::Float64; A::Float64=10.0)::Float64
+	@assert R_WD > 0 # In production ready code, consider commenting out assertion
+    RL::Float64 = Roche_Limit(r, M_WD, M_NS)
+    if RL > R_WD
         return 0.0
     end
-    return -A * M1 / period(M1 + M2, a) * ((R1 - RL) / RL)^3
+    return -A * M_WD / period(M_WD + M_NS, a) * ((R_WD - RL) / RL)^3
 end
 
 # ╔═╡ 11fa4c68-4fd8-496e-8603-8181dd3940a4
 # Gamma (specific angular momentum of lost matter)
-function gamma(M1::Float64, M2::Float64; 
+function gamma(M_WD::Float64, M_NS::Float64; 
                a_ring_frac::Float64=1.0, mode::String="Isotropic Re-emission")::Float64
-	@assert M1 > 0 # In production ready code, consider commenting out assertion
-	@assert M2 > 0 # In production ready code, consider commenting out assertion
+	@assert M_WD > 0 # In production ready code, consider commenting out assertion
+	@assert M_NS > 0 # In production ready code, consider commenting out assertion
 	@assert a_ring_frac > 0 # In production ready code, consider commenting out assertion
     first_char = lowercase(first(mode))
     if first_char == 'j'
-        return M2 / M1
+        return M_NS / M_WD
     elseif first_char == 'i'
-        return M1 / M2
+        return M_WD / M_NS
     elseif first_char == 'c'
-        return (M1 + M2)^2 / (M1 * M2) * sqrt(a_ring_frac)
+        return (M_WD + M_NS)^2 / (M_WD * M_NS) * sqrt(a_ring_frac)
     else
         error("$mode not defined. Use 'Jeans Mode', 'Isotropic Re-emission', or 'Circumbinary Ring'")
     end
@@ -157,10 +157,10 @@ end
 
 # ╔═╡ 524b7699-c0f2-4904-993c-7943de80e821
 # Beta (fraction of accreted mass)
-function beta(a::Float64, r::Float64, R1::Float64, M1::Float64, M2::Float64; 
+function beta(a::Float64, r::Float64, R_WD::Float64, M_WD::Float64, M_NS::Float64; 
               A::Float64=10.0, mu_e::Float64=2.0, eta_acc::Float64=0.1)::Float64
-    M_dot::Float64 = -decretion_rate(a, r, R1, M1, M2; A=A)
-    lam_edd::Float64 = eddington_rate(M2; mu_e=mu_e, eta_acc=eta_acc)
+    M_dot::Float64 = -decretion_rate(a, r, R_WD, M_WD, M_NS, A=A)
+    lam_edd::Float64 = eddington_rate(M_NS, mu_e=mu_e, eta_acc=eta_acc)
     if M_dot < lam_edd
         return 1.0
     end
@@ -169,49 +169,49 @@ end
 
 # ╔═╡ 6c2ec7e6-1868-4424-ac5a-0d3ee97e0979
 # Angular momentum loss rate
-function J_dot(J::Float64, a::Float64, r::Float64, R1::Float64, M1::Float64, M2::Float64; 
+function J_dot(J::Float64, a::Float64, r::Float64, R_WD::Float64, M_WD::Float64, M_NS::Float64; 
                A::Float64=10.0, mu_e::Float64=2.0, eta_acc::Float64=0.1, 
                a_ring_frac::Float64=1.0, mode::String="Isotropic")::Float64
-    g::Float64 = gamma(M1, M2; a_ring_frac=a_ring_frac, mode=mode)
-    b::Float64 = beta(a, r, R1, M1, M2; A=A, mu_e=mu_e, eta_acc=eta_acc)
+    g::Float64 = gamma(M_WD, M_NS; a_ring_frac=a_ring_frac, mode=mode)
+    b::Float64 = beta(a, r, R_WD, M_WD, M_NS; A=A, mu_e=mu_e, eta_acc=eta_acc)
 	@assert b <= 1.0 # In production-ready code, consider commenting this out
-    m1_dot::Float64 = decretion_rate(a, r, R1, M1, M2; A=A)
-    return J * g * (1.0 - b) * m1_dot / (M1 + M2)
+    M_WD_dot::Float64 = decretion_rate(a, r, R_WD, M_WD, M_NS; A=A)
+    return J * g * (1.0 - b) * M_WD_dot / (M_WD + M_NS)
 end
 
 # ╔═╡ 760b9821-5596-46e5-b263-8101d0b2ea42
 # Semi-major axis change rate
-function a_dot(a::Float64, r::Float64, R1::Float64, M1::Float64, M2::Float64; 
+function a_dot(a::Float64, r::Float64, R_WD::Float64, M_WD::Float64, M_NS::Float64; 
                A::Float64=10.0, mu_e::Float64=2.0, eta_acc::Float64=0.1, 
                a_ring_frac::Float64=1.0, mode::String="Isotropic")::Float64
-    g::Float64 = gamma(M1, M2; a_ring_frac=a_ring_frac, mode=mode)
-    b::Float64 = beta(a, r, R1, M1, M2; A=A, mu_e=mu_e, eta_acc=eta_acc)
+    g::Float64 = gamma(M_WD, M_NS; a_ring_frac=a_ring_frac, mode=mode)
+    b::Float64 = beta(a, r, R_WD, M_WD, M_NS; A=A, mu_e=mu_e, eta_acc=eta_acc)
 	@assert b <= 1.0 # In production-ready code, consider commenting this out
-    m1_dot::Float64 = decretion_rate(a, r, R1, M1, M2; A=A)
-    return -2.0 * a * m1_dot / M1 * (1.0 - b * M1 / M2 - (1.0 - b) * (g + 0.5) * M1 / (M1 + M2))
+    M_WD_dot::Float64 = decretion_rate(a, r, R_WD, M_WD, M_NS; A=A)
+    return -2.0 * a * M_WD_dot / M_WD * (1.0 - b * M_WD / M_NS - (1.0 - b) * (g + 0.5) * M_WD / (M_WD + M_NS))
 end
 
 # ╔═╡ 65c9b6ea-de2f-4051-9305-6219cc814bd6
 # White dwarf radius change
-function dot_R_WD(M1::Float64, R1::Float64)::Float64
-    natural_R::Float64 = R_WD(M1)
-    tau::Float64 = dynamical_timescale(M1, R1)
-    return (natural_R - R1) / tau
+function dot_R_WD(M_WD::Float64, R_WD::Float64)::Float64
+    natural_R::Float64 = R0_WD(M_WD)
+    tau::Float64 = dynamical_timescale(M_WD, R_WD)
+    return (natural_R - R_WD) / tau
 end
 
 # ╔═╡ e58e91a2-7f10-460d-9abe-155cd98e36b3
 # Reduced mass
-function mu(M1::Float64, M2::Float64)::Float64
-	@assert M1 > 0 # In production-ready code, consider commenting this out
-	@assert M2 > 0 # In production-ready code, consider commenting this out
-    return M1 * M2 / (M1 + M2)
+function mu(M_WD::Float64,M_NS::Float64)::Float64
+	@assert M_WD > 0 # In production-ready code, consider commenting this out
+	@assert M_NS > 0 # In production-ready code, consider commenting this out
+    return M_WD * M_NS / (M_WD + M_NS)
 end
 
 # ╔═╡ d589347d-e0f4-40f7-b79b-f10821e19534
 # Angular velocity derivative
-function dot_phi(J::Float64, r::Float64, M1::Float64, M2::Float64)::Float64
+function dot_phi(J::Float64, r::Float64, M_WD::Float64, M_NS::Float64)::Float64
 	@assert r > 0 # In production-ready code, consider commenting this out
-    mu::Float64 = mu(M1,M2)
+    mu::Float64 = mu(M_WD,M_NS)
     return J / (mu * r)
 end
 
@@ -231,10 +231,10 @@ end
 
 # ╔═╡ 51133208-6ebf-41c4-bf52-7f5d8e294d0c
 # Time derivative of reduced mass
-function dot_mu(M1::Float64, M2::Float64, dM1::Float64, dM2::Float64)::Float64
-	@assert M1 > 0 # In production-ready code, consider commenting this out
-	@assert M2 > 0 # In production-ready code, consider commenting this out
-    return (dM1 * M2 + M1 * dM2) / (M1 + M2) - M1 * M2 * (dM1 + dM2) / (M1 + M2)^2
+function dot_mu(M_WD::Float64, M_NS ::Float64, dM_WD::Float64, dM_NS::Float64)::Float64
+	@assert M_WD > 0 # In production-ready code, consider commenting this out
+	@assert M_NS > 0 # In production-ready code, consider commenting this out
+    return (dM_WD * M_NS + M_WD * dM_NS) / (M_WD + M_NS) - M_WD * M_NS * (dM_WD + dM_NS) / (M_WD + M_NS)^2
 end
 
 # ╔═╡ c1fed078-6b90-4258-a4be-87655ec3907c

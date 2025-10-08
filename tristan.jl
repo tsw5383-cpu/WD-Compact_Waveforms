@@ -176,7 +176,7 @@ begin
 	        A=a, mu_e=mu_e, eta_acc=eta_acc, α=α))
 	end
 	
-	function dR_WD_vector(theta::Vector{Float64}; mu_e=2::Float64)::Float64
+	function dR_WD_vector(theta::Vector{Float64}; mu_e::Float64=2.)::Float64
 	    a, M_WD, M_NS, R_WD, J, θ=theta
 	    return( R_WD(M_WD, mu_e=mu_e))
 	end
@@ -260,7 +260,7 @@ md"The below block of code is central to the interface between the mass transfer
 #=Central Engine of the integrator=#
 begin
 	"""Calculates the second derivative of the quadrupole moment `t_ddI`  due to kinematics of keplerian motion and mass transfer `dtheta`. Also returns higher derivatives of theta useful for calculating the third derivative of the quadrupole moment."""
-	function ddI_helper(theta::Vector{Float64})::Tuple{Vector{Float64},Vector{Float64},Vector{Float64},Vector{Float64},Matrix{Float64}}
+	function ddI_helper(theta::Vector{Float64})::Tuple{Vector{Float64},Vector{Float64},Vector{Float64},Vector{Float64},Array{Float64,2}}
 	    #calulates a list of values which will be helpful in the next two functions
 	    dtheta=zeros(6)
 	    #calculating first time derivatives due to MT only
@@ -300,13 +300,13 @@ begin
 	end
 
 	"""Returns the second derivative of the quadrupole moment as calculated in `ddI_Helper`. """
-	function ddI_from_theta(theta::Vector{Float64})::Matrix{Float64}
+	function ddI_from_theta(theta::Vector{Float64})::Array{Float64,2}
 	    return(ddI_helper(theta)[5])
 	end
 	    
 	
 	"""Calculates the third derivative of the quadrupole moment and returns it along with the time derivative of theta and the second derivative of the quadrupole moment as calculated in `ddI_Helper`."""
-	function ddI_dddI_from_theta(theta::Vector{Float64};ddI_only::Bool=false)::Tuple{Vector{Float64},Matrix{Float64},Matrix{Float64}}
+	function ddI_dddI_from_theta(theta::Vector{Float64};ddI_only::Bool=false)::Tuple{Vector{Float64},Array{Float64,2},Array{Float64,2}}
 	    #returns time derivatives of theta and second and third derivatives of 
 	    #the quadrupole moment due to MT effects
 	    
@@ -328,7 +328,7 @@ end;
 
 
 # ╔═╡ 120ff400-43a9-4be6-b1a8-2017ae0b111a
-""" An "in place" implementation of the full time derivative of theta including effects from both mass transfer and radiation reaction""" 
+""" An "in place" implementation of the full time derivative of theta including effects from both mass transfer and radiation reaction.""" 
 function acceleration!(du::Vector{Float64}, theta::Vector{Float64},p,t)
     dtheta,t_ddI,t_dddI=ddI_dddI_from_theta(theta)
 
@@ -343,40 +343,52 @@ function acceleration!(du::Vector{Float64}, theta::Vector{Float64},p,t)
     #mutate du
     du .= dtheta
     return(dtheta)
-end
+end;
+
+# ╔═╡ 52b828d3-a6b7-4aa6-abe5-5c23ef848bb2
+
+
+# ╔═╡ a63692e2-f652-4f35-b5c8-57ed131d676e
+md"The next several blocks define functions intended to initiate the orbit beginning at mass transfer for initial masses, take an integration step forward calculating waveform, and integrate until the White Dwarf dissipates completely"
 
 # ╔═╡ 72bfe0e8-11f2-47f6-97ba-09708af3fad3
 #=The following functions are defined to initiate the orbit beginning at mass transfer for initial masses, take an integration step forward calculating waveform, and integrate until the White Dwarf dissipates completely=#
 
 begin
-	function RL_contact(M_WD::Float64,M_NS::Float64;mu_e=2::Float64)::Float64
+	"""Calculates in km the orbital separation for the white dwarf to overflow its Roche Lobe and begin mass transfer"""
+	function RL_contact(M_WD::Float64,M_NS::Float64;mu_e::Float64=2.)::Float64
 	    #returns separation at which a donor WD overflows its
 	    #Roche Lobe
 	    R1=R_WD(M_WD,mu_e=mu_e)
 	    RL_a1=Roche_Limit(1,M1,M2) #roche limit at separation of 1 km
 	    return(R1 / RL_a1)#initial separation in km
 	end
-	
+
+	"""Calculates the angular momentum of the system at initial Roche Lobe overflow """	
 	function circular_J(a::Float64,M_WD::Float64,M_NS::Float64)::Float64
 	    #returns angular momentum for a circular orbit
 	    return((2 * a * G * M_WD ^ 2 * M_NS ^ 2 / (M1 + M2))^(1/2))
 	end
-	
-	function initial_circular_orbit(M_WD::Float64;M_NS::Float64=1.35,mu_e=2::Float64)::Float64
+	"""Defines theta at initial Roche Lobe overflow for  """
+	function initial_circular_orbit(M_WD::Float64;M_NS::Float64=1.35,mu_e::Float64=2.)::Float64
 	    #returns keplerian orbital parameters, theta, at initial Roche Lobe overflow
 	    #M_NS=1.35 M_\odot is typical NS mass
-	    @assert M_WD<1.4 #Chandrasekar mass, beyond which we cannot calculate R_WD
-	    a=initial_separation(M_WD,M_WD,frac=1e-1)
+	    @assert M_WD<1.4 #Chandrasekar mass, beyond which we cannot calculate R_WD(see initial function)
+	    a=RL_contact(M_WD,M_WD,mu_e=mu_e)
 	    J=circular_J(a,M_WD,M_WD)
 	    R1=R_WD(M_WD)
 	    return([a, M_WD, M_NS, R_1, J, 0.])
 	end
 end
 
+# ╔═╡ a7a7b50c-d555-4a1a-9197-963fac13aca5
+md"Below is the heart of the integration process"
+
 # ╔═╡ a8f954bf-b8d6-45f1-b836-d9a4c977f7db
-#=I am confused as to whether I am treating ODEProblem correctly=#
+
 begin
-	function one_step(theta::Float64; dt_period::Float64=1e-2, dt::Float64=-1)::Tuple{Float64, Vector{Float64}, Matrix{Float64}}
+	"""Integrates theta forward one step with time interval either given explicitly (dt!=-1) or as a fraction of the orbital period determined by dt_period. Returns the absolute time step taken, the updated theta parameters, and the instantaneous second derivative of the quadupole moment at the end of the timestep."""
+	function one_step(theta::Float64; dt_period::Float64=1e-2, dt::Float64=-1)::Tuple{Float64, Vector{Float64}, Array{Float64,2}}
 	    #integrates forward one step with time interval either given explicitly (dt!=-1)
 	    #or as a fraction of the orbital period determined by dt_period
 	    if dt==-1
@@ -390,14 +402,15 @@ begin
 	    t_ddI=ddI_from_theta(updated_theta)
 	    return(dt,updated_theta,t_ddI)
 	end
-	
-	function integrate(M_WD::Float64; M_NS::Float64=1.35,mu_e=2::Float64, 
-	        orbit_limit::Float64=1e5, step_limit::Int=10^7)::Tuple{Vector{Float64}, Matrix{Float64}}
+
+	"""Given an initial set of masses, `integrate` solves for the equations of motion from initial Roche Lobe overflow until the eventual complete dissipation of the white dwarf or the integration finishes according to user defined cutoff (either a limit on the number of orbits completed or on the integration steps taken). `integrate` stores and returns the second derivative of the quadrupole moment as a function of time for the orbit. """
+	function integrate(M_WD::Float64; M_NS::Float64=1.35,mu_e::Float64=2., 
+	        orbit_limit::Float64=1e5, step_limit::Int=10^7)::Tuple{Vector{Float64}, Array{Float64,3}}
 	    #returns time series second derivatives of the quadrupole moment
 	    t=0.
 	    theta=initial_circular_orbit(M_WD,M_NS=M_NS,mu_e=mu_e)
-	    ts=np.zeros(step_limit)
-	    ddIs=np.zeros(step_limit,2,2)
+	    ts=zeros(step_limit)
+	    ddIs=zeros(step_limit,2,2)
 	    i=0
 	    time_limit=orbit_limit*period(M_WD+M_NS,theta[1])
 	    
@@ -414,9 +427,28 @@ begin
 	
 	    return(ts[1:i],ddIs[1:i, :, :])
 	end
-end
+end;
+
+# ╔═╡ 8f914e37-11f2-4620-b469-abc005e98312
+integrate(1.0,step_limit=10)
+
+# ╔═╡ 496e747c-7e5a-498b-ae70-604b9a64faef
+
+
+# ╔═╡ 1f96a986-9dcb-4614-8720-44a193d5524e
+
+
+# ╔═╡ bbee9e13-7a91-4662-ab1c-bd3ef245d1db
+
+
+# ╔═╡ 43e3aa25-661c-40db-a638-f39c03f368b4
+
+
+# ╔═╡ 7ec5ae9d-5a26-42f4-b1bd-17f61d9a3acf
+md"Note: For peer review, we do NOT recommend running `integrate` fully (until total disruption) as this may take upward of 10 hours!"
 
 # ╔═╡ af11b1f5-c481-4b76-a747-085d210af7d6
+"""Given a luminosity distance `DL` in units of Mpc and an orientation parameterized by an inclination `i` and azimuthal angle `φ`, returns a function which calculates the instantaneous gravitational strain waveform based on the quadrupole formula."""
 function gravitational_waveform_ftn(i::Float64, φ::Float64, DL::Float64 )::Function
     #fixes a function to return gravitational wave given orientation and distance
     #DL is in Mpc
@@ -447,7 +479,16 @@ function gravitational_waveform_ftn(i::Float64, φ::Float64, DL::Float64 )::Func
         prod_TT=prod .- (prod[1,1]+prod[2,2]) .* [1 0; 0 1] #traceless
         return((factor/DL).*prod_TT)
     end
-end
+end;
+
+# ╔═╡ 37b97235-ee25-45fd-a766-312debd46bd8
+
+
+# ╔═╡ c8bae4b5-f4e6-429c-b1cd-4a2120eb3680
+
+
+# ╔═╡ 9a3e04f2-bc3e-4f1e-80ec-4106635ecb01
+
 
 # ╔═╡ 0797c258-aeec-4154-aee8-5b0359e6d0d1
 #=
@@ -548,7 +589,19 @@ function dI_yy(M_WD::Float64, M_NS::Float64, a::Float64, θ::Float64, R_WD::Floa
 # ╠═6208496a-07a7-4f27-9994-98a3347f018b
 # ╠═bc193a3e-052e-4860-854d-398fa08deeec
 # ╠═120ff400-43a9-4be6-b1a8-2017ae0b111a
+# ╠═52b828d3-a6b7-4aa6-abe5-5c23ef848bb2
+# ╠═a63692e2-f652-4f35-b5c8-57ed131d676e
 # ╠═72bfe0e8-11f2-47f6-97ba-09708af3fad3
+# ╠═a7a7b50c-d555-4a1a-9197-963fac13aca5
 # ╠═a8f954bf-b8d6-45f1-b836-d9a4c977f7db
+# ╠═8f914e37-11f2-4620-b469-abc005e98312
+# ╠═496e747c-7e5a-498b-ae70-604b9a64faef
+# ╠═1f96a986-9dcb-4614-8720-44a193d5524e
+# ╠═bbee9e13-7a91-4662-ab1c-bd3ef245d1db
+# ╠═43e3aa25-661c-40db-a638-f39c03f368b4
+# ╠═7ec5ae9d-5a26-42f4-b1bd-17f61d9a3acf
 # ╠═af11b1f5-c481-4b76-a747-085d210af7d6
+# ╠═37b97235-ee25-45fd-a766-312debd46bd8
+# ╠═c8bae4b5-f4e6-429c-b1cd-4a2120eb3680
+# ╠═9a3e04f2-bc3e-4f1e-80ec-4106635ecb01
 # ╟─0797c258-aeec-4154-aee8-5b0359e6d0d1
