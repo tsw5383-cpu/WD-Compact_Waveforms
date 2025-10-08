@@ -61,9 +61,17 @@ At 2.5-PN order, RR contributes to $\dot J,\,\dot a$ as functions of $\ddot I^{i
 with $x^1:=x(\vec\theta)=a\cos\theta;\,x^2:=y(\vec\theta)=a\sin\theta$. Then, $\ddot I^{ij}\equiv \ddot I^{ij}\left(\vec\theta,\dot{\vec\theta},\ddot{\vec\theta}\right)$ and $\dddot I^{ij}\equiv \dddot I^{ij}\left(\vec\theta,\dot{\vec\theta},\ddot{\vec\theta},\dddot{\vec\theta}\right)$. This poses a computational challenge as formally we have that $\dot{\vec \theta}\equiv \dot{\vec \theta}\left(\vec\theta,\dot{\vec \theta},\ddot{\vec \theta},\dddot{\vec \theta}\right)$ when taking into account RR effects. We cicumvent this challenge by assuming that radiation reaction effects are small compared to the dominant central keplerian force, and we substitute the dependences on $\vec{\theta}$ and subsequent derivatives in $\ddot I^{ij},\,\dddot I^{ij}$ with $\vec{\theta}_{\rm MT}:=\{a_{\rm MT}, M_{\rm WD}, M_{\rm NS}, R_{\rm WD}, J_{\rm MT}, \theta\}$. We calculate higher derivatives using autodifferentiation.
 
 Angular momentum loss due to gravitational wave emission is calculated as:
-$\dot J^{jk}_{\rm (rr)}&=-\frac{2G}{5c^5}(\ddot{I}^{jp}\dddot I^k_{\,\,\,p}-\ddot{I}^{kp}\dddot I^j_{\,\,\,p})$  
-$J^j&=\epsilon^j_{\,\,\, pq}J^{pq}$  
-$\implies \dot J^z_{\rm (rr)}&=\frac{-2G}{5c^5}(\ddot{I}^{xp}\dddot I^y_{\,\,\,p}-\ddot{I}^{yp}\dddot I^x_{\,\,\,p})$  
+$$
+\dot{J}^{jk}_{\mathrm{(rr)}} = -\frac{2G}{5c^5} \left( \ddot{I}^{jp} \dddot{I}^k_{\;\;p} - \ddot{I}^{kp} \dddot{I}^j_{\;\;p} \right)
+$$
+
+$$
+J^j = \epsilon^j_{\;\;pq} J^{pq}
+$$  
+
+$$
+\implies \dot{J}^z_{\mathrm{(rr)}} = \frac{-2G}{5c^5} \left( \ddot{I}^{xp} \dddot{I}^y_{\;\;p} - \ddot{I}^{yp} \dddot{I}^x_{\;\;p} \right)
+$$
 where we define axes such that the orbit lies in the $xy$-plane. Then, we have that the derivative in separation due to radiation reaction to 2.5 PN order is:
 $\dot a_{\rm RR}=\frac{-4aG}{5Jc^5}(\ddot{I}^{xp}\dddot I^y_{\,\,\,p}-\ddot{I}^{yp}\dddot I^x_{\,\,\,p})$
 So the total rate of angular momentum loss is:
