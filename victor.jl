@@ -9,8 +9,11 @@ begin
 	using LinearAlgebra
 	using BenchmarkTools
 	using Profile, ProfileCanvas 
-	using PlutoUI, PlutoTest, PlutoTeachingTools, PlutoLinks
+	using PlutoUI, PlutoTeachingTools, PlutoLinks
 end;
+
+# ╔═╡ 94a09ecb-c4a1-4b89-826d-a4706275ab70
+using Test
 
 # ╔═╡ 5a137355-8c63-492d-961c-b0fcb4897eae
 md"""
@@ -81,7 +84,7 @@ TO-DO: add assertions (e.g. mass of white dwarf, radius of white dwarf, q)
 "
 
 # ╔═╡ b7a2300a-bc8f-4387-a324-7f3de70d81fc
-function R0_WD(M_WD::Float64;mu_e=2.0::Float64)::Float64
+function R_WD(M_WD::Float64;mu_e=2.0::Float64)::Float64
 	@assert M_WD > 0 # In production ready code, consider commenting out assertion
 	@assert mu_e > 0 # In production ready code, consider commenting out assertion
 	#white dwarf radius in km as ftn of mass in M_odot and mean molecular weight/electron=2
@@ -98,12 +101,10 @@ function dynamical_timescale(M_WD::Float64,R_WD::Float64)::Float64
 end
 
 # ╔═╡ d52feb78-6ddf-4b75-995e-4b2a1e452571
-function Roche_Limit(r::Float64,M_WD::Float64,M_NS::Float64)
-	#@assert M_WD < M_NS # In production ready code, consider commenting out assertion
-    @assert M_WD > 0 # In production ready code, consider commenting out assertion
-    @assert M_NS > 0 # In production ready code, consider commenting out assertion
+function Roche_Limit(r::Float64,M_WD::Float64,M_NS::Float64)::Float64
+	#@assert M1 < M2 # In production ready code, consider commenting out assertion
 	@assert r > 0 # In production ready code, consider commenting out assertion
-	#returns Roche limit of M_WD for companion of mass M_NS 
+	#returns Roche limit of M1 for companion of mass M2 
 	#at a separation of distance r 
 	q=M_WD/M_NS
 	return(r * 0.49*q^(2/3)/(0.6*q^(2/3)+log(1+q^(1/3))))
@@ -122,7 +123,6 @@ end
 function decretion_rate(a::Float64, r::Float64, R_WD::Float64,
                         M_WD::Float64, M_NS::Float64; A::Float64=10.0)::Float64
 	@assert R_WD > 0 # In production ready code, consider commenting out assertion
-    @assert A > 0 # In production ready code, consider commenting out assertion
     RL::Float64 = Roche_Limit(r, M_WD, M_NS)
     if RL > R_WD
         return 0.0
@@ -162,12 +162,12 @@ end
 # Beta (fraction of accreted mass)
 function beta(a::Float64, r::Float64, R_WD::Float64, M_WD::Float64, M_NS::Float64; 
               A::Float64=10.0, mu_e::Float64=2.0, eta_acc::Float64=0.1)::Float64
-    M_dot::Float64 = -decretion_rate(a, r, R_WD, M_WD, M_NS, A=A)
-    lam_edd::Float64 = eddington_rate(M_NS, mu_e=mu_e, eta_acc=eta_acc)
-    if M_dot < lam_edd
+    M_WD_dot::Float64 = -decretion_rate(a, r, R_WD, M_WD, M_NS; A=A)
+    lam_edd::Float64 = eddington_rate(M_NS; mu_e=mu_e, eta_acc=eta_acc)
+    if M_WD_dot < lam_edd
         return 1.0
     end
-    return lam_edd / M_dot
+    return lam_edd / M_WD_dot
 end
 
 # ╔═╡ 6c2ec7e6-1868-4424-ac5a-0d3ee97e0979
@@ -196,26 +196,25 @@ end
 
 # ╔═╡ 65c9b6ea-de2f-4051-9305-6219cc814bd6
 # White dwarf radius change
-function dot_R_WD(M_WD::Float64, R_WD::Float64)::Float64
-    natural_R::Float64 = R0_WD(M_WD)
-    tau::Float64 = dynamical_timescale(M_WD, R_WD)
-    return (natural_R - R_WD) / tau
+function dot_R_WD(M1::Float64, R1::Float64)::Float64
+    natural_R::Float64 = R_WD(M1)
+    tau::Float64 = dynamical_timescale(M1, R1)
+    return (natural_R - R1) / tau
 end
 
 # ╔═╡ e58e91a2-7f10-460d-9abe-155cd98e36b3
 # Reduced mass
-function mu(M_WD::Float64,M_NS::Float64)::Float64
-	@assert M_WD > 0 # In production-ready code, consider commenting this out
-	@assert M_NS > 0 # In production-ready code, consider commenting this out
-    return M_WD * M_NS / (M_WD + M_NS)
+function mu(M1::Float64, M2::Float64)::Float64
+	@assert M1 > 0 # In production-ready code, consider commenting this out
+	@assert M2 > 0 # In production-ready code, consider commenting this out
+    return M1 * M2 / (M1 + M2)
 end
 
 # ╔═╡ d589347d-e0f4-40f7-b79b-f10821e19534
 # Angular velocity derivative
-function dot_phi(J::Float64, r::Float64, M_WD::Float64, M_NS::Float64)::Float64
+function dot_phi(J::Float64, r::Float64, M1::Float64, M2::Float64)::Float64
 	@assert r > 0 # In production-ready code, consider commenting this out
-    mu::Float64 = mu(M_WD,M_NS)
-    return J / (mu * r)
+    return J / (mu(M1,M2) * r)
 end
 
 # ╔═╡ b5f7928e-0299-426c-86c5-bf620bd3da03
@@ -228,16 +227,25 @@ end
 # Clockwise unit vector perpendicular to x
 function theta_hat(x::Vector{Float64})::Vector{Float64}
     n::Vector{Float64} = n_hat(x)
-	@assert norm(n) ~ 1.0 # In production-ready code, consider commenting this out
+	@assert norm(n) ≈ 1.0 # In production-ready code, consider commenting this out
     return [-n[2], n[1]]
 end
 
 # ╔═╡ 51133208-6ebf-41c4-bf52-7f5d8e294d0c
 # Time derivative of reduced mass
-function dot_mu(M_WD::Float64, M_NS ::Float64, dM_WD::Float64, dM_NS::Float64)::Float64
-	@assert M_WD > 0 # In production-ready code, consider commenting this out
-	@assert M_NS > 0 # In production-ready code, consider commenting this out
-    return (dM_WD * M_NS + M_WD * dM_NS) / (M_WD + M_NS) - M_WD * M_NS * (dM_WD + dM_NS) / (M_WD + M_NS)^2
+function dot_mu(M1::Float64, M2::Float64, dM1::Float64, dM2::Float64)::Float64
+	@assert M1 > 0 # In production-ready code, consider commenting this out
+	@assert M2 > 0 # In production-ready code, consider commenting this out
+    return (dM1 * M2 + M1 * dM2) / (M1 + M2) - M1 * M2 * (dM1 + dM2) / (M1 + M2)^2
+end
+
+# ╔═╡ a22422ea-683b-4d38-ac2b-d9802c0c2c80
+# Symmetric trace-free (STF) operator
+function SFT(tensor::Matrix{Float64})::Matrix{Float64}
+    sym_part::Matrix{Float64} = (tensor + transpose(tensor)) / 2.0
+    tr_val::Float64 = tr(tensor)
+    n::Int = size(tensor, 1)
+    return sym_part - (1.0 / 3.0) * tr_val * I(n)
 end
 
 # ╔═╡ c1fed078-6b90-4258-a4be-87655ec3907c
@@ -322,7 +330,7 @@ end
 
 # ╔═╡ 46e2e3bd-0519-4d0c-a748-fcff17118b6e
 # Quadrupole moment for effective one-body system
-function I(M_WD::Float64, M_NS::Float64, x::Float64, y::Float64)::Matrix{Float64}
+function I_qp(M_WD::Float64, M_NS::Float64, x::Float64, y::Float64)::Matrix{Float64}
 	@assert M_WD > 0 # In production-ready code, consider commenting this out
 	@assert M_NS > 0 # In production-ready code, consider commenting this out
     t_mu::Float64 = mu(M_WD, M_NS)
@@ -330,42 +338,116 @@ function I(M_WD::Float64, M_NS::Float64, x::Float64, y::Float64)::Matrix{Float64
                    x * y  y^2]
 end
 
-# ╔═╡ a22422ea-683b-4d38-ac2b-d9802c0c2c80
-# Symmetric trace-free (STF) operator
-function SFT(tensor::Matrix{Float64})::Matrix{Float64}
-    sym_part::Matrix{Float64} = (tensor + transpose(tensor)) / 2.0
-    tr_val::Float64 = tr(tensor)
-    n::Int = size(tensor, 1)
-    return sym_part - (1.0 / 3.0) * tr_val * I(n)
-end
-
 # ╔═╡ d293006e-7bd4-46dc-82ec-dcabb7ccc5ed
 md"
 ## Tests (may be moved to a separate Julia file later)
 "
 
-# ╔═╡ 0d5207be-9594-4d28-8fa5-acd0cd397acf
+# ╔═╡ e2dc3767-f5e4-4769-ba1d-20ec37733c01
 # ╠═╡ disabled = true
 #=╠═╡
 begin
-	thetas = [1.0, 1.0, 1.4, 0.01, 1.0, 0.0]
-    dthetas = [0.1, 1e-5, 1e-6, 0.0, 1e-3, 0.05]
-    ddIs = [rand(2,2), rand(2,2)]
-    drs = [0.0]
-    dM_WDs = [0.0]
-    dt = 0.01
-
-    dJ, da, ddI = fixed_RR_forces(thetas, dthetas, ddIs, drs, dM_WDs, dt)
-
-    @test isa(dJ, Float64)
-    @test isa(da, Float64)
-    @test isa(ddI, Matrix{Float64})
-    @test size(ddI) == (2,2)
-    @test isfinite(dJ)
-    @test isfinite(da)
-    @test all(isfinite, ddI)
+	M_WD::Float64 = 1.0
+		    M_NS::Float64 = 1.7
+		    M_tot::Float64 = M_WD + M_NS
+		    r::Float64 = 2.2
+		    a::Float64 = 2.3
+		    J::Float64 = 3.3
+	dr::Float64 = -0.03
+		    dJ::Float64 = -2.0
+	dmu::Float64 = -0.2
+	@test isa(ddtheta(r, mu(M_WD, M_NS), dtheta(J, r, mu(M_WD, M_NS)), dmu, dr, dJ), Float64)
 end
   ╠═╡ =#
+
+# ╔═╡ 0d5207be-9594-4d28-8fa5-acd0cd397acf
+begin
+	
+	@testset "Running tests" begin
+	    	
+	# Type tests
+	@testset "Type tests" begin 
+	    M_WD::Float64 = 1.0
+	    M_NS::Float64 = 1.7
+	    M_tot::Float64 = M_WD + M_NS
+	    r::Float64 = 2.2
+	    a::Float64 = 2.3
+	    J::Float64 = 3.3
+		R_WD_test = R_WD(M_WD)
+	    @test isa(R_WD_test, Float64)
+	    @test isa(dynamical_timescale(M_WD, R_WD_test), Float64)
+	    @test isa(Roche_Limit(r, M_WD, M_NS), Float64)
+	    @test isa(period(M_tot, a), Float64)
+	    @test isa(decretion_rate(a, r, R_WD_test, M_WD, M_NS), Float64)
+	    @test isa(gamma(M_WD, M_NS, mode="j"), Float64)
+	    @test isa(gamma(M_WD, M_NS, mode="i"), Float64)
+	    @test isa(gamma(M_WD, M_NS, mode="c"), Float64)
+	    @test isa(eddington_rate(M_NS), Float64)
+	    @test isa(beta(a, r, R_WD_test, M_WD, M_NS), Float64)
+	    @test isa(J_dot(J, a, r, R_WD_test, M_WD, M_NS), Float64)
+	    @test isa(a_dot(a, r, R_WD_test, M_WD, M_NS), Float64)
+	    @test isa(dot_R_WD(M_WD, R_WD_test), Float64)
+		mu_test = mu(M_WD, M_NS)
+	    @test isa(mu_test, Float64)
+	    @test isa(dot_phi(J, r, M_WD, M_NS), Float64)
+	    x_vec::Vector{Float64} = ones(2) .* 1.32
+	    @test isa(n_hat(x_vec), Vector{Float64})
+	    @test isa(theta_hat(x_vec), Vector{Float64})
+	    dM_WD::Float64 = -0.4
+	    dM_NS::Float64 = 0.34
+	    @test isa(dot_mu(M_WD, M_NS, dM_WD, dM_NS), Float64)
+	    I2::Matrix{Float64} = Float64[1.0 2.0; 3.0 4.0]
+	    I3::Matrix{Float64} = Float64[1.2 2.3; -3.1 4.3]
+	    @test isa(dJ_rr(I2, I3), Float64)
+	    @test isa(da_rr(a, J, I2, I3), Float64)
+	    dmu::Float64 = 0.2
+	    @test isa(dmu_2(mu_test, dmu), Float64)
+		dtheta_test = dtheta(J, r, mu_test)
+	    @test isa(dtheta_test, Float64)
+	    dr::Float64 = -0.03
+	    dJ::Float64 = -2.0
+		ddtheta_test = ddtheta(r, mu_test, dtheta_test, dmu, dr, dJ)
+	    @test isa(ddtheta_test, Float64)
+	    theta::Float64 = 1.03
+		x_test = x(r, theta)
+		y_test = y(r, theta)
+	    @test isa(x_test, Float64)
+	    @test isa(y_test, Float64)
+	    @test isa(dx(r, theta, dr, dtheta_test), Float64)
+	    @test isa(dy(r, theta, dr, dtheta_test), Float64)
+	    ddr::Float64 = -0.01
+	    @test isa(ddx(r, theta, dr, dtheta_test, ddr, ddtheta_test), Float64)
+	    @test isa(ddy(r, theta, dr, dtheta_test, ddr, ddtheta_test), Float64)
+	    #@test isa(I_qp(M_WD, M_NS, x_test, y_test), Matrix{Float64})
+	    tensor::Matrix{Float64} = [1.0 2.2; 3.4 5.4]
+	    @test isa(SFT(tensor), Matrix{Float64})
+	end;
+	
+	# Reasonable input -> output mapping tests
+	@testset "Expected output tests" begin
+	   @test R_WD(1e-10) > 0
+	   @test dynamical_timescale(1e-10, 1e-10) > 0
+	   @test Roche_Limit(1e-10, 1e-10, 1e-10) > 0
+	   @test period(1e-10, 1e-10) > 0
+	   @test decretion_rate(1e-10, 1e-10, 1e-20, 1e-10, 1e-10) == 0.0 # Here, Roche limit is bigger than R_WD
+	   @test gamma(1e-10, 1e-10, mode="j") > 0
+	   @test gamma(1e-10, 1e-10, mode="i") > 0
+	   @test gamma(1e-10, 1e-10, mode="c") > 0
+	   @test eddington_rate(1e-10) > 0
+	   @test beta(1e-10, 1e-10, 1e-20, 1e-10, 1e-10) == 1.0 # Here, Roche limit is bigger than R_WD, so M_dot = 0.0, so beta = 1.0
+	   @test 0.0 < beta(1e-10, 1e-10, 1e-10, 1e-10, 1e-10) < 1.0 # Here, Roche limit is not than R_WD, so M_dot > 0
+	   @test mu(1e-10, 1e-10) > 0
+		x_vec::Vector{Float64} = ones(2) .* 1e-10
+	   @test norm(n_hat(x_vec)) ≈ 1.0 rtol=1e-5
+	   @test norm(theta_hat(x_vec)) ≈ 1.0 rtol=1e-5
+	end;
+	
+	end;
+	
+	# julia-actions/julia-runtest
+	touch(joinpath(ENV["HOME"], "julia-runtest"))
+	
+end
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -374,16 +456,15 @@ BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 PlutoLinks = "0ff47ea0-7a50-410d-8455-4348d5de0420"
 PlutoTeachingTools = "661c6b06-c737-4d37-b85c-46df65de6f69"
-PlutoTest = "cb4044da-4d16-4ffa-a6a3-8cad7f73ebdc"
 PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
 Profile = "9abbd945-dff8-562f-b5e8-e1ebf5ef1b79"
 ProfileCanvas = "efd6af41-a80b-495e-886c-e51b0c7d77a3"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [compat]
 BenchmarkTools = "~1.6.0"
 PlutoLinks = "~0.1.6"
 PlutoTeachingTools = "~0.4.5"
-PlutoTest = "~0.2.2"
 PlutoUI = "~0.7.71"
 ProfileCanvas = "~0.1.6"
 """
@@ -394,7 +475,7 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.11.2"
 manifest_format = "2.0"
-project_hash = "1c26fab669920113f1f3b547670887b14ba9c85a"
+project_hash = "5688cd2d1397d890752938793a6d96f8306fb9e2"
 
 [[deps.AbstractPlutoDingetjes]]
 deps = ["Pkg"]
@@ -658,12 +739,6 @@ git-tree-sha1 = "85778cdf2bed372008e6646c64340460764a5b85"
 uuid = "661c6b06-c737-4d37-b85c-46df65de6f69"
 version = "0.4.5"
 
-[[deps.PlutoTest]]
-deps = ["HypertextLiteral", "InteractiveUtils", "Markdown", "Test"]
-git-tree-sha1 = "17aa9b81106e661cffa1c4c36c17ee1c50a86eda"
-uuid = "cb4044da-4d16-4ffa-a6a3-8cad7f73ebdc"
-version = "0.2.2"
-
 [[deps.PlutoUI]]
 deps = ["AbstractPlutoDingetjes", "Base64", "ColorTypes", "Dates", "Downloads", "FixedPointNumbers", "Hyperscript", "HypertextLiteral", "IOCapture", "InteractiveUtils", "JSON", "Logging", "MIMEs", "Markdown", "Random", "Reexport", "URIs", "UUIDs"]
 git-tree-sha1 = "8329a3a4f75e178c11c1ce2342778bcbbbfa7e3c"
@@ -849,6 +924,8 @@ version = "17.4.0+2"
 # ╠═8bd09c6b-fedb-4256-aa10-ef6f76e9397f
 # ╠═46e2e3bd-0519-4d0c-a748-fcff17118b6e
 # ╟─d293006e-7bd4-46dc-82ec-dcabb7ccc5ed
+# ╠═94a09ecb-c4a1-4b89-826d-a4706275ab70
+# ╠═e2dc3767-f5e4-4769-ba1d-20ec37733c01
 # ╠═0d5207be-9594-4d28-8fa5-acd0cd397acf
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
