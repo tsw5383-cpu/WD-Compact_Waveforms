@@ -81,7 +81,7 @@ TO-DO: add assertions (e.g. mass of white dwarf, radius of white dwarf, q)
 "
 
 # ╔═╡ b7a2300a-bc8f-4387-a324-7f3de70d81fc
-function R0_WD(M_WD::Float64;mu_e=2::Float64)::Float64
+function R0_WD(M_WD::Float64;mu_e=2.0::Float64)::Float64
 	@assert M_WD > 0 # In production ready code, consider commenting out assertion
 	@assert mu_e > 0 # In production ready code, consider commenting out assertion
 	#white dwarf radius in km as ftn of mass in M_odot and mean molecular weight/electron=2
@@ -100,6 +100,8 @@ end
 # ╔═╡ d52feb78-6ddf-4b75-995e-4b2a1e452571
 function Roche_Limit(r::Float64,M_WD::Float64,M_NS::Float64)
 	#@assert M_WD < M_NS # In production ready code, consider commenting out assertion
+    @assert M_WD > 0 # In production ready code, consider commenting out assertion
+    @assert M_NS > 0 # In production ready code, consider commenting out assertion
 	@assert r > 0 # In production ready code, consider commenting out assertion
 	#returns Roche limit of M_WD for companion of mass M_NS 
 	#at a separation of distance r 
@@ -120,6 +122,7 @@ end
 function decretion_rate(a::Float64, r::Float64, R_WD::Float64,
                         M_WD::Float64, M_NS::Float64; A::Float64=10.0)::Float64
 	@assert R_WD > 0 # In production ready code, consider commenting out assertion
+    @assert A > 0 # In production ready code, consider commenting out assertion
     RL::Float64 = Roche_Limit(r, M_WD, M_NS)
     if RL > R_WD
         return 0.0
