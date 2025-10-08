@@ -38,75 +38,75 @@ The following section documents the mathematical treatment of the 2.5-PN RR and 
 Below are the kinetics used to evolve a circular orbit. The set of elements evolved in this framework $\vec\theta= \{a, M_{\rm WD}, M_{\rm NS}, R_{\rm WD}, J, \theta\}$, the orbital separation, white dwarf mass, neutron star mass, white dwarf radius, and angular velocity. Both radiation reaction and (isotropic) mass transfer tend to be circularizing effects, so we assume that the orbit stays circular. This makes tracking both $a$ and $J$ slightly redundant in theory, but in practice it is helpful since radiation reaction and mass transfer forces become comparable so the instantaneous relationship between velocity and separation is non-trivial.
 
 The simple semi-analytic formalism that we use here is largely based on the lecture notes of [Pols](https://www.astro.ru.nl/~onnop/education/stev_utrecht_notes/). First, we establish the rate of mass transfer due to Roche Lobe overflow of the White Dwarf. We take the Eggleton approximation for the Roche Limit, $R_L$ where mass ratio $q:=\frac{M_{\rm WD}}{M_{\rm NS}}$:
-$$
+$
     R_L=a\frac{0.49 q^{2/3}}{0.6q^{2/3}+\ln(1+q^{1/3})}
-$$
+$
 Then, approximating orbital period, $P\equiv P(a,M_{\rm WD},M_{\rm NS})$, as keplerian, the mass loss rate of the white dwarf is cubic in the overflow of the white dwarf over the Roche limit:
-$$
+$
     \dot M_{\rm WD}=-A\frac{M_{\rm WD}}{P}\left(\frac{R_{\rm WD}-R_L}{R_{\rm WD}}\right)^3
-$$
+$
 where $A$ is a numerical constant determined from detailed fluid mechanics which we take to be $A=10$. The natural radius of a white dwarf is a function of its mass approximated as:
-$$
+$
     R_{\rm WD,\,0}=10^4\unit{km}\left(\frac{M_{\rm WD}}{0.7\,M_\odot}\right)^{-1/3}\sqrt{1-\left(\frac{M_{\rm WD}}{M_{\rm Ch}}\right)^{4/3}}\left(\frac{\mu_e}{2}\right)^{-5/3}
-$$
+$
 where $\mu_e$ is the mean molecular mass per electron which is $2$ for white dwarfs of all but the most exotic chemical compositions (e.g., ONeMg). We assume that the white dwarf radius evolves on the white dwarf dynamical timescale $\tau_{\rm dyn}=\sqrt{\frac{R_{\rm WD}^3}{GM_{\rm WD}}}$. Then:
-$$
+$
     \dot R_{\rm WD}=\frac{R_{\rm WD,\,0}-R_{\rm WD}}{\tau_{\rm dyn}}
-$$
+$
 We assume that mass transfer is conservative until the mass loss rate of the white dwarf exceeds the Eddington accretion rate of the neutron star:
-$$
+$
     \dot M_{\rm edd,\,NS}=\frac{4\pi G m_{ p}}{\sigma_T\eta_{\rm acc}c}M_{\rm NS}
-$$
+$
 where we assume that the accretion rate efficiency is $\eta_{\rm acc}=0.1$. This is to say that we take:
-$$
+$
     \dot M_{\rm NS}=\min({-\dot M_{\rm WD},\,\dot M_{\rm edd,\,NS})
-$$
+$
 It is helpful to define a parameter to quantify mass loss rate: $\beta:=\frac{ \dot M_{\rm NS}}{-\dot M_{\rm WD}}=\min(1,\frac{ \dot M_{\rm NS,\,edd}}{-\dot M_{\rm WD}})$. Angular momentum loss due to non-conservative mass transfer, $\dot J_{\rm MT}$, is given by:
-$$
+$
     \dot J_{\rm MT}=J\gamma(1-\beta)\frac{\dot M_{\rm WD}}{M_{\rm WD}+M_{\rm NS}}
-$$
+$
 where $\gamma$ parameterizes the specific angular momentum of the material ejected from the binary. We assume isotropic re-emission (e.g., mass is transferred from the white dwarf to the neutron star and then a fraction $\beta$ of the mass is ejected), in which case $\gamma=\frac{M_{\rm WD}}{M_{\rm NS}}$. Finally, we derive the evolution of the binary separation due to mass loss. In general, changes in angular momentum, separation, mass, and eccentricity are related by:
-$$
+$
     2\frac{\dot J}{J}=\frac{\dot a}{a}+2\frac{\dot M_{\rm WD}}{M_{\rm WD}}+2\frac{\dot M_{\rm NS}}{M_{\rm NS}}-\frac{\dot M_{\rm WD}+\dot M_{\rm NS}}{M_{\rm WD}+ M_{\rm NS}}-\frac{2 e\dot e}{1-e^2}\label{general}
-$$
+$
 Then the change in binary separation due to mass transfer is:
-$$
+$
     \dot a_{\rm MT}=-2a\frac{\dot M_{\rm WD}}{M_{\rm WD}}\bracs{1-\beta\frac{M_{\rm WD}}{M_{\rm NS}}-(1-\beta)\\left(\gamma+\frac{1}{2}\right)\frac{M_{\rm WD}}{M_{\rm WD}+M_{\rm NS}}}
-$$
+$
 
 ## Radiation Reaction
-At 2.5-PN order, RR contributes to $\dot J,\,\dot a$ as functions of $\ddot I^{ij},\,\dddot I^{ij}$. In an effective one-body system, we have that $$I^{ij}=\mu x^i x^j $$ 
+At 2.5-PN order, RR contributes to $\dot J,\,\dot a$ as functions of $\ddot I^{ij},\,\dddot I^{ij}$. In an effective one-body system, we have that $I^{ij}=\mu x^i x^j $ 
 with $x^1:=x(\vec\theta)=a\cos\theta;\,x^2:=y(\vec\theta)=a\sin\theta$. Then, $\ddot I^{ij}\equiv \ddot I^{ij}\left(\vec\theta,\dot{\vec\theta},\ddot{\vec\theta}\right)$ and $\dddot I^{ij}\equiv \dddot I^{ij}\left(\vec\theta,\dot{\vec\theta},\ddot{\vec\theta},\dddot{\vec\theta}\right)$. This poses a computational challenge as formally we have that $\dot{\vec \theta}\equiv \dot{\vec \theta}\left(\vec\theta,\dot{\vec \theta},\ddot{\vec \theta},\dddot{\vec \theta}\right)$ when taking into account RR effects. We cicumvent this challenge by assuming that radiation reaction effects are small compared to the dominant central keplerian force, and we substitute the dependences on $\vec{\theta}$ and subsequent derivatives in $\ddot I^{ij},\,\dddot I^{ij}$ with $\vec{\theta}_{\rm MT}:=\{a_{\rm MT}, M_{\rm WD}, M_{\rm NS}, R_{\rm WD}, J_{\rm MT}, \theta\}$. We calculate higher derivatives using autodifferentiation.
 
 Angular momentum loss due to gravitational wave emission is calculated as:
-$$
+$
     \dot J^{jk}_{\rm (rr)}&=-\frac{2G}{5c^5}(\ddot{I}^{jp}\dddot I^k_{\,\,\,p}-\ddot{I}^{kp}\dddot I^j_{\,\,\,p})\\
     J^j&=\epsilon^j_{\,\,\, pq}J^{pq}\\
     \implies \dot J^z_{\rm (rr)}&=\frac{-2G}{5c^5}(\ddot{I}^{xp}\dddot I^y_{\,\,\,p}-\ddot{I}^{yp}\dddot I^x_{\,\,\,p})
-$$
+$
 where we define axes such that the orbit lies in the $xy$-plane. Then, we have that the derivative in separation due to radiation reaction to 2.5 PN order is:
-$$
+$
     \dot a_{\rm RR}=\frac{-4aG}{5Jc^5}(\ddot{I}^{xp}\dddot I^y_{\,\,\,p}-\ddot{I}^{yp}\dddot I^x_{\,\,\,p})
-$$
+$
 So the total rate of angular momentum loss is:
-$$
+$
     \dot J=\dot J_{\rm MT}+\dot J_{\rm RR}=J\gamma(1-\beta)\frac{\dot M_{\rm WD}}{M_{\rm WD}+M_{\rm NS}}-\frac{2G}{5c^5}(\ddot{I}^{xp}\dddot I^y_{\,\,\,p}-\ddot{I}^{yp}\dddot I^x_{\,\,\,p})
-$$
+$
 and the total rate of change in orbital separation is:
-$$
+$
    \dot a=\dot a_{\rm MT}+\dot a_{\rm RR}=-a\left\{2\frac{\dot M_{\rm WD}}{M_{\rm WD}}\left[1-\beta\frac{M_{\rm WD}}{M_{\rm NS}}-(1-\beta)\left(\gamma+\frac{1}{2}\right)\frac{M_{\rm WD}}{M_{\rm WD}+M_{\rm NS}}\right]+\frac{4G}{5Jc^5}(\ddot{I}^{xp}\dddot I^y_{\,\,\,p}-\ddot{I}^{yp}\dddot I^x_{\,\,\,p})\right\}
-$$
+$
 ## Quadrupole Formula and Gravitational Waveform
 If we suppose that the event occurs at some inclination $i$ relative to us and define initial phase $\varphi$, we can find the transverse component of $\dddot I^{ij}$ as:
-$$
+$
    \ddot I^{ij}_{\rm (T)}=\ddot I^{k\ell}e^{(i)}_{k}e^{(j)}_{\ell}
-$$
+$
 for $e_1=(\cos i\cos\varphi,\sin i\sin\varphi,\cos i)$ and $e_2=(-\sin\varphi,\cos\varphi,0)$ are vectors perpendicular to the line of sight. In the Transverse-Traceless gauge, we have:
-$$
+$
    \ddot I^{ij}_{\rm (TT)}=\ddot I^{ij}_{\rm (T)}-\delta^{ij}\ddot I^{k}_{\,\,\,k,\,{\rm (T)}}
-$$
+$
 Finally, the observed gravitational waveform is proportional via the quadrupole formula:
-$$
+$
     h^{ij}_{(TT)}=\frac{2G}{c^4D_L}\ddot I^{ij}_{\rm (TT)}
-$$
+$
 for some luminosity distance $D_L$.
