@@ -19,7 +19,7 @@ begin
 	const c::Float64 = 2.998e5    # km/s
 end
 
-function R_WD(M_WD::Float64;mu_e=2.0::Float64)::Float64
+function R0_WD(M_WD::Float64;mu_e=2.0::Float64)::Float64
 	@assert M_WD > 0 # In production ready code, consider commenting out assertion
 	@assert mu_e > 0 # In production ready code, consider commenting out assertion
 	#white dwarf radius in km as ftn of mass in M_odot and mean molecular weight/electron=2
@@ -36,9 +36,9 @@ end
 
 
 function Roche_Limit(r::Float64,M_WD::Float64,M_NS::Float64)::Float64
-	#@assert M1 < M2 # In production ready code, consider commenting out assertion
+	#@assert M_WD < M_NS # In production ready code, consider commenting out assertion
 	@assert r > 0 # In production ready code, consider commenting out assertion
-	#returns Roche limit of M1 for companion of mass M2 
+	#returns Roche limit of M_WD for companion of mass M_NS 
 	#at a separation of distance r 
 	q=M_WD/M_NS
 	return(r * 0.49*q^(2/3)/(0.6*q^(2/3)+log(1+q^(1/3))))
@@ -130,25 +130,25 @@ end
 
 
 # White dwarf radius change
-function dot_R_WD(M1::Float64, R1::Float64)::Float64
-    natural_R::Float64 = R_WD(M1)
-    tau::Float64 = dynamical_timescale(M1, R1)
-    return (natural_R - R1) / tau
+function dot_R_WD(M_WD:Float64, R_WD::Float64)::Float64
+    natural_R::Float64 = R0_WD(M_WD)
+    tau::Float64 = dynamical_timescale(M_WD, R_WD)
+    return (natural_R - R_WD) / tau
 end
 
 
 # Reduced mass
-function mu(M1::Float64, M2::Float64)::Float64
-	@assert M1 > 0 # In production-ready code, consider commenting this out
-	@assert M2 > 0 # In production-ready code, consider commenting this out
-    return M1 * M2 / (M1 + M2)
+function mu(M_WD::Float64, M_NS::Float64)::Float64
+	@assert M_WD > 0 # In production-ready code, consider commenting this out
+	@assert M_NS > 0 # In production-ready code, consider commenting this out
+    return M_WD * M_NS / (M_WD + M_NS)
 end
 
 
 # Angular velocity derivative
-function dot_phi(J::Float64, r::Float64, M1::Float64, M2::Float64)::Float64
+function dot_phi(J::Float64, r::Float64, M_WD::Float64, M_NS::Float64)::Float64
 	@assert r > 0 # In production-ready code, consider commenting this out
-    return J / (mu(M1,M2) * r)
+    return J / (mu(M_WD,M_NS) * r)
 end
 
 
@@ -167,10 +167,10 @@ end
 
 
 # Time derivative of reduced mass
-function dot_mu(M1::Float64, M2::Float64, dM1::Float64, dM2::Float64)::Float64
-	@assert M1 > 0 # In production-ready code, consider commenting this out
-	@assert M2 > 0 # In production-ready code, consider commenting this out
-    return (dM1 * M2 + M1 * dM2) / (M1 + M2) - M1 * M2 * (dM1 + dM2) / (M1 + M2)^2
+function dot_mu(M_WD::Float64, M_NS::Float64, dM_WD::Float64, dM_NS::Float64)::Float64
+	@assert M_WD > 0 # In production-ready code, consider commenting this out
+	@assert M_NS > 0 # In production-ready code, consider commenting this out
+    return (dM_WD * M_NS + M_WD * dM_NS) / (M_WD + M_NS) - M_WD * M_NS * (dM_WD + dM_NS) / (M_WD + M_NS)^2
 end
 
 
