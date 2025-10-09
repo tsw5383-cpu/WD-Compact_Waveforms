@@ -5,7 +5,7 @@ using Markdown
 using InteractiveUtils
 
 # ╔═╡ 0cac30f1-9101-4ba3-accc-52621bc1d16f
-begin
+#=begin
 	#=import Pkg
     Pkg.add("PlutoTest")
 	Pkg.add("PlutoUI")
@@ -34,17 +34,66 @@ begin
 	#for integrating differential equations
 
 	
-	#using victor.jl 
+	
+end;=#
+
+begin
+	using LinearAlgebra
+	using BenchmarkTools
+	using Profile, ProfileCanvas 
+	using PlutoUI, PlutoTeachingTools, PlutoLinks
+	using Test
+
+	using ForwardDiff, OrdinaryDiffEq, SciMLBase
+	#packages used for chain rules of large derivatives
+	#and integrating differential equations
+
+	
+	current_path=@__DIR__
+	include(current_path*"/victor-ftns_only.jl")
+	#victor-functions_only.jl:
 	#file with a lot of helpful functions
 	#This is the biggest current issue: 
-	#I do not know how to use the functions in victor.jl 
-	#in tristan.jl.
+	#I do not know how to use the functions 
+	#in victor.jl in tristan.jl. This causes 
+	#us to fail our final integration test.
+	
 end;
 
 # ╔═╡ 6c59b881-5668-4894-950b-2c7bee5367ef
 md"Importing packages is causing me a world of problems."
 
 # ╔═╡ 8edaf48b-d27d-43c9-8a0c-e149654b6cd0
+
+
+# ╔═╡ 2ea8a9da-f653-41f8-97df-f2909f7ce1a2
+
+
+# ╔═╡ 25d4f52f-7f37-41c9-9230-37dfb0e71f22
+
+
+# ╔═╡ 104e6849-3bae-467a-8630-57297b116314
+
+
+# ╔═╡ 3ef782fd-4d6a-4c66-a976-5e995e2d703d
+@__DIR__
+
+# ╔═╡ 13bef496-5bb6-4dbe-a6e4-d18e664dfc55
+
+
+# ╔═╡ 9a2f1c1e-46ca-41b8-9d11-d165bb86a918
+
+
+# ╔═╡ 3e28aef1-3662-47b6-8d59-9a1c97313d5b
+
+
+# ╔═╡ 190a4e03-541a-4857-879d-7093afdfddc2
+
+
+# ╔═╡ d3985c1e-dde5-4700-b948-b6fd04c80819
+
+
+# ╔═╡ 40d859c3-a08e-49a2-8b8b-34ad7a0a6fa3
 
 
 # ╔═╡ 35d54cfa-7d0a-4a48-94bc-a45327b0abcc
@@ -194,9 +243,21 @@ begin
 	function test_ftn(xs::AbstractVector{T}) where {T}
 		x,y=xs
 		return(x+y^2)
-	end
-	@test time_derivative(test_ftn, [1., 2.], [1., 1.]) ≈ 5 atol 1e-15
-end
+	end;
+	@test time_derivative(test_ftn, [1., 2.], [1., 1.]) ≈ 5 atol=1e-15
+end;
+
+# ╔═╡ 02f492c4-2b40-4e9d-945c-d02032b350a1
+
+
+# ╔═╡ 60a2aa64-7663-4418-b6c2-5c0cea33b7ce
+
+
+# ╔═╡ d79f4b3c-949c-4dbc-898b-c913657c0972
+
+
+# ╔═╡ 921e2984-3b6a-4cda-ab35-b9bf4b3ef879
+
 
 # ╔═╡ dfedcf15-1358-42c8-919f-b3ed21b3ebaa
 
@@ -225,9 +286,6 @@ end
 # ╔═╡ 11d2af20-64fd-41de-b33c-76122c047bcb
 
 
-# ╔═╡ 55048669-1a54-4ff9-acb3-194fd69dfc00
-time_derivative(test_ftn, [1 2], [1 1])
-
 # ╔═╡ 621d6981-fed6-4665-85a2-f5df3a06519e
 #=Higher derivatives=#
 #=takes in values and time derivatives to calculate second derivative=#
@@ -235,7 +293,7 @@ time_derivative(test_ftn, [1 2], [1 1])
 function next_derivative(in_ftn::Function; n::Integer=1)::Function
     #returns a function which is the next higher derivative of the in_ftn
     #n is the total derivatives past the given analytic form
-    function ftn(gen_theta::AbstractVector{T}, gen_dtheta::AbstractVector{T}) where {T} ::Float64
+    function ftn(gen_theta::AbstractVector{T}, gen_dtheta::AbstractVector{T})::Float64 where {T}
         @assert length(gen_theta)==length(gen_dtheta)==6*n 
         @assert gen_theta[7:end]==gen_dtheta[1:end-6]
         #requires gen_theta to be [theta, dtheta, d...dtheta] for n=number of ds
@@ -244,6 +302,15 @@ function next_derivative(in_ftn::Function; n::Integer=1)::Function
     end
     return ftn
 end
+
+# ╔═╡ f9e6f40b-ebb8-4711-99b2-6852b6a9c223
+
+
+# ╔═╡ ec453c88-b887-472e-a98c-f96c3b896f08
+
+
+# ╔═╡ 9d610030-0721-440d-a7dd-ea6007249228
+
 
 # ╔═╡ 24cb207f-cd3a-4e50-ad02-6318c607738c
 md"The following functions wrap the original derivatives in `victor.jl` in vectors to make life easier when taking derivatives due to mass transfer only. In particular, `theta` is of the form `[a, M_WD, M_NS, R_WD, J, θ]`."
@@ -259,56 +326,59 @@ begin
 	#=The following functions wrap the original derivatives in vectors to make life easier when taking derivatives due to mass transfer only=#    
 	function da_vector(theta::AbstractVector{T}; 
 			A::Float64=10.0, mu_e::Float64=2.0, eta_acc::Float64=0.1, 
-			a_ring_frac::Float64=1.0, mode::String="Isotropic") where {T} ::Float64
+			a_ring_frac::Float64=1.0, mode::String="Isotropic")::Float64 where {T} 
 	    a, M_WD, M_NS, R_WD, J, θ=theta
 	    return(a_dot(a,a,M_WD,M_NS,R_WD,
 	            A=A,mu_e=mu_e,eta_acc=eta_acc,
 	            a_ring_frac=a_ring_frac,mode=mode))
 	end
 	
-	function dM_WD_vector(theta::AbstractVector{T}; A::Float64=10.0) where {T} ::Float64 
+	function dM_WD_vector(theta::AbstractVector{T}; A::Float64=10.0)::Float64  where {T} 
 	    a, M_WD, M_NS, R_WD, J, θ=theta
 	    return(decretion_rate(a, r, R_WD, M_WD, M_NS, A=A))
 	end
 	
 	function dM_NS_vector(theta::AbstractVector{T};
-	        A::Float64=10, mu_e::Float64=2.0, eta_acc::Float64=0.1, α::Float64=4) where {T} ::Float64
+	        A::Float64=10, mu_e::Float64=2.0, eta_acc::Float64=0.1, α::Float64=4)::Float64 where {T} 
 	    a, M_WD, M_NS, R_WD, J, θ=theta
 	    return(dM_NS(a, R_WD, M_WD, M_NS;
 	        A=a, mu_e=mu_e, eta_acc=eta_acc, α=α))
 	end
 	
-	function dR_WD_vector(theta::AbstractVector{T}; mu_e::Float64=2.) where {T} ::Float64
+	function dR_WD_vector(theta::AbstractVector{T}; mu_e::Float64=2.)::Float64 where {T} 
 	    a, M_WD, M_NS, R_WD, J, θ=theta
 	    return( R_WD(M_WD, mu_e=mu_e))
 	end
 	    
 	function dJ_vector(theta::AbstractVector{T}; 
 	               A::Float64=10.0, mu_e::Float64=2.0, eta_acc::Float64=0.1, 
-	               a_ring_frac::Float64=1.0, mode::String="Isotropic") where {T} ::Float64
+	               a_ring_frac::Float64=1.0, mode::String="Isotropic")::Float64 where {T} 
 	    a, M_WD, M_NS, R_WD, J, θ=theta
 	    return(J_dot(J, a, a, R_WD, M_WD, M_NS, 
 	               A=A, mu_e=mu_e, eta_acc=eta_acc, 
 	               a_ring_frac=a_ring_frac, mode=mode))
 	end
 	
-	function dθ_vector(theta::AbstractVector{T}) where {T} ::Float64
+	function dθ_vector(theta::AbstractVector{T})::Float64 where {T} 
 	    a, M_WD, M_NS, R_WD, J, θ=theta
 	    return(dθ(J,a,M_WD, M_NS))
 	end
 	
 	
 	#=Same treatment, but for quadrupole moments=#
-	function Ixx_vector(theta::AbstractVector{T}) where {T} ::Float64
+	function Ixx_vector(theta::AbstractVector{T})::Float64  where {T} 
 	    a, M_WD, M_NS, R_WD, J, θ=theta
 	    return(I_xx(M_WD, M_NS, a, θ))
 	end
 	
-	function Ixy_vector(theta::AbstractVector{T}) where {T} ::Float64
+	function Ixy_vector(theta::AbstractVector{T})::Float64  where {T} 
 	    a, M_WD, M_NS, R_WD, J, θ=theta
 	    return(I_xy(M_WD, M_NS, a, θ))
 	end
 end
+
+# ╔═╡ 4b422cf8-bedc-441b-862d-e7d89319bdb7
+
 
 # ╔═╡ 8b8cf6b2-70ef-4c0c-b729-551637947f0c
 md"The below block of code uses the vectorized derivatives above to output functions which take higher time derivatives of $\vec{\theta}$ and $I_{ij}$ as a function of $\theta$. "
@@ -461,9 +531,9 @@ begin
 	function RL_contact(M_WD::Float64,M_NS::Float64;mu_e::Float64=2.)::Float64
 	    #returns separation at which a donor WD overflows its
 	    #Roche Lobe
-	    R1=R_WD(M_WD,mu_e=mu_e)
+	    R_WD=R0_WD(M_WD,mu_e=mu_e)
 	    RL_a1=Roche_Limit(1.,M_WD,M_NS) #roche limit at separation of 1 km
-	    return(R1 / RL_a1)#initial separation in km
+	    return(R_WD / RL_a1)#initial separation in km
 	end
 
 	"""Calculates the angular momentum of the system at initial Roche Lobe overflow """	
@@ -482,6 +552,9 @@ begin
 	    return([a, M_WD, M_NS, R_WD, J, 0.])
 	end
 end
+
+# ╔═╡ 18878cef-4449-4024-b3f3-acc108c11714
+
 
 # ╔═╡ c599465d-fbef-4db4-a0ca-07edc6833525
 
@@ -548,13 +621,27 @@ md"Below is an integration check--success depends on each function from victor.j
 
 # ╔═╡ 8f914e37-11f2-4620-b469-abc005e98312
 begin
-	test_integrate=integrate(1.0,step_limit=10)
 	
-	@test typeof(test_integrate[1])=Vector{Float64}
-	@test typeof(test_integrate[2])=Array{Float64,3}
+	test_integrate = integrate(1.0,step_limit=10)
+
+	
+	@test isa(test_integrate[1], Vector{Float64})
+	@test isa(test_integrate[2], Array{Float64,3})
 end;
 
-# ╔═╡ d5ee94af-4254-4313-8971-498b446b0437
+# ╔═╡ 5fd7a5da-3505-4057-8947-7e2a061d147c
+
+
+# ╔═╡ 3ad72f7d-4c5e-416f-bd0f-bf1b04dc05b8
+
+
+# ╔═╡ a1faafde-cafa-4392-bb61-e1a8af311b28
+
+
+# ╔═╡ 8fbfc816-261c-4585-9f60-3740a9c68149
+
+
+# ╔═╡ af8baf06-c7ce-4a17-8443-f7d988fb6257
 
 
 # ╔═╡ fd2f6fb9-031c-44a4-b230-e36088190b17
@@ -700,6 +787,7 @@ PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
 Profile = "9abbd945-dff8-562f-b5e8-e1ebf5ef1b79"
 ProfileCanvas = "efd6af41-a80b-495e-886c-e51b0c7d77a3"
 SciMLBase = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [compat]
 BenchmarkTools = "~1.6.0"
@@ -718,7 +806,7 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.11.2"
 manifest_format = "2.0"
-project_hash = "0dbdcb78951643f3dbf7e76c5622597ed26e8653"
+project_hash = "3c79810c2f850ce594469b798ef98cb730ffbfe8"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "27cecae79e5cc9935255f90c53bb831cc3c870d7"
@@ -2399,6 +2487,16 @@ version = "17.4.0+2"
 # ╠═6c59b881-5668-4894-950b-2c7bee5367ef
 # ╠═8edaf48b-d27d-43c9-8a0c-e149654b6cd0
 # ╠═0cac30f1-9101-4ba3-accc-52621bc1d16f
+# ╠═2ea8a9da-f653-41f8-97df-f2909f7ce1a2
+# ╠═25d4f52f-7f37-41c9-9230-37dfb0e71f22
+# ╠═104e6849-3bae-467a-8630-57297b116314
+# ╠═3ef782fd-4d6a-4c66-a976-5e995e2d703d
+# ╠═13bef496-5bb6-4dbe-a6e4-d18e664dfc55
+# ╠═9a2f1c1e-46ca-41b8-9d11-d165bb86a918
+# ╠═3e28aef1-3662-47b6-8d59-9a1c97313d5b
+# ╠═190a4e03-541a-4857-879d-7093afdfddc2
+# ╠═d3985c1e-dde5-4700-b948-b6fd04c80819
+# ╠═40d859c3-a08e-49a2-8b8b-34ad7a0a6fa3
 # ╠═35d54cfa-7d0a-4a48-94bc-a45327b0abcc
 # ╠═1620f45c-a715-432c-8a2d-f673bb022e2c
 # ╠═96c169cc-f4d7-4885-ab1f-a692f5f39f91
@@ -2429,6 +2527,10 @@ version = "17.4.0+2"
 # ╠═694fe531-e34e-4c27-94cb-ae3f1e14aa90
 # ╠═28bdbf35-455c-4e01-a1bb-05c862abe361
 # ╠═72dd65d6-0b35-4d2e-a359-3abe9aa39c5f
+# ╠═02f492c4-2b40-4e9d-945c-d02032b350a1
+# ╠═60a2aa64-7663-4418-b6c2-5c0cea33b7ce
+# ╠═d79f4b3c-949c-4dbc-898b-c913657c0972
+# ╠═921e2984-3b6a-4cda-ab35-b9bf4b3ef879
 # ╠═dfedcf15-1358-42c8-919f-b3ed21b3ebaa
 # ╠═a41296bf-1ae6-448c-be5e-9e63cde9fed8
 # ╠═794c63da-f8c7-469e-8b1d-8eb00ad04296
@@ -2438,12 +2540,15 @@ version = "17.4.0+2"
 # ╠═0edb3bb3-c0e2-4595-8b34-b963cdaa181f
 # ╠═00f1992b-db3b-4a1e-87fc-3be66f2ec11b
 # ╠═11d2af20-64fd-41de-b33c-76122c047bcb
-# ╠═55048669-1a54-4ff9-acb3-194fd69dfc00
 # ╠═621d6981-fed6-4665-85a2-f5df3a06519e
+# ╠═f9e6f40b-ebb8-4711-99b2-6852b6a9c223
+# ╠═ec453c88-b887-472e-a98c-f96c3b896f08
+# ╠═9d610030-0721-440d-a7dd-ea6007249228
 # ╠═24cb207f-cd3a-4e50-ad02-6318c607738c
 # ╠═731205f1-64f9-4dd5-809f-a1cd20eabd47
 # ╠═528d99bb-0800-41d7-812b-8685a18c2ec0
 # ╠═3b211714-36b0-4b0d-9b62-6ae2939f66d9
+# ╠═4b422cf8-bedc-441b-862d-e7d89319bdb7
 # ╠═8b8cf6b2-70ef-4c0c-b729-551637947f0c
 # ╠═9878e729-0b7c-4684-a0fd-e0cf73465199
 # ╠═0e80bd6c-80af-45b3-8637-22fa8bfe8a5c
@@ -2455,6 +2560,7 @@ version = "17.4.0+2"
 # ╠═52b828d3-a6b7-4aa6-abe5-5c23ef848bb2
 # ╠═a63692e2-f652-4f35-b5c8-57ed131d676e
 # ╠═72bfe0e8-11f2-47f6-97ba-09708af3fad3
+# ╠═18878cef-4449-4024-b3f3-acc108c11714
 # ╠═c599465d-fbef-4db4-a0ca-07edc6833525
 # ╠═8032f016-4aca-4955-ab1f-2bb6c84c5713
 # ╠═0b1e0b8e-b863-431f-b857-40ea9dbe37fd
@@ -2463,7 +2569,11 @@ version = "17.4.0+2"
 # ╠═a8f954bf-b8d6-45f1-b836-d9a4c977f7db
 # ╠═91e4fc89-1284-4e31-8c97-93121782ea03
 # ╠═8f914e37-11f2-4620-b469-abc005e98312
-# ╠═d5ee94af-4254-4313-8971-498b446b0437
+# ╠═5fd7a5da-3505-4057-8947-7e2a061d147c
+# ╠═3ad72f7d-4c5e-416f-bd0f-bf1b04dc05b8
+# ╠═a1faafde-cafa-4392-bb61-e1a8af311b28
+# ╠═8fbfc816-261c-4585-9f60-3740a9c68149
+# ╠═af8baf06-c7ce-4a17-8443-f7d988fb6257
 # ╠═fd2f6fb9-031c-44a4-b230-e36088190b17
 # ╠═9fff71f3-9c7d-4060-a50a-cd3ec475f27c
 # ╠═496e747c-7e5a-498b-ae70-604b9a64faef
