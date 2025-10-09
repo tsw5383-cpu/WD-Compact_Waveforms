@@ -130,7 +130,7 @@ end
 
 
 # White dwarf radius change
-function dot_R_WD(M_WD:Float64, R_WD::Float64)::Float64
+function dot_R_WD(M_WD::Float64, R_WD::Float64)::Float64
     natural_R::Float64 = R0_WD(M_WD)
     tau::Float64 = dynamical_timescale(M_WD, R_WD)
     return (natural_R - R_WD) / tau
