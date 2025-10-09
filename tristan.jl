@@ -66,6 +66,15 @@ md"Importing packages is causing me a world of problems."
 # ╔═╡ 8edaf48b-d27d-43c9-8a0c-e149654b6cd0
 
 
+# ╔═╡ ce80bb70-d60e-4bdf-8f7c-16421fd90138
+
+
+# ╔═╡ fa5a36f9-b1e2-4461-bb18-a3172f4b7af7
+
+
+# ╔═╡ 421df964-fd81-471d-bff5-570f3f409f53
+
+
 # ╔═╡ 2ea8a9da-f653-41f8-97df-f2909f7ce1a2
 
 
@@ -168,14 +177,24 @@ begin
 	    return(Boltzmann_Max(-t_dM_WD,t_edd,α=α))
 	end
 
+
+	"""Reduced mass in effective one body formalism"""
+	function mu(M_WD::Float64, M_NS::Float64)::Float64
+		return((M_WD+M_NS)/(M_WD+M_NS))
+	end
+
+	
 	""" Time derivative of angular parameter  θ"""
 	function dθ(J::Float64,a::Float64,M_WD::Float64, M_NS::Float64)::Float64
 		@assert M_WD > 0 # In production-ready code, consider commenting this out
 		@assert M_NS > 0 # In production-ready code, consider commenting this out
-		@assert r > 0 # In production-ready code, consider commenting this out
+		@assert a > 0 # In production-ready code, consider commenting this out
 		return(J/(a*mu(M_WD,M_NS)))
 	end   
 end;
+
+# ╔═╡ 6b59b741-3cfa-4db2-afce-e6f23ab1a06a
+
 
 # ╔═╡ 4bbe25ad-bce2-4305-bd83-6dba2dc1f28c
 md"Below, we define the quadrupole moment in terms of polar coordinates. (Note: As we are only concerned with higher derivatives of $I$ which are symmetric and carry 'plus/times' polarization, it is sufficient only to define $I_{xx/xy}$.) "
@@ -186,7 +205,7 @@ begin
 	function I_xx(M_WD::Float64, M_NS::Float64, r::Float64, θ::Float64)::Float64
 	    @assert M_WD > 0 # In production-ready code, consider commenting this out
 		@assert M_NS > 0 # In production-ready code, consider commenting this out
-	    @assert r > 0 # In production-ready code, consider commenting this out
+	    @assert a > 0 # In production-ready code, consider commenting this out
 	    return (mu(M_WD, M_NS) * (x(r,θ))^2)
 	end           
 
@@ -194,7 +213,7 @@ begin
 	function I_xy(M_WD::Float64, M_NS::Float64, r::Float64, θ::Float64)::Float64
 	    @assert M_WD > 0 # In production-ready code, consider commenting this out
 		@assert M_NS > 0 # In production-ready code, consider commenting this out
-	    @assert r > 0 # In production-ready code, consider commenting this out
+	    @assert a > 0 # In production-ready code, consider commenting this out
 	    return mu(M_WD, M_NS) * x(r,θ) * y(r,θ)
 	end                
 end;
@@ -298,10 +317,19 @@ function next_derivative(in_ftn::Function; n::Integer=1)::Function
         @assert gen_theta[7:end]==gen_dtheta[1:end-6]
         #requires gen_theta to be [theta, dtheta, d...dtheta] for n=number of ds
         #requires gen_theta to be [dtheta, ddtheta d...ddtheta] for n+1=number of ds
-        return(ftn(in_ftn, gentheta, gen_dtheta))
+        return(time_derivative(in_ftn, gen_theta, gen_dtheta))
     end
     return ftn
 end
+
+# ╔═╡ e681a7b9-9996-4105-ac4c-f1bd880f8235
+
+
+# ╔═╡ 7d4b6bb6-2fcc-4669-9c4d-369b10b2644b
+
+
+# ╔═╡ 7fcacf8f-b82f-48f0-87ab-9f11b7ac936f
+
 
 # ╔═╡ f9e6f40b-ebb8-4711-99b2-6852b6a9c223
 
@@ -328,14 +356,14 @@ begin
 			A::Float64=10.0, mu_e::Float64=2.0, eta_acc::Float64=0.1, 
 			a_ring_frac::Float64=1.0, mode::String="Isotropic")::Float64 where {T} 
 	    a, M_WD, M_NS, R_WD, J, θ=theta
-	    return(a_dot(a,a,M_WD,M_NS,R_WD,
+	    return(a_dot(a,a,M_WD,M_NS,R_WD;
 	            A=A,mu_e=mu_e,eta_acc=eta_acc,
 	            a_ring_frac=a_ring_frac,mode=mode))
 	end
 	
 	function dM_WD_vector(theta::AbstractVector{T}; A::Float64=10.0)::Float64  where {T} 
 	    a, M_WD, M_NS, R_WD, J, θ=theta
-	    return(decretion_rate(a, r, R_WD, M_WD, M_NS, A=A))
+	    return(decretion_rate(a, a, R_WD, M_WD, M_NS, A=A))
 	end
 	
 	function dM_NS_vector(theta::AbstractVector{T};
@@ -347,7 +375,7 @@ begin
 	
 	function dR_WD_vector(theta::AbstractVector{T}; mu_e::Float64=2.)::Float64 where {T} 
 	    a, M_WD, M_NS, R_WD, J, θ=theta
-	    return( R_WD(M_WD, mu_e=mu_e))
+	    return( R0_WD(M_WD, mu_e=mu_e))
 	end
 	    
 	function dJ_vector(theta::AbstractVector{T}; 
@@ -376,6 +404,15 @@ begin
 	    return(I_xy(M_WD, M_NS, a, θ))
 	end
 end
+
+# ╔═╡ e70e5b74-542d-48e2-8bc0-b63f98c56a4a
+
+
+# ╔═╡ 8adb4e33-7470-4996-a1b2-9be09f45a06a
+
+
+# ╔═╡ 2e9add50-a93b-4186-95c1-95c871f1751d
+
 
 # ╔═╡ 4b422cf8-bedc-441b-862d-e7d89319bdb7
 
@@ -437,13 +474,13 @@ begin
 	    dtheta=zeros(6)
 	    #calculating first time derivatives due to MT only
 	    for i in 1:6
-	        dtheta[i]=first_derivatives(theta)
+	        dtheta[i]=first_derivatives[i](theta)
 	    end
 	
 	    ddtheta=zeros(6)
 	    #calculating second time derivatives due to MT only
 	    for i in 1:6
-	        ddtheta[i]=second_derivatives(theta,dtheta)
+	        ddtheta[i]=second_derivatives[i](theta,dtheta)
 	    end
 	
 	    theta_dtheta=vcat(theta,dtheta)
@@ -453,7 +490,7 @@ begin
 	        dddtheta=zeros(6)
 	        #calculating third time derivatives due to MT only
 	        for i in 1:6
-	            dddtheta[i]=theta_derivatives(theta_dtheta,dtheta_ddtheta)
+	            dddtheta[i]=third_derivatives[i](theta_dtheta,dtheta_ddtheta)
 	        end
 	    end
 	
@@ -495,6 +532,9 @@ begin
 	    return(dtheta,t_ddI,t_dddI)
 	end
 end;
+
+# ╔═╡ 987850ef-c086-4b16-8401-d11c753b800d
+
 
 # ╔═╡ bc193a3e-052e-4860-854d-398fa08deeec
 
@@ -542,7 +582,7 @@ begin
 	    return((2 * a * G * M_WD ^ 2 * M_NS ^ 2 / (M_WD + M_NS))^(1/2))
 	end
 	"""Defines theta at initial Roche Lobe overflow for  """
-	function initial_circular_orbit(M_WD::Float64;M_NS::Float64=1.35,mu_e::Float64=2.)::Float64
+	function initial_circular_orbit(M_WD::Float64;M_NS::Float64=1.35,mu_e::Float64=2.)::Vector{Float64}
 	    #returns keplerian orbital parameters, theta, at initial Roche Lobe overflow
 	    #M_NS=1.35 M_\odot is typical NS mass
 	    @assert M_WD<1.4 #Chandrasekar mass, beyond which we cannot calculate R_WD(see initial function)
@@ -552,6 +592,15 @@ begin
 	    return([a, M_WD, M_NS, R_WD, J, 0.])
 	end
 end
+
+# ╔═╡ e33d1f4e-7e39-456b-88cb-e70f3bb4dec9
+
+
+# ╔═╡ 84227259-c32e-431d-8a9c-9bc1e0af252b
+
+
+# ╔═╡ 1b671c3f-3fad-40aa-bf2e-e1768b6838ca
+
 
 # ╔═╡ 18878cef-4449-4024-b3f3-acc108c11714
 
@@ -575,14 +624,15 @@ md"Below is the heart of the integration process"
 
 begin
 	"""Integrates theta forward one step with time interval either given explicitly (dt!=-1) or as a fraction of the orbital period determined by dt_period. Returns the absolute time step taken, the updated theta parameters, and the instantaneous second derivative of the quadupole moment at the end of the timestep."""
-	function one_step(theta::Float64; dt_period::Float64=1e-2, dt::Float64=-1)::Tuple{Float64, Vector{Float64}, Array{Float64,2}}
+	function one_step(theta::Vector{Float64}; dt_period::Float64=1e-2, dt::Float64=-1.)::Tuple{Float64, Vector{Float64}, Array{Float64,2}}
+		@assert length(theta)==6
 	    #integrates forward one step with time interval either given explicitly (dt!=-1)
 	    #or as a fraction of the orbital period determined by dt_period
 	    if dt==-1
 	        dt=dt_period*period(theta[2]+theta[3], theta[1])
 	    end
-	    prob = ODEProblem(acceleration,theta,(0,dt),[])
-	    updated_theta = solve(prob, alg=KahanLi8()).u[end]
+	    prob = ODEProblem(acceleration!,theta,(0,dt),[])
+	    updated_theta = solve(prob, alg=Vern9()).u[end]
 	
 	    #=Calculating ddI at the end of the step=#
 	        
@@ -603,7 +653,9 @@ begin
 	    
 	    while t<time_limit && i<step_limit && theta[2]>0
 	        #integrate until time or step limit are elapsed or WD completely dissipates
-	        dt,t_theta,t_ddI=one_step(theta)
+			println(theta)
+			println(isa(theta,Vector{Float64}))
+	        dt,t_theta,t_ddI=one_step(theta; dt_period=1e-2)
 	        i+=1
 	        t+=dt
 	        ts[i]=t
@@ -615,6 +667,48 @@ begin
 	    return(ts[1:i],ddIs[1:i, :, :])
 	end
 end;
+
+# ╔═╡ 7d3e0971-ebf6-4897-bbc0-c3ce5befd187
+
+
+# ╔═╡ 91fbe086-cf7f-433a-8df6-afbd8eebf6cc
+
+
+# ╔═╡ a49ee332-de38-4fd3-8d9b-04a8134f5a13
+one_step([14088.687124539354, 1.0, 1.35, 5338.492628530513, 4.323851039786607e7, 0.0]; dt_period=1e-2, dt=-1.)
+
+# ╔═╡ 40c0228b-c30b-42a4-b3c6-3b10d5258da8
+
+
+# ╔═╡ 33ebb6b8-ba01-4941-bc51-45dec91e8bf2
+
+
+# ╔═╡ 0971bd47-9d39-4029-9d39-68be71109c66
+
+
+# ╔═╡ 6fdeb509-7f2a-4294-a567-05e09113b5e2
+
+
+# ╔═╡ 48a16950-79e2-4bcf-9d33-83e85689e8ee
+
+
+# ╔═╡ 9864a599-fb19-41a9-af26-5a3a0050975d
+
+
+# ╔═╡ 5f820ec7-139e-4cb9-ab76-3be6fe0c438f
+
+
+# ╔═╡ 172842d6-e181-4f86-8a2d-c871af8582fb
+
+
+# ╔═╡ 1edf5071-1d21-4101-983e-3effbf694292
+
+
+# ╔═╡ f9338a40-2677-4137-a2cf-da327dd157db
+
+
+# ╔═╡ 1e16edf8-c038-461e-bc29-f8ed81c7caca
+
 
 # ╔═╡ 91e4fc89-1284-4e31-8c97-93121782ea03
 md"Below is an integration check--success depends on each function from victor.jl and tristan.jl being compatible with each other. We are currently failing this test because we are not successfully integrating victor.jl and tristan.jl (see the final line in the first block of code in this notebook."
@@ -2487,6 +2581,9 @@ version = "17.4.0+2"
 # ╠═6c59b881-5668-4894-950b-2c7bee5367ef
 # ╠═8edaf48b-d27d-43c9-8a0c-e149654b6cd0
 # ╠═0cac30f1-9101-4ba3-accc-52621bc1d16f
+# ╠═ce80bb70-d60e-4bdf-8f7c-16421fd90138
+# ╠═fa5a36f9-b1e2-4461-bb18-a3172f4b7af7
+# ╠═421df964-fd81-471d-bff5-570f3f409f53
 # ╠═2ea8a9da-f653-41f8-97df-f2909f7ce1a2
 # ╠═25d4f52f-7f37-41c9-9230-37dfb0e71f22
 # ╠═104e6849-3bae-467a-8630-57297b116314
@@ -2516,6 +2613,7 @@ version = "17.4.0+2"
 # ╠═b2dcf719-078c-4ec0-bde6-243972cfc957
 # ╠═4135feba-248d-4880-9e05-e3e85dae9963
 # ╠═2fb18e7f-30eb-4dff-b30f-f5086ec3e02d
+# ╠═6b59b741-3cfa-4db2-afce-e6f23ab1a06a
 # ╠═4bbe25ad-bce2-4305-bd83-6dba2dc1f28c
 # ╠═e90a2a13-e9af-4160-a307-cc7df36e280e
 # ╠═3fb94d9d-948f-4620-8621-e0f3d11e99cf
@@ -2541,6 +2639,9 @@ version = "17.4.0+2"
 # ╠═00f1992b-db3b-4a1e-87fc-3be66f2ec11b
 # ╠═11d2af20-64fd-41de-b33c-76122c047bcb
 # ╠═621d6981-fed6-4665-85a2-f5df3a06519e
+# ╠═e681a7b9-9996-4105-ac4c-f1bd880f8235
+# ╠═7d4b6bb6-2fcc-4669-9c4d-369b10b2644b
+# ╠═7fcacf8f-b82f-48f0-87ab-9f11b7ac936f
 # ╠═f9e6f40b-ebb8-4711-99b2-6852b6a9c223
 # ╠═ec453c88-b887-472e-a98c-f96c3b896f08
 # ╠═9d610030-0721-440d-a7dd-ea6007249228
@@ -2548,6 +2649,9 @@ version = "17.4.0+2"
 # ╠═731205f1-64f9-4dd5-809f-a1cd20eabd47
 # ╠═528d99bb-0800-41d7-812b-8685a18c2ec0
 # ╠═3b211714-36b0-4b0d-9b62-6ae2939f66d9
+# ╠═e70e5b74-542d-48e2-8bc0-b63f98c56a4a
+# ╠═8adb4e33-7470-4996-a1b2-9be09f45a06a
+# ╠═2e9add50-a93b-4186-95c1-95c871f1751d
 # ╠═4b422cf8-bedc-441b-862d-e7d89319bdb7
 # ╠═8b8cf6b2-70ef-4c0c-b729-551637947f0c
 # ╠═9878e729-0b7c-4684-a0fd-e0cf73465199
@@ -2555,11 +2659,15 @@ version = "17.4.0+2"
 # ╠═7f728824-950f-4631-bb6b-2b4654f6dc7f
 # ╠═5098b622-aacf-4df1-8341-637e8eac60e6
 # ╠═6208496a-07a7-4f27-9994-98a3347f018b
+# ╠═987850ef-c086-4b16-8401-d11c753b800d
 # ╠═bc193a3e-052e-4860-854d-398fa08deeec
 # ╠═120ff400-43a9-4be6-b1a8-2017ae0b111a
 # ╠═52b828d3-a6b7-4aa6-abe5-5c23ef848bb2
 # ╠═a63692e2-f652-4f35-b5c8-57ed131d676e
 # ╠═72bfe0e8-11f2-47f6-97ba-09708af3fad3
+# ╠═e33d1f4e-7e39-456b-88cb-e70f3bb4dec9
+# ╠═84227259-c32e-431d-8a9c-9bc1e0af252b
+# ╠═1b671c3f-3fad-40aa-bf2e-e1768b6838ca
 # ╠═18878cef-4449-4024-b3f3-acc108c11714
 # ╠═c599465d-fbef-4db4-a0ca-07edc6833525
 # ╠═8032f016-4aca-4955-ab1f-2bb6c84c5713
@@ -2567,6 +2675,20 @@ version = "17.4.0+2"
 # ╠═7e3f17c1-7b35-4a84-b8a5-36817549bda4
 # ╠═a7a7b50c-d555-4a1a-9197-963fac13aca5
 # ╠═a8f954bf-b8d6-45f1-b836-d9a4c977f7db
+# ╠═7d3e0971-ebf6-4897-bbc0-c3ce5befd187
+# ╠═91fbe086-cf7f-433a-8df6-afbd8eebf6cc
+# ╠═a49ee332-de38-4fd3-8d9b-04a8134f5a13
+# ╠═40c0228b-c30b-42a4-b3c6-3b10d5258da8
+# ╠═33ebb6b8-ba01-4941-bc51-45dec91e8bf2
+# ╠═0971bd47-9d39-4029-9d39-68be71109c66
+# ╠═6fdeb509-7f2a-4294-a567-05e09113b5e2
+# ╠═48a16950-79e2-4bcf-9d33-83e85689e8ee
+# ╠═9864a599-fb19-41a9-af26-5a3a0050975d
+# ╠═5f820ec7-139e-4cb9-ab76-3be6fe0c438f
+# ╠═172842d6-e181-4f86-8a2d-c871af8582fb
+# ╠═1edf5071-1d21-4101-983e-3effbf694292
+# ╠═f9338a40-2677-4137-a2cf-da327dd157db
+# ╠═1e16edf8-c038-461e-bc29-f8ed81c7caca
 # ╠═91e4fc89-1284-4e31-8c97-93121782ea03
 # ╠═8f914e37-11f2-4620-b469-abc005e98312
 # ╠═5fd7a5da-3505-4057-8947-7e2a061d147c

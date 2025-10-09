@@ -118,7 +118,7 @@ end
 
 
 # Semi-major axis change rate
-function a_dot(a::Float64, r::Float64, R_WD::Float64, M_WD::Float64, M_NS::Float64; 
+function a_dot(a, r, R_WD, M_WD, M_NS; 
                A::Float64=10.0, mu_e::Float64=2.0, eta_acc::Float64=0.1, 
                a_ring_frac::Float64=1.0, mode::String="Isotropic")::Float64
     g::Float64 = gamma(M_WD, M_NS; a_ring_frac=a_ring_frac, mode=mode)
