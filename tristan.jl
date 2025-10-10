@@ -60,6 +60,8 @@ begin
 	#I do not know how to use the functions 
 	#in victor.jl in tristan.jl. This causes 
 	#us to fail our final integration test.
+	#EDIT: I figured this out after much 
+	#bashing of my head against the wall.
 	#EDIT: Removing types for compatibility
 	#with ForwardDiff.
 	
@@ -178,8 +180,8 @@ end
 # ╔═╡ 2fb18e7f-30eb-4dff-b30f-f5086ec3e02d
 begin
 	""" Smooth accretion rate of the neutron star """
-	function dM_NS(a::Float64, R_WD::Float64, M_WD::Float64, M_NS::Float64;
-			A::Float64=10, mu_e::Float64=2.0, eta_acc::Float64=0.1, α::Float64=4)::Float64
+	function dM_NS(a::T, R_WD::T, M_WD::T, M_NS::T;
+			A::Float64=10, mu_e::Float64=2.0, eta_acc::Float64=0.1, α::Float64=4) where T<:Real
 	    t_dM_WD=decretion_rate(a,a,R_WD,M_WD,M_Ns,A=A)
 	    t_edd=eddington_rate(M_NS, mu_e=mu_e, eta_acc=eta_acc)
 	    return(Boltzmann_Max(-t_dM_WD,t_edd,α=α))
@@ -187,19 +189,25 @@ begin
 
 
 	"""Reduced mass in effective one body formalism"""
-	function mu(M_WD::Float64, M_NS::Float64)::Float64
+	function mu(M_WD::T, M_NS::T) where T<:Real
 		return((M_WD+M_NS)/(M_WD+M_NS))
 	end
 
 	
 	""" Time derivative of angular parameter  θ"""
-	function dθ(J::Float64,a::Float64,M_WD::Float64, M_NS::Float64)::Float64
+	function dθ(J::T,a::T,M_WD::T, M_NS::T) where T<:Real
 		@assert M_WD > 0 # In production-ready code, consider commenting this out
 		@assert M_NS > 0 # In production-ready code, consider commenting this out
 		@assert a > 0 # In production-ready code, consider commenting this out
 		return(J/(a*mu(M_WD,M_NS)))
 	end   
 end;
+
+# ╔═╡ 69640bb5-07a4-4257-9eea-6f16dfcce74c
+
+
+# ╔═╡ 2efd9365-9bcf-41ea-9e77-9346bf498bde
+
 
 # ╔═╡ 6b59b741-3cfa-4db2-afce-e6f23ab1a06a
 
@@ -210,21 +218,30 @@ md"Below, we define the quadrupole moment in terms of polar coordinates. (Note: 
 # ╔═╡ e90a2a13-e9af-4160-a307-cc7df36e280e
 begin
 	"""Given polar orbital parameters, calculates I_{xx} """
-	function I_xx(M_WD::Float64, M_NS::Float64, r::Float64, θ::Float64)::Float64
+	function I_xx(M_WD::T, M_NS::T, r::T, θ::T) where T<:Real
 	    @assert M_WD > 0 # In production-ready code, consider commenting this out
 		@assert M_NS > 0 # In production-ready code, consider commenting this out
-	    @assert a > 0 # In production-ready code, consider commenting this out
+	    @assert r > 0 # In production-ready code, consider commenting this out
 	    return (mu(M_WD, M_NS) * (x(r,θ))^2)
 	end           
 
 	"""Given polar orbital parameters, calculates I_{xy} """
-	function I_xy(M_WD::Float64, M_NS::Float64, r::Float64, θ::Float64)::Float64
+	function I_xy(M_WD::T, M_NS::T, r::T, θ::T) where T<:Real
 	    @assert M_WD > 0 # In production-ready code, consider commenting this out
 		@assert M_NS > 0 # In production-ready code, consider commenting this out
-	    @assert a > 0 # In production-ready code, consider commenting this out
+	    @assert r > 0 # In production-ready code, consider commenting this out
 	    return mu(M_WD, M_NS) * x(r,θ) * y(r,θ)
 	end                
 end;
+
+# ╔═╡ aad547b0-ff39-4c6c-bd40-d47d132e3f4d
+
+
+# ╔═╡ d877e869-f0ec-4b02-9bdc-8f8d6d4e1c6c
+
+
+# ╔═╡ deb8fbb9-e4f9-44e3-87cf-e226319b8a2e
+
 
 # ╔═╡ 3fb94d9d-948f-4620-8621-e0f3d11e99cf
 
@@ -321,6 +338,8 @@ function next_derivative(in_ftn::Function; n::Integer=1)::Function
     #returns a function which is the next higher derivative of the in_ftn
     #n is the total derivatives past the given analytic form
     function ftn(gen_theta::AbstractVector{T}, gen_dtheta::AbstractVector{T})::Float64 where {T}
+		print(in_ftn)
+		println(length(gen_theta),length(gen_dtheta),6*n)
         @assert length(gen_theta)==length(gen_dtheta)==6*n 
         @assert gen_theta[7:end]==gen_dtheta[1:end-6]
         #requires gen_theta to be [theta, dtheta, d...dtheta] for n=number of ds
@@ -329,6 +348,27 @@ function next_derivative(in_ftn::Function; n::Integer=1)::Function
     end
     return ftn
 end
+
+# ╔═╡ b889ebe5-e259-4208-8685-cc32df37f58c
+
+
+# ╔═╡ 95d0ce5f-fe9a-4cd2-bb0f-90eb4a5e1f39
+
+
+# ╔═╡ d41d2eb7-701e-4893-8116-7d477effeef4
+
+
+# ╔═╡ de0d4bc7-e2b8-4812-8b28-43bda221b17f
+
+
+# ╔═╡ 31736097-efce-4c31-85ab-d657cb97822a
+
+
+# ╔═╡ 19a2498d-e8c1-4394-bc7c-9dd2e6033b16
+
+
+# ╔═╡ 96a595df-5e71-4d63-800f-f600ef4b591a
+
 
 # ╔═╡ e681a7b9-9996-4105-ac4c-f1bd880f8235
 
@@ -362,59 +402,65 @@ begin
 	#=The following functions wrap the original derivatives in vectors to make life easier when taking derivatives due to mass transfer only=#    
 	function da_vector(theta::AbstractVector{T}; 
 			A::Float64=10.0, mu_e::Float64=2.0, eta_acc::Float64=0.1, 
-			a_ring_frac::Float64=1.0, mode::String="Isotropic")::Float64 where {T} 
+			a_ring_frac::Float64=1.0, mode::String="Isotropic") where {T} 
 	    a, M_WD, M_NS, R_WD, J, θ=theta
 	    return(a_dot(a,a,M_WD,M_NS,R_WD;
 	            A=A,mu_e=mu_e,eta_acc=eta_acc,
 	            a_ring_frac=a_ring_frac,mode=mode))
 	end
 	
-	function dM_WD_vector(theta::AbstractVector{T}; A::Float64=10.0)::Float64  where {T} 
+	function dM_WD_vector(theta::AbstractVector{T}; A::Float64=10.0) where {T} 
 	    a, M_WD, M_NS, R_WD, J, θ=theta
 	    return(decretion_rate(a, a, R_WD, M_WD, M_NS, A=A))
 	end
 	
 	function dM_NS_vector(theta::AbstractVector{T};
-	        A::Float64=10, mu_e::Float64=2.0, eta_acc::Float64=0.1, α::Float64=4)::Float64 where {T} 
+	        A::Float64=10, mu_e::Float64=2.0, eta_acc::Float64=0.1, α::Float64=4) where {T} 
 	    a, M_WD, M_NS, R_WD, J, θ=theta
 	    return(dM_NS(a, R_WD, M_WD, M_NS;
 	        A=a, mu_e=mu_e, eta_acc=eta_acc, α=α))
 	end
 	
-	function dR_WD_vector(theta::AbstractVector{T}; mu_e::Float64=2.)::Float64 where {T} 
+	function dR_WD_vector(theta::AbstractVector{T}; mu_e::Float64=2.) where {T} 
 	    a, M_WD, M_NS, R_WD, J, θ=theta
 	    return( R0_WD(M_WD, mu_e=mu_e))
 	end
 	    
 	function dJ_vector(theta::AbstractVector{T}; 
 	               A::Float64=10.0, mu_e::Float64=2.0, eta_acc::Float64=0.1, 
-	               a_ring_frac::Float64=1.0, mode::String="Isotropic")::Float64 where {T} 
+	               a_ring_frac::Float64=1.0, mode::String="Isotropic") where {T} 
 	    a, M_WD, M_NS, R_WD, J, θ=theta
 	    return(J_dot(J, a, a, R_WD, M_WD, M_NS, 
 	               A=A, mu_e=mu_e, eta_acc=eta_acc, 
 	               a_ring_frac=a_ring_frac, mode=mode))
 	end
 	
-	function dθ_vector(theta::AbstractVector{T})::Float64 where {T} 
+	function dθ_vector(theta::AbstractVector{T}) where {T} 
 	    a, M_WD, M_NS, R_WD, J, θ=theta
 	    return(dθ(J,a,M_WD, M_NS))
 	end
 	
 	
 	#=Same treatment, but for quadrupole moments=#
-	function Ixx_vector(theta::AbstractVector{T})::Float64  where {T} 
+	function Ixx_vector(theta::AbstractVector{T}) where {T} 
 	    a, M_WD, M_NS, R_WD, J, θ=theta
 	    return(I_xx(M_WD, M_NS, a, θ))
 	end
 	
-	function Ixy_vector(theta::AbstractVector{T})::Float64  where {T} 
+	function Ixy_vector(theta::AbstractVector{T})  where {T} 
 	    a, M_WD, M_NS, R_WD, J, θ=theta
 	    return(I_xy(M_WD, M_NS, a, θ))
 	end
 end
 
+# ╔═╡ ad39dbb0-a043-4ed9-ada1-5a59612f57ec
+
+
 # ╔═╡ e70e5b74-542d-48e2-8bc0-b63f98c56a4a
-da_vector([1,1,1,1,1,1])
+da_vector([1.,1.,1.,1.,1.,1.])
+
+# ╔═╡ 2a08d783-6670-498a-b79b-d0e380c2c4e4
+
 
 # ╔═╡ ec52b24b-53ea-4aba-841d-e73bed07de3d
 
@@ -473,11 +519,16 @@ end;
 
 # ╔═╡ 7f728824-950f-4631-bb6b-2b4654f6dc7f
 #=Constructs a symmetric 2x2 tensor from a plus and times polarization=#
-function tensor_plus_times(plus::Float64, times::Float64)::Vector{Float64}
-    return([plus times;
-            times -plus        
+function tensor_plus_times(plus::Float64, times::Float64)::Matrix{Float64}
+    return([plus times; times -plus        
     ])
 end
+
+# ╔═╡ 2aaf2282-5dd7-4f93-9e32-b7a45b5dc3ff
+
+
+# ╔═╡ 50b7dfa1-0261-4de7-89a6-4bf1d6390310
+
 
 # ╔═╡ 5098b622-aacf-4df1-8341-637e8eac60e6
 md"The below block of code is central to the interface between the mass transfer and radiation reaction effects. It also sits in the innermost loop of our integrator. This is a good place to peer review."
@@ -503,14 +554,6 @@ begin
 	    theta_dtheta=vcat(theta,dtheta)
 	    dtheta_ddtheta=vcat(dtheta,ddtheta)
 	
-	    if not ddI_only
-	        dddtheta=zeros(6)
-	        #calculating third time derivatives due to MT only
-	        for i in 1:6
-	            dddtheta[i]=third_derivatives[i](theta_dtheta,dtheta_ddtheta)
-	        end
-	    end
-	
 	
 	    
 	    #using orbital elements and first and second time derivatives 
@@ -518,8 +561,8 @@ begin
 	    #(for use in calculating RR acceleration)
 	    
 	    
-	    t_ddI=tensor_plus_times(ddI_xx(theta_dtheta,dtheta_ddtheta),
-	        ddI_xy(theta_dtheta,dtheta_ddtheta)
+	    t_ddI=tensor_plus_times(ddI_xx_vector(theta_dtheta,dtheta_ddtheta),
+	        ddI_xy_vector(theta_dtheta,dtheta_ddtheta)
 	    )
 	    return(dtheta, ddtheta, theta_dtheta, dtheta_ddtheta, t_ddI)
 	
@@ -540,15 +583,32 @@ begin
 	    #using orbital elements and first through third time derivatives  
 	    #to calculate third derivative of quadrupole moment 
 	    #(for use in calculating RR acceleration)
+
+		dddtheta=zeros(6)
+	    #calculating second time derivatives due to MT only
+	    for i in 1:6
+	        dddtheta[i]=third_derivatives[i](theta,dtheta)
+	    end
+
+		
 	    theta_ddtheta=vcat(theta_dtheta,ddtheta)
 	    dtheta_dddtheta=vcat(dtheta_ddtheta,dddtheta)
 	
-	    t_dddI=tensor_plus_times(dddI_xx(theta_ddtheta,dddtheta),
-	        dddI_xy(theta_ddtheta,dddtheta)
+	    t_dddI=tensor_plus_times(dddI_xx_vector(theta_ddtheta,dddtheta),
+	        dddI_xy_vector(theta_ddtheta,dddtheta)
 	    )
 	    return(dtheta,t_ddI,t_dddI)
 	end
 end;
+
+# ╔═╡ 2c6982e2-ee7d-4d2b-8f59-0285d85f1063
+
+
+# ╔═╡ c9a96a65-a4f8-4440-840e-5467793dad63
+
+
+# ╔═╡ 6a5b3c1f-f8b6-4578-915f-e35be805e608
+
 
 # ╔═╡ 987850ef-c086-4b16-8401-d11c753b800d
 
@@ -2631,9 +2691,14 @@ version = "17.4.0+2"
 # ╠═b2dcf719-078c-4ec0-bde6-243972cfc957
 # ╠═4135feba-248d-4880-9e05-e3e85dae9963
 # ╠═2fb18e7f-30eb-4dff-b30f-f5086ec3e02d
+# ╠═69640bb5-07a4-4257-9eea-6f16dfcce74c
+# ╠═2efd9365-9bcf-41ea-9e77-9346bf498bde
 # ╠═6b59b741-3cfa-4db2-afce-e6f23ab1a06a
 # ╠═4bbe25ad-bce2-4305-bd83-6dba2dc1f28c
 # ╠═e90a2a13-e9af-4160-a307-cc7df36e280e
+# ╠═aad547b0-ff39-4c6c-bd40-d47d132e3f4d
+# ╠═d877e869-f0ec-4b02-9bdc-8f8d6d4e1c6c
+# ╠═deb8fbb9-e4f9-44e3-87cf-e226319b8a2e
 # ╠═3fb94d9d-948f-4620-8621-e0f3d11e99cf
 # ╠═84c2d206-599a-42e1-ba61-6bc06cb62f65
 # ╟─7f29652e-29d7-43dc-8ad3-a1dae2f39991
@@ -2657,6 +2722,13 @@ version = "17.4.0+2"
 # ╠═00f1992b-db3b-4a1e-87fc-3be66f2ec11b
 # ╠═11d2af20-64fd-41de-b33c-76122c047bcb
 # ╠═621d6981-fed6-4665-85a2-f5df3a06519e
+# ╠═b889ebe5-e259-4208-8685-cc32df37f58c
+# ╠═95d0ce5f-fe9a-4cd2-bb0f-90eb4a5e1f39
+# ╠═d41d2eb7-701e-4893-8116-7d477effeef4
+# ╠═de0d4bc7-e2b8-4812-8b28-43bda221b17f
+# ╠═31736097-efce-4c31-85ab-d657cb97822a
+# ╠═19a2498d-e8c1-4394-bc7c-9dd2e6033b16
+# ╠═96a595df-5e71-4d63-800f-f600ef4b591a
 # ╠═e681a7b9-9996-4105-ac4c-f1bd880f8235
 # ╠═7d4b6bb6-2fcc-4669-9c4d-369b10b2644b
 # ╠═7fcacf8f-b82f-48f0-87ab-9f11b7ac936f
@@ -2667,7 +2739,9 @@ version = "17.4.0+2"
 # ╠═731205f1-64f9-4dd5-809f-a1cd20eabd47
 # ╠═528d99bb-0800-41d7-812b-8685a18c2ec0
 # ╠═3b211714-36b0-4b0d-9b62-6ae2939f66d9
+# ╠═ad39dbb0-a043-4ed9-ada1-5a59612f57ec
 # ╠═e70e5b74-542d-48e2-8bc0-b63f98c56a4a
+# ╠═2a08d783-6670-498a-b79b-d0e380c2c4e4
 # ╠═ec52b24b-53ea-4aba-841d-e73bed07de3d
 # ╠═347a6102-01db-4779-8a36-63083147934f
 # ╠═6f17b393-4645-462a-a8da-3dfc13a810d1
@@ -2678,8 +2752,13 @@ version = "17.4.0+2"
 # ╠═9878e729-0b7c-4684-a0fd-e0cf73465199
 # ╠═0e80bd6c-80af-45b3-8637-22fa8bfe8a5c
 # ╠═7f728824-950f-4631-bb6b-2b4654f6dc7f
+# ╠═2aaf2282-5dd7-4f93-9e32-b7a45b5dc3ff
+# ╠═50b7dfa1-0261-4de7-89a6-4bf1d6390310
 # ╠═5098b622-aacf-4df1-8341-637e8eac60e6
 # ╠═6208496a-07a7-4f27-9994-98a3347f018b
+# ╠═2c6982e2-ee7d-4d2b-8f59-0285d85f1063
+# ╠═c9a96a65-a4f8-4440-840e-5467793dad63
+# ╠═6a5b3c1f-f8b6-4578-915f-e35be805e608
 # ╠═987850ef-c086-4b16-8401-d11c753b800d
 # ╠═bc193a3e-052e-4860-854d-398fa08deeec
 # ╠═120ff400-43a9-4be6-b1a8-2017ae0b111a
