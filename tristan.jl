@@ -587,7 +587,7 @@ begin
 		dddtheta=zeros(6)
 	    #calculating second time derivatives due to MT only
 	    for i in 1:6
-	        dddtheta[i]=third_derivatives[i](theta,dtheta)
+	        dddtheta[i]=third_derivatives[i](theta_dtheta,dtheta_ddtheta)
 	    end
 
 		
@@ -600,6 +600,9 @@ begin
 	    return(dtheta,t_ddI,t_dddI)
 	end
 end;
+
+# ╔═╡ 2d9276d6-cf9c-439e-bd66-9220fea56dde
+
 
 # ╔═╡ 2c6982e2-ee7d-4d2b-8f59-0285d85f1063
 
@@ -2756,6 +2759,7 @@ version = "17.4.0+2"
 # ╠═50b7dfa1-0261-4de7-89a6-4bf1d6390310
 # ╠═5098b622-aacf-4df1-8341-637e8eac60e6
 # ╠═6208496a-07a7-4f27-9994-98a3347f018b
+# ╠═2d9276d6-cf9c-439e-bd66-9220fea56dde
 # ╠═2c6982e2-ee7d-4d2b-8f59-0285d85f1063
 # ╠═c9a96a65-a4f8-4440-840e-5467793dad63
 # ╠═6a5b3c1f-f8b6-4578-915f-e35be805e608
