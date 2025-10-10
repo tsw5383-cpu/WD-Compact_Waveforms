@@ -12,12 +12,12 @@ begin
     using Test
 end;
 
-
+#=
 # Constants
 begin
 	const G::Float64 = 1.327e11   # km^3 / M⊙ / s^2
 	const c::Float64 = 2.998e5    # km/s
-end
+end=#
 
 function R0_WD(M_WD::T;mu_e=2.0::Float64)::T where T<:Real
 	@assert M_WD > 0 # In production ready code, consider commenting out assertion

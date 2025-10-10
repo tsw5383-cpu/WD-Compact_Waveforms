@@ -50,13 +50,18 @@ begin
 
 	
 	current_path=@__DIR__
-	include(current_path*"/victor-ftns_only.jl")
+	include(current_path*"/victor-ftns_only_no_types.jl")
+
+	const G::Float64 = 1.327e11   # km^3 / M⊙ / s^2
+	const c::Float64 = 2.998e5    # km/s
 	#victor-functions_only.jl:
 	#file with a lot of helpful functions
 	#This is the biggest current issue: 
 	#I do not know how to use the functions 
 	#in victor.jl in tristan.jl. This causes 
 	#us to fail our final integration test.
+	#EDIT: Removing types for compatibility
+	#with ForwardDiff.
 	
 end;
 
@@ -64,6 +69,9 @@ end;
 md"Importing packages is causing me a world of problems."
 
 # ╔═╡ 8edaf48b-d27d-43c9-8a0c-e149654b6cd0
+
+
+# ╔═╡ 17be5889-9440-4adb-965f-17de4875a922
 
 
 # ╔═╡ ce80bb70-d60e-4bdf-8f7c-16421fd90138
@@ -406,6 +414,15 @@ begin
 end
 
 # ╔═╡ e70e5b74-542d-48e2-8bc0-b63f98c56a4a
+da_vector([1,1,1,1,1,1])
+
+# ╔═╡ ec52b24b-53ea-4aba-841d-e73bed07de3d
+
+
+# ╔═╡ 347a6102-01db-4779-8a36-63083147934f
+
+
+# ╔═╡ 6f17b393-4645-462a-a8da-3dfc13a810d1
 
 
 # ╔═╡ 8adb4e33-7470-4996-a1b2-9be09f45a06a
@@ -2581,6 +2598,7 @@ version = "17.4.0+2"
 # ╠═6c59b881-5668-4894-950b-2c7bee5367ef
 # ╠═8edaf48b-d27d-43c9-8a0c-e149654b6cd0
 # ╠═0cac30f1-9101-4ba3-accc-52621bc1d16f
+# ╠═17be5889-9440-4adb-965f-17de4875a922
 # ╠═ce80bb70-d60e-4bdf-8f7c-16421fd90138
 # ╠═fa5a36f9-b1e2-4461-bb18-a3172f4b7af7
 # ╠═421df964-fd81-471d-bff5-570f3f409f53
@@ -2650,6 +2668,9 @@ version = "17.4.0+2"
 # ╠═528d99bb-0800-41d7-812b-8685a18c2ec0
 # ╠═3b211714-36b0-4b0d-9b62-6ae2939f66d9
 # ╠═e70e5b74-542d-48e2-8bc0-b63f98c56a4a
+# ╠═ec52b24b-53ea-4aba-841d-e73bed07de3d
+# ╠═347a6102-01db-4779-8a36-63083147934f
+# ╠═6f17b393-4645-462a-a8da-3dfc13a810d1
 # ╠═8adb4e33-7470-4996-a1b2-9be09f45a06a
 # ╠═2e9add50-a93b-4186-95c1-95c871f1751d
 # ╠═4b422cf8-bedc-441b-862d-e7d89319bdb7
