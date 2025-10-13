@@ -261,11 +261,17 @@ which is the basis for `time_derivative`. This gives that $\dot f\equiv \dot f(\
 
 
 # ╔═╡ 0a57469d-418f-47b0-bf56-828d4bc529e1
-
+"""Fixes the higher derivatives of the function so that it is formatted in a way that ForwardDiff is comfortable with."""
+function fix_higher_derivatives(ftn::Function,higher_derivatives::AbstractVector{T}) where {T} 
+	function inner_ftn(gen_theta::AbstractVector{T}) where {T}
+		return(ftn(gen_theta,higher_derivatives))
+	end
+	return ftn 
+end;
 
 # ╔═╡ 694fe531-e34e-4c27-94cb-ae3f1e14aa90
 """Given a function, its vectorized parameters, and the time derivatives of those parameters, returns the time derivative of the function as calculated via the chain rule."""
-function time_derivative(ftn::Function, ind_vars::Vector{Float64}, derivatives::Vector{Float64})::Float64
+function time_derivative(ftn::Function, ind_vars::AbstractVector{T}, derivatives::AbstractVector{T})::Float64 where {T}
     #ftn is the function to be taken a time derivative of
     #ind_vars is an array with the values of the arguments of ftn
     #derivatives is an array with the known time derivatives of ind_vars
@@ -279,7 +285,28 @@ function time_derivative(ftn::Function, ind_vars::Vector{Float64}, derivatives::
     return(dot(grad,derivatives))#chain rule
 end
 
+# ╔═╡ fe8146df-3f78-4ee9-9ec1-3d74e6ca63af
+
+
 # ╔═╡ 28bdbf35-455c-4e01-a1bb-05c862abe361
+function time_derivative(ftn::Function, ind_vars_and_derivatives::AbstractVector{T})::Float64 where {T}
+    #ftn is the function to be taken a time derivative of
+    #ind_vars is an array with the values of the arguments of ftn
+    #derivatives is an array with the known time derivatives of ind_vars
+    
+    @assert mod(length(ind_vars_and_derivatives),6)==0
+
+	ind_vars=ind_vars_and_derivatives[1:-6]
+	derivatives=ind_vars_and_derivatives[7:length(ind_vars_and_derivatives)]
+    
+    
+    return(time_derivative(ftn,ind_vars,derivatives))#chain rule
+end
+
+# ╔═╡ a238a819-a6ef-479c-912a-2ddc5812ce66
+
+
+# ╔═╡ aaa3e3ba-fd7d-4a9b-bb46-bd63bb1e8557
 
 
 # ╔═╡ 72dd65d6-0b35-4d2e-a359-3abe9aa39c5f
@@ -290,42 +317,6 @@ begin
 	end;
 	@test time_derivative(test_ftn, [1., 2.], [1., 1.]) ≈ 5 atol=1e-15
 end;
-
-# ╔═╡ 02f492c4-2b40-4e9d-945c-d02032b350a1
-
-
-# ╔═╡ 60a2aa64-7663-4418-b6c2-5c0cea33b7ce
-
-
-# ╔═╡ d79f4b3c-949c-4dbc-898b-c913657c0972
-
-
-# ╔═╡ 921e2984-3b6a-4cda-ab35-b9bf4b3ef879
-
-
-# ╔═╡ dfedcf15-1358-42c8-919f-b3ed21b3ebaa
-
-
-# ╔═╡ a41296bf-1ae6-448c-be5e-9e63cde9fed8
-
-
-# ╔═╡ 794c63da-f8c7-469e-8b1d-8eb00ad04296
-
-
-# ╔═╡ 019ed0f6-3f7b-4b10-913b-9242e0405aa2
-
-
-# ╔═╡ ffd57530-019a-45c5-b8a5-ab9ba423a08e
-
-
-# ╔═╡ 11bcc35f-ec8b-4df1-9a0a-eb6d1f5a28c2
-
-
-# ╔═╡ 0edb3bb3-c0e2-4595-8b34-b963cdaa181f
-
-
-# ╔═╡ 00f1992b-db3b-4a1e-87fc-3be66f2ec11b
-
 
 # ╔═╡ 11d2af20-64fd-41de-b33c-76122c047bcb
 
@@ -508,6 +499,10 @@ begin
     ddI_xy_vector=next_derivative(Ixy_vector,n=2)
     dddI_xy_vector=next_derivative(Ixy_vector,n=3)
 end;  
+
+# ╔═╡ a602a9fd-f5af-44f9-bef5-60974e100a9a
+
+
 
 # ╔═╡ 0e80bd6c-80af-45b3-8637-22fa8bfe8a5c
 #=bundling derivatives together which will prove convenient later=#
@@ -2709,20 +2704,11 @@ version = "17.4.0+2"
 # ╠═25998cc0-96e9-476c-8853-d102a58c0334
 # ╠═0a57469d-418f-47b0-bf56-828d4bc529e1
 # ╠═694fe531-e34e-4c27-94cb-ae3f1e14aa90
+# ╠═fe8146df-3f78-4ee9-9ec1-3d74e6ca63af
 # ╠═28bdbf35-455c-4e01-a1bb-05c862abe361
+# ╠═a238a819-a6ef-479c-912a-2ddc5812ce66
+# ╠═aaa3e3ba-fd7d-4a9b-bb46-bd63bb1e8557
 # ╠═72dd65d6-0b35-4d2e-a359-3abe9aa39c5f
-# ╠═02f492c4-2b40-4e9d-945c-d02032b350a1
-# ╠═60a2aa64-7663-4418-b6c2-5c0cea33b7ce
-# ╠═d79f4b3c-949c-4dbc-898b-c913657c0972
-# ╠═921e2984-3b6a-4cda-ab35-b9bf4b3ef879
-# ╠═dfedcf15-1358-42c8-919f-b3ed21b3ebaa
-# ╠═a41296bf-1ae6-448c-be5e-9e63cde9fed8
-# ╠═794c63da-f8c7-469e-8b1d-8eb00ad04296
-# ╠═019ed0f6-3f7b-4b10-913b-9242e0405aa2
-# ╠═ffd57530-019a-45c5-b8a5-ab9ba423a08e
-# ╠═11bcc35f-ec8b-4df1-9a0a-eb6d1f5a28c2
-# ╠═0edb3bb3-c0e2-4595-8b34-b963cdaa181f
-# ╠═00f1992b-db3b-4a1e-87fc-3be66f2ec11b
 # ╠═11d2af20-64fd-41de-b33c-76122c047bcb
 # ╠═621d6981-fed6-4665-85a2-f5df3a06519e
 # ╠═b889ebe5-e259-4208-8685-cc32df37f58c
@@ -2753,6 +2739,7 @@ version = "17.4.0+2"
 # ╠═4b422cf8-bedc-441b-862d-e7d89319bdb7
 # ╠═8b8cf6b2-70ef-4c0c-b729-551637947f0c
 # ╠═9878e729-0b7c-4684-a0fd-e0cf73465199
+# ╠═a602a9fd-f5af-44f9-bef5-60974e100a9a
 # ╠═0e80bd6c-80af-45b3-8637-22fa8bfe8a5c
 # ╠═7f728824-950f-4631-bb6b-2b4654f6dc7f
 # ╠═2aaf2282-5dd7-4f93-9e32-b7a45b5dc3ff
