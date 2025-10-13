@@ -156,9 +156,15 @@ md"We model the neutron star as accreting conservatively until it reaches its Ed
 
 # ╔═╡ 86648226-52f9-4951-bd85-bebc21018567
 """Smooth approximation to the minimum function"""
-function Boltzmann_Max(x1::Float64, x2::Float64; α::Float64=-4.)::Float64
+function Boltzmann_Max(x1::T, x2::T; α=-4.) where T<:Real
     return((x1*exp(α*x1)+x2*exp(α*x2))/(exp(α*x1)+exp(α*x2)))
 end
+
+# ╔═╡ 1de07299-8623-49fe-bba3-136dc45e7c82
+
+
+# ╔═╡ ea61a15f-1982-4469-8e0b-22f309d1bef5
+
 
 # ╔═╡ 89014777-e6e0-406a-863c-72a310e37f7e
 md"Testing for accuracy within 10% of true minimum value:"
@@ -181,10 +187,10 @@ end
 begin
 	""" Smooth accretion rate of the neutron star """
 	function dM_NS(a::T, R_WD::T, M_WD::T, M_NS::T;
-			A::Float64=10, mu_e::Float64=2.0, eta_acc::Float64=0.1, α::Float64=4) where T<:Real
-	    t_dM_WD=decretion_rate(a,a,R_WD,M_WD,M_Ns,A=A)
+			A=10., mu_e=2.0, eta_acc=0.1, α=4) where T<:Real
+	    t_dM_WD=decretion_rate(a,a,R_WD,M_WD,M_NS,A=A)
 	    t_edd=eddington_rate(M_NS, mu_e=mu_e, eta_acc=eta_acc)
-	    return(Boltzmann_Max(-t_dM_WD,t_edd,α=α))
+	    return(Boltzmann_Max(t_dM_WD,t_edd,α=α))
 	end
 
 
@@ -203,7 +209,34 @@ begin
 	end   
 end;
 
+# ╔═╡ 2e25bf2a-d4c0-41c6-b4f3-1fff15bd6032
+
+
+# ╔═╡ 7ffbc67d-2ad6-4ca2-8e52-7bcd81089da1
+
+
+# ╔═╡ a18ec6f3-6036-4e0e-b8f2-6156e0497e8c
+
+
 # ╔═╡ 69640bb5-07a4-4257-9eea-6f16dfcce74c
+dM_NS(1.01, 1.01, 1.01, 1.01)
+
+# ╔═╡ c42a4b21-75f4-4246-a34c-c51fdd752d0a
+
+
+# ╔═╡ 94e9ebac-2ffa-4e76-be6c-273f402064ae
+
+
+# ╔═╡ 57900831-e4f4-4557-bacc-422af3cc2d2b
+
+
+# ╔═╡ 02584e20-271e-4263-a0b9-33889bc18ae6
+
+
+# ╔═╡ dd2c1373-c195-49b1-8f00-18894900bd85
+
+
+# ╔═╡ c69bd40e-49a0-4f5c-b516-6d5f774dd75d
 
 
 # ╔═╡ 2efd9365-9bcf-41ea-9e77-9346bf498bde
@@ -285,7 +318,7 @@ function time_derivative(ftn::Function, ind_vars::AbstractVector{T}, derivatives
     return(dot(grad,derivatives))#chain rule
 end
 
-# ╔═╡ fe8146df-3f78-4ee9-9ec1-3d74e6ca63af
+# ╔═╡ fdd55e22-89d2-465a-80b8-5c59f5f7129b
 
 
 # ╔═╡ 28bdbf35-455c-4e01-a1bb-05c862abe361
@@ -303,6 +336,12 @@ function time_derivative(ftn::Function, ind_vars_and_derivatives::AbstractVector
     return(time_derivative(ftn,ind_vars,derivatives))#chain rule
 end
 
+# ╔═╡ 44ba797c-48c8-45e2-87af-a6bf102066a3
+
+
+# ╔═╡ 951f256e-c418-4f39-b4aa-0f4080caae8b
+
+
 # ╔═╡ a238a819-a6ef-479c-912a-2ddc5812ce66
 
 
@@ -318,6 +357,18 @@ begin
 	@test time_derivative(test_ftn, [1., 2.], [1., 1.]) ≈ 5 atol=1e-15
 end;
 
+# ╔═╡ 92a94cfd-a3ff-4d62-af3b-dc8b0b57b0ba
+methods(test_ftn)
+
+# ╔═╡ 1efcd158-2476-43ca-9474-66ec7e391aa0
+
+
+# ╔═╡ f52559d9-35d7-4464-bd88-26419fb5354f
+
+
+# ╔═╡ d95b1547-717e-4ba4-8a1c-edea66926550
+
+
 # ╔═╡ 11d2af20-64fd-41de-b33c-76122c047bcb
 
 
@@ -325,7 +376,7 @@ end;
 #=Higher derivatives=#
 #=takes in values and time derivatives to calculate second derivative=#
 """Given a function, defines its next derivative based on the function's parameters and their time derivatives. `n` determines how many time derivatives of \vec{θ} (i.e., the parameters to be integrated) are parameters of the function itself. """
-function next_derivative(in_ftn::Function; n::Integer=1)::Function
+#=function next_derivative(in_ftn::Function; n::Integer=1)::Function
     #returns a function which is the next higher derivative of the in_ftn
     #n is the total derivatives past the given analytic form
     function ftn(gen_theta::AbstractVector{T}, gen_dtheta::AbstractVector{T})::Float64 where {T}
@@ -333,12 +384,34 @@ function next_derivative(in_ftn::Function; n::Integer=1)::Function
 		println(length(gen_theta),length(gen_dtheta),6*n)
         @assert length(gen_theta)==length(gen_dtheta)==6*n 
         @assert gen_theta[7:end]==gen_dtheta[1:end-6]
+		ind_vars_and_derivatives
+        #requires gen_theta to be [theta, dtheta, d...dtheta] for n=number of ds
+        #requires gen_theta to be [dtheta, ddtheta d...ddtheta] for n+1=number of ds
+        return(time_derivative(in_ftn, gen_theta, gen_dtheta))
+    end
+    return ftn
+end=#
+
+# ╔═╡ 05576550-3ffb-4d2e-b89e-e4d00ed54d71
+"""Given a function, defines its next derivative based on the function's parameters and their time derivatives. `n` determines how many time derivatives of \vec{θ} (i.e., the parameters to be integrated) are parameters of the function itself. """
+function next_derivative(in_ftn::Function; n::Integer=1)
+    #returns a function which is the next higher derivative of the in_ftn
+    #n is the total derivatives past the given analytic form
+	@assert n>0
+    function ftn(gen_theta_and_derivatives::AbstractVector{T}) where {T}
+		print(in_ftn)
+        @assert length(gen_theta_and_derivatives)==6*(n+1) 
+		gen_theta=gen_theta_and_derivatives[1:end-6]
+		gen_dtheta=gen_theta_and_derivatives[end-5:end]
         #requires gen_theta to be [theta, dtheta, d...dtheta] for n=number of ds
         #requires gen_theta to be [dtheta, ddtheta d...ddtheta] for n+1=number of ds
         return(time_derivative(in_ftn, gen_theta, gen_dtheta))
     end
     return ftn
 end
+
+# ╔═╡ 5bdbc460-4df3-4d64-87d2-7820997d2317
+
 
 # ╔═╡ b889ebe5-e259-4208-8685-cc32df37f58c
 
@@ -532,22 +605,22 @@ md"The below block of code is central to the interface between the mass transfer
 #=Central Engine of the integrator=#
 begin
 	"""Calculates the second derivative of the quadrupole moment `t_ddI`  due to kinematics of keplerian motion and mass transfer `dtheta`. Also returns higher derivatives of theta useful for calculating the third derivative of the quadrupole moment."""
-	function ddI_helper(theta::Vector{Float64})::Tuple{Vector{Float64},Vector{Float64},Vector{Float64},Vector{Float64},Array{Float64,2}}
+	function ddI_helper(theta::AbstractVector{T}) where {T}
 	    #calulates a list of values which will be helpful in the next two functions
 	    dtheta=zeros(6)
 	    #calculating first time derivatives due to MT only
 	    for i in 1:6
 	        dtheta[i]=first_derivatives[i](theta)
 	    end
-	
+
+		theta_dtheta=vcat(theta,dtheta)
 	    ddtheta=zeros(6)
 	    #calculating second time derivatives due to MT only
 	    for i in 1:6
-	        ddtheta[i]=second_derivatives[i](theta,dtheta)
+	        ddtheta[i]=second_derivatives[i](theta_dtheta)
 	    end
 	
-	    theta_dtheta=vcat(theta,dtheta)
-	    dtheta_ddtheta=vcat(dtheta,ddtheta)
+	    theta_ddtheta=vcat(theta_dtheta,ddtheta)
 	
 	
 	    
@@ -556,16 +629,16 @@ begin
 	    #(for use in calculating RR acceleration)
 	    
 	    
-	    t_ddI=tensor_plus_times(ddI_xx_vector(theta_dtheta,dtheta_ddtheta),
-	        ddI_xy_vector(theta_dtheta,dtheta_ddtheta)
+	    t_ddI=tensor_plus_times(ddI_xx_vector(theta_ddtheta),
+	        ddI_xy_vector(theta_ddtheta)
 	    )
-	    return(dtheta, ddtheta, theta_dtheta, dtheta_ddtheta, t_ddI)
+	    return(dtheta, ddtheta, theta_ddtheta, t_ddI)
 	
 	end
 
 	"""Returns the second derivative of the quadrupole moment as calculated in `ddI_Helper`. """
 	function ddI_from_theta(theta::Vector{Float64})::Array{Float64,2}
-	    return(ddI_helper(theta)[5])
+	    return(ddI_helper(theta)[end])
 	end
 	    
 	
@@ -574,27 +647,35 @@ begin
 	    #returns time derivatives of theta and second and third derivatives of 
 	    #the quadrupole moment due to MT effects
 	    
-	    dtheta, ddtheta, theta_dtheta, dtheta_ddtheta, t_ddI = ddI_helper(theta)
+	    dtheta, ddtheta, theta_ddtheta, t_ddI = ddI_helper(theta)
 	    #using orbital elements and first through third time derivatives  
 	    #to calculate third derivative of quadrupole moment 
 	    #(for use in calculating RR acceleration)
 
+		print(theta_ddtheta)
+
 		dddtheta=zeros(6)
 	    #calculating second time derivatives due to MT only
 	    for i in 1:6
-	        dddtheta[i]=third_derivatives[i](theta_dtheta,dtheta_ddtheta)
+	        dddtheta[i]=third_derivatives[i](theta_ddtheta)
 	    end
 
 		
-	    theta_ddtheta=vcat(theta_dtheta,ddtheta)
-	    dtheta_dddtheta=vcat(dtheta_ddtheta,dddtheta)
+	    
+	    theta_dddtheta=vcat(theta_ddtheta,dddtheta)
 	
-	    t_dddI=tensor_plus_times(dddI_xx_vector(theta_ddtheta,dddtheta),
-	        dddI_xy_vector(theta_ddtheta,dddtheta)
+	    t_dddI=tensor_plus_times(dddI_xx_vector(theta_dddtheta),
+	        dddI_xy_vector(theta_dddtheta)
 	    )
 	    return(dtheta,t_ddI,t_dddI)
 	end
 end;
+
+# ╔═╡ 850fa701-4427-4f4d-bd8d-369135841d07
+
+
+# ╔═╡ f9aaaa54-1e7a-46e6-954e-a6e20f637931
+
 
 # ╔═╡ 2d9276d6-cf9c-439e-bd66-9220fea56dde
 
@@ -2684,12 +2765,23 @@ version = "17.4.0+2"
 # ╠═07ca0c95-f9b3-42ad-8a49-3d305002b20f
 # ╠═4f1118f3-e8f8-479f-819a-db201f36e447
 # ╠═86648226-52f9-4951-bd85-bebc21018567
+# ╠═1de07299-8623-49fe-bba3-136dc45e7c82
+# ╠═ea61a15f-1982-4469-8e0b-22f309d1bef5
 # ╠═89014777-e6e0-406a-863c-72a310e37f7e
 # ╠═45d20cd8-a5e6-4709-b309-bfb3da22ed67
 # ╠═b2dcf719-078c-4ec0-bde6-243972cfc957
 # ╠═4135feba-248d-4880-9e05-e3e85dae9963
 # ╠═2fb18e7f-30eb-4dff-b30f-f5086ec3e02d
+# ╠═2e25bf2a-d4c0-41c6-b4f3-1fff15bd6032
+# ╠═7ffbc67d-2ad6-4ca2-8e52-7bcd81089da1
+# ╠═a18ec6f3-6036-4e0e-b8f2-6156e0497e8c
 # ╠═69640bb5-07a4-4257-9eea-6f16dfcce74c
+# ╠═c42a4b21-75f4-4246-a34c-c51fdd752d0a
+# ╠═94e9ebac-2ffa-4e76-be6c-273f402064ae
+# ╠═57900831-e4f4-4557-bacc-422af3cc2d2b
+# ╠═02584e20-271e-4263-a0b9-33889bc18ae6
+# ╠═dd2c1373-c195-49b1-8f00-18894900bd85
+# ╠═c69bd40e-49a0-4f5c-b516-6d5f774dd75d
 # ╠═2efd9365-9bcf-41ea-9e77-9346bf498bde
 # ╠═6b59b741-3cfa-4db2-afce-e6f23ab1a06a
 # ╠═4bbe25ad-bce2-4305-bd83-6dba2dc1f28c
@@ -2704,13 +2796,21 @@ version = "17.4.0+2"
 # ╠═25998cc0-96e9-476c-8853-d102a58c0334
 # ╠═0a57469d-418f-47b0-bf56-828d4bc529e1
 # ╠═694fe531-e34e-4c27-94cb-ae3f1e14aa90
-# ╠═fe8146df-3f78-4ee9-9ec1-3d74e6ca63af
+# ╠═fdd55e22-89d2-465a-80b8-5c59f5f7129b
+# ╠═92a94cfd-a3ff-4d62-af3b-dc8b0b57b0ba
 # ╠═28bdbf35-455c-4e01-a1bb-05c862abe361
+# ╠═44ba797c-48c8-45e2-87af-a6bf102066a3
+# ╠═951f256e-c418-4f39-b4aa-0f4080caae8b
 # ╠═a238a819-a6ef-479c-912a-2ddc5812ce66
 # ╠═aaa3e3ba-fd7d-4a9b-bb46-bd63bb1e8557
 # ╠═72dd65d6-0b35-4d2e-a359-3abe9aa39c5f
+# ╠═1efcd158-2476-43ca-9474-66ec7e391aa0
+# ╠═f52559d9-35d7-4464-bd88-26419fb5354f
+# ╠═d95b1547-717e-4ba4-8a1c-edea66926550
 # ╠═11d2af20-64fd-41de-b33c-76122c047bcb
 # ╠═621d6981-fed6-4665-85a2-f5df3a06519e
+# ╠═05576550-3ffb-4d2e-b89e-e4d00ed54d71
+# ╠═5bdbc460-4df3-4d64-87d2-7820997d2317
 # ╠═b889ebe5-e259-4208-8685-cc32df37f58c
 # ╠═95d0ce5f-fe9a-4cd2-bb0f-90eb4a5e1f39
 # ╠═d41d2eb7-701e-4893-8116-7d477effeef4
@@ -2746,6 +2846,8 @@ version = "17.4.0+2"
 # ╠═50b7dfa1-0261-4de7-89a6-4bf1d6390310
 # ╠═5098b622-aacf-4df1-8341-637e8eac60e6
 # ╠═6208496a-07a7-4f27-9994-98a3347f018b
+# ╠═850fa701-4427-4f4d-bd8d-369135841d07
+# ╠═f9aaaa54-1e7a-46e6-954e-a6e20f637931
 # ╠═2d9276d6-cf9c-439e-bd66-9220fea56dde
 # ╠═2c6982e2-ee7d-4d2b-8f59-0285d85f1063
 # ╠═c9a96a65-a4f8-4440-840e-5467793dad63
