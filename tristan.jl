@@ -283,9 +283,12 @@ end;
 
 
 # ╔═╡ 7f29652e-29d7-43dc-8ad3-a1dae2f39991
-md"To calculate the effect of the gravitational wave backreaction on the orbitm we must calculate derivatives up to $\dddot I^{ij}$. In principle, given the functions in the math section of README, it is possible to take these derivatives analytically by hand. In practice, this is a bit gruesome. We introduce autodifferentiation to take the necessary higher derivatives given that we can calculate the first time derivatives. For a function $f\equiv f(\vec{theta})$, we can use the chain rule to write: $\dot f =\sum_{i}\frac{\partial f}{\partial \theta^i}\dot\theta_i$
+md"To calculate the effect of the gravitational wave backreaction on the orbitm we must calculate derivatives up to $\dddot I^{ij}$. In principle, given the functions in the math section of README, it is possible to take these derivatives analytically by hand. In practice, this is a bit gruesome. We introduce autodifferentiation to take the necessary higher derivatives given that we can calculate the first time derivatives. For a function $f\equiv f(\vec{\theta})$, we can use the chain rule to write: $\dot f =\sum_{i}\frac{\partial f}{\partial \theta^i}\dot\theta_i$
 which is the basis for `time_derivative`. This gives that $\dot f\equiv \dot f(\vec{theta},\dot{\vec\theta})$, so to calculate $\ddot f$ involves taking the gradient over higher derivatives of the initial parameters. In general, $f^{(n)} =\sum_{j=0}^{n-1}\sum_{i}\frac{\partial f}{\partial (\theta^{i})^{(n)}}(\theta^{i})^{(n+1)}$ This is the basis for `next_derivative`.
 "
+
+# ╔═╡ 69e12b46-10d9-497b-9d2c-7b54e1658d7f
+
 
 # ╔═╡ 61544091-4d40-434b-bf52-de66d8c35c7a
 
@@ -304,11 +307,11 @@ end;
 
 # ╔═╡ 694fe531-e34e-4c27-94cb-ae3f1e14aa90
 """Given a function, its vectorized parameters, and the time derivatives of those parameters, returns the time derivative of the function as calculated via the chain rule."""
-function time_derivative(ftn::Function, ind_vars::AbstractVector{T}, derivatives::AbstractVector{T})::Float64 where {T}
+function time_derivative_two_args(ftn::Function, ind_vars::AbstractVector{T}, derivatives::AbstractVector{T}) where {T}
     #ftn is the function to be taken a time derivative of
     #ind_vars is an array with the values of the arguments of ftn
     #derivatives is an array with the known time derivatives of ind_vars
-    
+	
     @assert length(ind_vars)==length(derivatives)
     
     grad=ForwardDiff.gradient(ftn,ind_vars)
@@ -318,23 +321,34 @@ function time_derivative(ftn::Function, ind_vars::AbstractVector{T}, derivatives
     return(dot(grad,derivatives))#chain rule
 end
 
+# ╔═╡ ba3f4fbe-1eb3-4040-8616-28f926bb6243
+
+
 # ╔═╡ fdd55e22-89d2-465a-80b8-5c59f5f7129b
 
 
 # ╔═╡ 28bdbf35-455c-4e01-a1bb-05c862abe361
+"""Wraps the vectorized parameters and their derivatives into one input vector ind_vars_and_derivatives"""
 function time_derivative(ftn::Function, ind_vars_and_derivatives::AbstractVector{T})::Float64 where {T}
     #ftn is the function to be taken a time derivative of
     #ind_vars is an array with the values of the arguments of ftn
     #derivatives is an array with the known time derivatives of ind_vars
+	print(length(ind_vars_and_derivatives))
     
     @assert mod(length(ind_vars_and_derivatives),6)==0
 
-	ind_vars=ind_vars_and_derivatives[1:-6]
+	ind_vars=ind_vars_and_derivatives[1:end-6]
 	derivatives=ind_vars_and_derivatives[7:length(ind_vars_and_derivatives)]
     
     
     return(time_derivative(ftn,ind_vars,derivatives))#chain rule
 end
+
+# ╔═╡ 5e8ec2f8-d73a-4a81-86dc-bb9c3b538caa
+
+
+# ╔═╡ c1636ad3-16b4-43d1-b2bb-993885d11818
+
 
 # ╔═╡ 44ba797c-48c8-45e2-87af-a6bf102066a3
 
@@ -351,14 +365,34 @@ end
 # ╔═╡ 72dd65d6-0b35-4d2e-a359-3abe9aa39c5f
 begin
 	function test_ftn(xs::AbstractVector{T}) where {T}
-		x,y=xs
+		x,y, x1, x2, x3, x4 =xs
 		return(x+y^2)
 	end;
-	@test time_derivative(test_ftn, [1., 2.], [1., 1.]) ≈ 5 atol=1e-15
+	println(length([1., 2., 0. , 0., 0., 0., 1., 1., 0. , 0., 0., 0.]))
+	println(time_derivative(test_ftn, [1., 2., 0. , 0., 0., 0., 1., 1., 0. , 0., 0., 0.]) )
+	@test time_derivative(test_ftn, [1., 2., 0. , 0., 0., 0., 1., 1., 0. , 0., 0., 0.]) ≈ 5 atol=1e-15
 end;
 
 # ╔═╡ 92a94cfd-a3ff-4d62-af3b-dc8b0b57b0ba
 methods(test_ftn)
+
+# ╔═╡ bd182ff6-48cc-445e-b067-e387b88ff08b
+
+
+# ╔═╡ 4488d59c-5ef0-4d3e-8695-161bfefaf51c
+
+
+# ╔═╡ 6951b817-887e-46b7-9e5c-e4840ffd6cf4
+
+
+# ╔═╡ d71448b4-705e-468a-91b5-d3c87b599316
+
+
+# ╔═╡ a3315e6b-846c-4f8b-96bf-aa2519d44ae7
+
+
+# ╔═╡ 4a299a1e-afeb-4c7c-82a9-a3140a093719
+
 
 # ╔═╡ 1efcd158-2476-43ca-9474-66ec7e391aa0
 
@@ -2791,19 +2825,29 @@ version = "17.4.0+2"
 # ╠═deb8fbb9-e4f9-44e3-87cf-e226319b8a2e
 # ╠═3fb94d9d-948f-4620-8621-e0f3d11e99cf
 # ╠═84c2d206-599a-42e1-ba61-6bc06cb62f65
-# ╟─7f29652e-29d7-43dc-8ad3-a1dae2f39991
+# ╠═7f29652e-29d7-43dc-8ad3-a1dae2f39991
+# ╠═69e12b46-10d9-497b-9d2c-7b54e1658d7f
 # ╠═61544091-4d40-434b-bf52-de66d8c35c7a
 # ╠═25998cc0-96e9-476c-8853-d102a58c0334
 # ╠═0a57469d-418f-47b0-bf56-828d4bc529e1
 # ╠═694fe531-e34e-4c27-94cb-ae3f1e14aa90
+# ╠═ba3f4fbe-1eb3-4040-8616-28f926bb6243
 # ╠═fdd55e22-89d2-465a-80b8-5c59f5f7129b
 # ╠═92a94cfd-a3ff-4d62-af3b-dc8b0b57b0ba
 # ╠═28bdbf35-455c-4e01-a1bb-05c862abe361
+# ╠═5e8ec2f8-d73a-4a81-86dc-bb9c3b538caa
+# ╠═c1636ad3-16b4-43d1-b2bb-993885d11818
 # ╠═44ba797c-48c8-45e2-87af-a6bf102066a3
 # ╠═951f256e-c418-4f39-b4aa-0f4080caae8b
 # ╠═a238a819-a6ef-479c-912a-2ddc5812ce66
 # ╠═aaa3e3ba-fd7d-4a9b-bb46-bd63bb1e8557
 # ╠═72dd65d6-0b35-4d2e-a359-3abe9aa39c5f
+# ╠═bd182ff6-48cc-445e-b067-e387b88ff08b
+# ╠═4488d59c-5ef0-4d3e-8695-161bfefaf51c
+# ╠═6951b817-887e-46b7-9e5c-e4840ffd6cf4
+# ╠═d71448b4-705e-468a-91b5-d3c87b599316
+# ╠═a3315e6b-846c-4f8b-96bf-aa2519d44ae7
+# ╠═4a299a1e-afeb-4c7c-82a9-a3140a093719
 # ╠═1efcd158-2476-43ca-9474-66ec7e391aa0
 # ╠═f52559d9-35d7-4464-bd88-26419fb5354f
 # ╠═d95b1547-717e-4ba4-8a1c-edea66926550
