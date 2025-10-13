@@ -19,7 +19,7 @@ begin
 	const c::Float64 = 2.998e5    # km/s
 end=#
 
-function R0_WD(M_WD::T;mu_e=2.0::Float64)::T where T<:Real
+function R0_WD(M_WD::T;mu_e=2.0::T)::T where T<:Real
 	@assert M_WD > 0 # In production ready code, consider commenting out assertion
 	@assert mu_e > 0 # In production ready code, consider commenting out assertion
 	#white dwarf radius in km as ftn of mass in M_odot and mean molecular weight/electron=2
@@ -55,7 +55,7 @@ end
 
 # Decretion rate
 function decretion_rate(a::T, r::T, R_WD::T,
-                        M_WD::T, M_NS::T; A::Float64=10.0)::T where T<:Real
+                        M_WD::T, M_NS::T; A::T=10.0)::T where T<:Real
 	@assert R_WD > 0 # In production ready code, consider commenting out assertion
     RL::T where T<:Real = Roche_Limit(r, M_WD, M_NS)
     if RL > R_WD
@@ -67,7 +67,7 @@ end
 
 # Gamma (specific angular momentum of lost matter)
 function gamma(M_WD::T, M_NS::T; 
-               a_ring_frac::Float64=1.0, mode::String="Isotropic Re-emission")::T where T<:Real
+               a_ring_frac::T=1.0, mode::String="Isotropic Re-emission")::T where T<:Real
 	@assert M_WD > 0 # In production ready code, consider commenting out assertion
 	@assert M_NS > 0 # In production ready code, consider commenting out assertion
 	@assert a_ring_frac > 0 # In production ready code, consider commenting out assertion
@@ -85,7 +85,7 @@ end
 
 
 # Eddington accretion rate
-function eddington_rate(M::T; mu_e::Float64=2.0, eta_acc::Float64=0.1)::T where T<:Real
+function eddington_rate(M::T; mu_e::T=2.0, eta_acc::T=0.1)::T where T<:Real
     @assert M > 0 # In production ready code, consider commenting out assertion
 	@assert mu_e > 0 # In production ready code, consider commenting out assertion
 	@assert 0 < eta_acc <= 1 # In production ready code, consider commenting out assertion
@@ -95,7 +95,7 @@ end
 
 # Beta (fraction of accreted mass)
 function beta(a::T, r::T, R_WD::T, M_WD::T, M_NS::T; 
-              A::Float64=10.0, mu_e::Float64=2.0, eta_acc::Float64=0.1)::T where T<:Real
+              A::T=10.0, mu_e::T=2.0, eta_acc::T=0.1)::T where T<:Real
     M_WD_dot::T where T<:Real = -decretion_rate(a, r, R_WD, M_WD, M_NS; A=A)
     lam_edd::T where T<:Real = eddington_rate(M_NS; mu_e=mu_e, eta_acc=eta_acc)
     if M_WD_dot < lam_edd
@@ -107,8 +107,8 @@ end
 
 # Angular momentum loss rate
 function J_dot(J::T, a::T, r::T, R_WD::T, M_WD::T, M_NS::T; 
-               A::Float64=10.0, mu_e::Float64=2.0, eta_acc::Float64=0.1, 
-               a_ring_frac::Float64=1.0, mode::String="Isotropic")::T where T<:Real
+               A::T=10.0, mu_e::T=2.0, eta_acc::T=0.1, 
+               a_ring_frac::T=1.0, mode::String="Isotropic")::T where T<:Real
     g::T where T<:Real = gamma(M_WD, M_NS; a_ring_frac=a_ring_frac, mode=mode)
     b::T where T<:Real = beta(a, r, R_WD, M_WD, M_NS; A=A, mu_e=mu_e, eta_acc=eta_acc)
 	@assert b <= 1.0 # In production-ready code, consider commenting this out
@@ -119,8 +119,8 @@ end
 
 # Semi-major axis change rate
 function a_dot(a::T, r::T, R_WD::T, M_WD::T, M_NS::T; 
-               A::Float64=10.0, mu_e::Float64=2.0, eta_acc::Float64=0.1, 
-               a_ring_frac::Float64=1.0, mode::String="Isotropic")::T where T<:Real
+               A::T=10.0, mu_e::T=2.0, eta_acc::T=0.1, 
+               a_ring_frac::T=1.0, mode::String="Isotropic")::T where T<:Real
     g::T where T<:Real = gamma(M_WD, M_NS; a_ring_frac=a_ring_frac, mode=mode)
     b::T where T<:Real = beta(a, r, R_WD, M_WD, M_NS; A=A, mu_e=mu_e, eta_acc=eta_acc)
 	@assert b <= 1.0 # In production-ready code, consider commenting this out
