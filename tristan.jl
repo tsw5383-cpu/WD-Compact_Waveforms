@@ -527,45 +527,55 @@ begin
 			a_ring_frac=1.0, mode::String="Isotropic") where {T}
 
 		# promote the numeric keyword args to match the type of the inputs
-	    A       = T(A)
-	    mu_e    = T(mu_e)
+	    A = T(A)
+	    mu_e = T(mu_e)
 	    eta_acc = T(eta_acc)
-	    a_ring_frac  = T(a_ring_frac)
+	    a_ring_frac = T(a_ring_frac)
 
-		
+		#unpacking theta
 	    a, M_WD, M_NS, R_WD, J, θ=theta
 
-		for par in [a,a,M_WD,M_NS,R_WD,
-	            A,mu_e,eta_acc,
-	            a_ring_frac,mode]
-			println(typeof(par))
-		end
 		
 	    return(a_dot(a,a,M_WD,M_NS,R_WD;
 	            A=A,mu_e=mu_e,eta_acc=eta_acc,
 	            a_ring_frac=a_ring_frac,mode=mode))
 	end
 	
-	function dM_WD_vector(theta::AbstractVector{T}; A::T=10.0) where {T} 
+	function dM_WD_vector(theta::AbstractVector{T}; A=10.) where {T}
+		A = T(A)
+		
 	    a, M_WD, M_NS, R_WD, J, θ=theta
 	    return(decretion_rate(a, a, R_WD, M_WD, M_NS, A=A))
 	end
 	
 	function dM_NS_vector(theta::AbstractVector{T};
-	        A::T=10, mu_e::T=2.0, eta_acc::T=0.1, α::T=4) where {T} 
+	        A::T=10, mu_e::T=2.0, eta_acc::T=0.1, α=4) where {T}
+
+		A = T(A)
+	    mu_e = T(mu_e)
+	    eta_acc = T(eta_acc)
+	    α = T(α)
+		
 	    a, M_WD, M_NS, R_WD, J, θ=theta
 	    return(dM_NS(a, R_WD, M_WD, M_NS;
 	        A=a, mu_e=mu_e, eta_acc=eta_acc, α=α))
 	end
 	
-	function dR_WD_vector(theta::AbstractVector{T}; mu_e::T=2.) where {T} 
+	function dR_WD_vector(theta::AbstractVector{T}; mu_e=2.) where {T} 
+		mu_e = T(mu_e)
+		
 	    a, M_WD, M_NS, R_WD, J, θ=theta
 	    return( R0_WD(M_WD, mu_e=mu_e))
 	end
 	    
 	function dJ_vector(theta::AbstractVector{T}; 
-	               A::T=10.0, mu_e::T=2.0, eta_acc::T=0.1, 
-	               a_ring_frac::T=1.0, mode::String="Isotropic") where {T} 
+	               A=10.0, mu_e=2.0, eta_acc=0.1, 
+	               a_ring_frac=1.0, mode::String="Isotropic") where {T}
+		A = T(A)
+	    mu_e = T(mu_e)
+	    eta_acc = T(eta_acc)
+	    a_ring_frac = T(a_ring_frac)
+		
 	    a, M_WD, M_NS, R_WD, J, θ=theta
 	    return(J_dot(J, a, a, R_WD, M_WD, M_NS, 
 	               A=A, mu_e=mu_e, eta_acc=eta_acc, 
@@ -589,6 +599,12 @@ begin
 	    return(I_xy(M_WD, M_NS, a, θ))
 	end
 end
+
+# ╔═╡ 2f9e1da8-3522-4aad-af07-00d13602b610
+
+
+# ╔═╡ fd1ffa20-5780-4ee5-8f6d-248c02a1656e
+
 
 # ╔═╡ 736914e5-11e5-40bb-8792-236e132699d5
 
@@ -2959,6 +2975,8 @@ version = "17.4.0+2"
 # ╠═731205f1-64f9-4dd5-809f-a1cd20eabd47
 # ╠═528d99bb-0800-41d7-812b-8685a18c2ec0
 # ╠═3b211714-36b0-4b0d-9b62-6ae2939f66d9
+# ╠═2f9e1da8-3522-4aad-af07-00d13602b610
+# ╠═fd1ffa20-5780-4ee5-8f6d-248c02a1656e
 # ╠═736914e5-11e5-40bb-8792-236e132699d5
 # ╠═47c8e194-843f-4648-95c7-ad08a96cba19
 # ╠═42d106c9-1b6f-42ed-966b-4c5fb40b7f5f
