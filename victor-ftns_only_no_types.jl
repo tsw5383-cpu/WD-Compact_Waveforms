@@ -108,7 +108,7 @@ end
 # Angular momentum loss rate
 function J_dot(J, a, r, R_WD, M_WD, M_NS; 
                A=10.0, mu_e=2.0, eta_acc:=0.1, 
-               a_ring_frac=1.0, mode::String="Isotropic"):
+               a_ring_frac=1.0, mode::String="Isotropic")
     g = gamma(M_WD, M_NS; a_ring_frac=a_ring_frac, mode=mode)
     b = beta(a, r, R_WD, M_WD, M_NS; A=A, mu_e=mu_e, eta_acc=eta_acc)
 	@assert b <= 1.0 # In production-ready code, consider commenting this out
