@@ -73,6 +73,12 @@ md"Importing packages is causing me a world of problems."
 # ╔═╡ 8edaf48b-d27d-43c9-8a0c-e149654b6cd0
 
 
+# ╔═╡ b97703e5-e4f3-46a9-8819-81568e8582d6
+
+
+# ╔═╡ 4bef6030-10c5-4497-9ec2-edabee8432d1
+
+
 # ╔═╡ 17be5889-9440-4adb-965f-17de4875a922
 
 
@@ -517,34 +523,49 @@ md"The following functions wrap the original derivatives in `victor.jl` in vecto
 begin
 	#=The following functions wrap the original derivatives in vectors to make life easier when taking derivatives due to mass transfer only=#    
 	function da_vector(theta::AbstractVector{T}; 
-			A::Float64=10.0, mu_e::Float64=2.0, eta_acc::Float64=0.1, 
-			a_ring_frac::Float64=1.0, mode::String="Isotropic") where {T} 
+			A=10.0, mu_e=2.0, eta_acc=0.1, 
+			a_ring_frac=1.0, mode::String="Isotropic") where {T}
+
+		# promote the numeric keyword args to match the type of the inputs
+	    A       = T(A)
+	    mu_e    = T(mu_e)
+	    eta_acc = T(eta_acc)
+	    a_ring_frac  = T(a_ring_frac)
+
+		
 	    a, M_WD, M_NS, R_WD, J, θ=theta
+
+		for par in [a,a,M_WD,M_NS,R_WD,
+	            A,mu_e,eta_acc,
+	            a_ring_frac,mode]
+			println(typeof(par))
+		end
+		
 	    return(a_dot(a,a,M_WD,M_NS,R_WD;
 	            A=A,mu_e=mu_e,eta_acc=eta_acc,
 	            a_ring_frac=a_ring_frac,mode=mode))
 	end
 	
-	function dM_WD_vector(theta::AbstractVector{T}; A::Float64=10.0) where {T} 
+	function dM_WD_vector(theta::AbstractVector{T}; A::T=10.0) where {T} 
 	    a, M_WD, M_NS, R_WD, J, θ=theta
 	    return(decretion_rate(a, a, R_WD, M_WD, M_NS, A=A))
 	end
 	
 	function dM_NS_vector(theta::AbstractVector{T};
-	        A::Float64=10, mu_e::Float64=2.0, eta_acc::Float64=0.1, α::Float64=4) where {T} 
+	        A::T=10, mu_e::T=2.0, eta_acc::T=0.1, α::T=4) where {T} 
 	    a, M_WD, M_NS, R_WD, J, θ=theta
 	    return(dM_NS(a, R_WD, M_WD, M_NS;
 	        A=a, mu_e=mu_e, eta_acc=eta_acc, α=α))
 	end
 	
-	function dR_WD_vector(theta::AbstractVector{T}; mu_e::Float64=2.) where {T} 
+	function dR_WD_vector(theta::AbstractVector{T}; mu_e::T=2.) where {T} 
 	    a, M_WD, M_NS, R_WD, J, θ=theta
 	    return( R0_WD(M_WD, mu_e=mu_e))
 	end
 	    
 	function dJ_vector(theta::AbstractVector{T}; 
-	               A::Float64=10.0, mu_e::Float64=2.0, eta_acc::Float64=0.1, 
-	               a_ring_frac::Float64=1.0, mode::String="Isotropic") where {T} 
+	               A::T=10.0, mu_e::T=2.0, eta_acc::T=0.1, 
+	               a_ring_frac::T=1.0, mode::String="Isotropic") where {T} 
 	    a, M_WD, M_NS, R_WD, J, θ=theta
 	    return(J_dot(J, a, a, R_WD, M_WD, M_NS, 
 	               A=A, mu_e=mu_e, eta_acc=eta_acc, 
@@ -568,6 +589,33 @@ begin
 	    return(I_xy(M_WD, M_NS, a, θ))
 	end
 end
+
+# ╔═╡ 736914e5-11e5-40bb-8792-236e132699d5
+
+
+# ╔═╡ 47c8e194-843f-4648-95c7-ad08a96cba19
+
+
+# ╔═╡ 42d106c9-1b6f-42ed-966b-4c5fb40b7f5f
+
+
+# ╔═╡ 2f6194b0-615f-4342-a49a-7364756b4d01
+
+
+# ╔═╡ cf21fed8-294e-40ee-b29a-b1e0b673b834
+
+
+# ╔═╡ a00e5b5a-488e-413e-aea1-f404dec591b5
+
+
+# ╔═╡ 4ba2c0d2-c006-4a2d-ae05-48fc40948cf6
+
+
+# ╔═╡ e2064499-24de-4c0a-a975-289dcf61b361
+
+
+# ╔═╡ ecce3a10-b519-49d9-ab59-bd33926b5e3d
+
 
 # ╔═╡ ad39dbb0-a043-4ed9-ada1-5a59612f57ec
 
@@ -762,8 +810,11 @@ function acceleration!(du::Vector{Float64}, theta::Vector{Float64},p,t)
 
     #mutate du
     du .= dtheta
-    return(dtheta)
+    #return(dtheta)
 end;
+
+# ╔═╡ 947f2460-c3e0-444e-8a8c-4a3bdea80793
+
 
 # ╔═╡ 52b828d3-a6b7-4aa6-abe5-5c23ef848bb2
 
@@ -2801,6 +2852,8 @@ version = "17.4.0+2"
 # ╠═6c59b881-5668-4894-950b-2c7bee5367ef
 # ╠═8edaf48b-d27d-43c9-8a0c-e149654b6cd0
 # ╠═0cac30f1-9101-4ba3-accc-52621bc1d16f
+# ╠═b97703e5-e4f3-46a9-8819-81568e8582d6
+# ╠═4bef6030-10c5-4497-9ec2-edabee8432d1
 # ╠═17be5889-9440-4adb-965f-17de4875a922
 # ╠═ce80bb70-d60e-4bdf-8f7c-16421fd90138
 # ╠═fa5a36f9-b1e2-4461-bb18-a3172f4b7af7
@@ -2906,6 +2959,15 @@ version = "17.4.0+2"
 # ╠═731205f1-64f9-4dd5-809f-a1cd20eabd47
 # ╠═528d99bb-0800-41d7-812b-8685a18c2ec0
 # ╠═3b211714-36b0-4b0d-9b62-6ae2939f66d9
+# ╠═736914e5-11e5-40bb-8792-236e132699d5
+# ╠═47c8e194-843f-4648-95c7-ad08a96cba19
+# ╠═42d106c9-1b6f-42ed-966b-4c5fb40b7f5f
+# ╠═2f6194b0-615f-4342-a49a-7364756b4d01
+# ╠═cf21fed8-294e-40ee-b29a-b1e0b673b834
+# ╠═a00e5b5a-488e-413e-aea1-f404dec591b5
+# ╠═4ba2c0d2-c006-4a2d-ae05-48fc40948cf6
+# ╠═e2064499-24de-4c0a-a975-289dcf61b361
+# ╠═ecce3a10-b519-49d9-ab59-bd33926b5e3d
 # ╠═ad39dbb0-a043-4ed9-ada1-5a59612f57ec
 # ╠═e70e5b74-542d-48e2-8bc0-b63f98c56a4a
 # ╠═2a08d783-6670-498a-b79b-d0e380c2c4e4
@@ -2933,6 +2995,7 @@ version = "17.4.0+2"
 # ╠═987850ef-c086-4b16-8401-d11c753b800d
 # ╠═bc193a3e-052e-4860-854d-398fa08deeec
 # ╠═120ff400-43a9-4be6-b1a8-2017ae0b111a
+# ╠═947f2460-c3e0-444e-8a8c-4a3bdea80793
 # ╠═52b828d3-a6b7-4aa6-abe5-5c23ef848bb2
 # ╠═a63692e2-f652-4f35-b5c8-57ed131d676e
 # ╠═72bfe0e8-11f2-47f6-97ba-09708af3fad3
