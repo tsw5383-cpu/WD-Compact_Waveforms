@@ -307,6 +307,7 @@ end;
 
 # ╔═╡ 694fe531-e34e-4c27-94cb-ae3f1e14aa90
 """Given a function, its vectorized parameters, and the time derivatives of those parameters, returns the time derivative of the function as calculated via the chain rule."""
+#=
 function time_derivative_two_args(ftn::Function, ind_vars::AbstractVector{T}, derivatives::AbstractVector{T}) where {T}
     #ftn is the function to be taken a time derivative of
     #ind_vars is an array with the values of the arguments of ftn
@@ -319,7 +320,10 @@ function time_derivative_two_args(ftn::Function, ind_vars::AbstractVector{T}, de
     #then calculates the gradient of the function
     
     return(dot(grad,derivatives))#chain rule
-end
+end=#
+
+# ╔═╡ 80ee41e0-5978-47fe-8554-16477fb317d6
+
 
 # ╔═╡ ba3f4fbe-1eb3-4040-8616-28f926bb6243
 
@@ -329,7 +333,7 @@ end
 
 # ╔═╡ 28bdbf35-455c-4e01-a1bb-05c862abe361
 """Wraps the vectorized parameters and their derivatives into one input vector ind_vars_and_derivatives"""
-function time_derivative(ftn::Function, ind_vars_and_derivatives::AbstractVector{T})::Float64 where {T}
+function time_derivative(ftn::Function, ind_vars_and_derivatives::AbstractVector{T}) where {T}
     #ftn is the function to be taken a time derivative of
     #ind_vars is an array with the values of the arguments of ftn
     #derivatives is an array with the known time derivatives of ind_vars
@@ -339,10 +343,17 @@ function time_derivative(ftn::Function, ind_vars_and_derivatives::AbstractVector
 
 	ind_vars=ind_vars_and_derivatives[1:end-6]
 	derivatives=ind_vars_and_derivatives[7:length(ind_vars_and_derivatives)]
+
+	grad=ForwardDiff.gradient(ftn,ind_vars)
     
-    
-    return(time_derivative(ftn,ind_vars,derivatives))#chain rule
+    return(sum(grad .* derivatives))#chain rule
 end
+
+# ╔═╡ e1591006-147d-484b-8559-763e239af504
+
+
+# ╔═╡ 57002625-8ba1-43a1-b2e3-0094fa53c841
+
 
 # ╔═╡ 5e8ec2f8-d73a-4a81-86dc-bb9c3b538caa
 
@@ -359,11 +370,10 @@ end
 # ╔═╡ a238a819-a6ef-479c-912a-2ddc5812ce66
 
 
-# ╔═╡ aaa3e3ba-fd7d-4a9b-bb46-bd63bb1e8557
-
-
 # ╔═╡ 72dd65d6-0b35-4d2e-a359-3abe9aa39c5f
 begin
+	"""A very simple (effectively two argument) function serving as a unit test for `time_derivative`
+	"""
 	function test_ftn(xs::AbstractVector{T}) where {T}
 		x,y, x1, x2, x3, x4 =xs
 		return(x+y^2)
@@ -375,6 +385,9 @@ end;
 
 # ╔═╡ 92a94cfd-a3ff-4d62-af3b-dc8b0b57b0ba
 methods(test_ftn)
+
+# ╔═╡ 4606dfbb-e601-4da5-8ed0-e7cf1e5be3db
+
 
 # ╔═╡ bd182ff6-48cc-445e-b067-e387b88ff08b
 
@@ -435,14 +448,19 @@ function next_derivative(in_ftn::Function; n::Integer=1)
     function ftn(gen_theta_and_derivatives::AbstractVector{T}) where {T}
 		print(in_ftn)
         @assert length(gen_theta_and_derivatives)==6*(n+1) 
-		gen_theta=gen_theta_and_derivatives[1:end-6]
-		gen_dtheta=gen_theta_and_derivatives[end-5:end]
+
+		#outdated code
+		#=gen_theta=gen_theta_and_derivatives[1:end-6]
+		gen_dtheta=gen_theta_and_derivatives[end-5:end]=#
         #requires gen_theta to be [theta, dtheta, d...dtheta] for n=number of ds
         #requires gen_theta to be [dtheta, ddtheta d...ddtheta] for n+1=number of ds
-        return(time_derivative(in_ftn, gen_theta, gen_dtheta))
+        return(time_derivative(in_ftn, gen_theta_and_derivatives))
     end
     return ftn
 end
+
+# ╔═╡ 19be5fd8-ea30-4cb7-93a4-cc2171651194
+
 
 # ╔═╡ 5bdbc460-4df3-4d64-87d2-7820997d2317
 
@@ -861,11 +879,23 @@ end;
 # ╔═╡ 7d3e0971-ebf6-4897-bbc0-c3ce5befd187
 
 
+# ╔═╡ 8a28524d-7e70-40ec-aafb-53ce211fb052
+
+
 # ╔═╡ 91fbe086-cf7f-433a-8df6-afbd8eebf6cc
 
 
 # ╔═╡ a49ee332-de38-4fd3-8d9b-04a8134f5a13
-one_step([14088.687124539354, 1.0, 1.35, 5338.492628530513, 4.323851039786607e7, 0.0]; dt_period=1e-2, dt=-1.)
+begin
+	one_step([14088.687124539354, 1.0, 1.35, 5338.492628530513, 4.323851039786607e7, 0.0]; dt_period=1e-2, dt=-1.)
+	println("AAAAHHHH")
+end;
+
+# ╔═╡ 828ad2f8-7d1d-45b8-9263-67ccb673cee0
+
+
+# ╔═╡ 24a7185e-5dcd-47d2-b299-85bb5b210bd4
+
 
 # ╔═╡ 40c0228b-c30b-42a4-b3c6-3b10d5258da8
 
@@ -2831,17 +2861,20 @@ version = "17.4.0+2"
 # ╠═25998cc0-96e9-476c-8853-d102a58c0334
 # ╠═0a57469d-418f-47b0-bf56-828d4bc529e1
 # ╠═694fe531-e34e-4c27-94cb-ae3f1e14aa90
+# ╠═80ee41e0-5978-47fe-8554-16477fb317d6
 # ╠═ba3f4fbe-1eb3-4040-8616-28f926bb6243
 # ╠═fdd55e22-89d2-465a-80b8-5c59f5f7129b
 # ╠═92a94cfd-a3ff-4d62-af3b-dc8b0b57b0ba
 # ╠═28bdbf35-455c-4e01-a1bb-05c862abe361
+# ╠═e1591006-147d-484b-8559-763e239af504
+# ╠═57002625-8ba1-43a1-b2e3-0094fa53c841
 # ╠═5e8ec2f8-d73a-4a81-86dc-bb9c3b538caa
 # ╠═c1636ad3-16b4-43d1-b2bb-993885d11818
 # ╠═44ba797c-48c8-45e2-87af-a6bf102066a3
 # ╠═951f256e-c418-4f39-b4aa-0f4080caae8b
 # ╠═a238a819-a6ef-479c-912a-2ddc5812ce66
-# ╠═aaa3e3ba-fd7d-4a9b-bb46-bd63bb1e8557
 # ╠═72dd65d6-0b35-4d2e-a359-3abe9aa39c5f
+# ╠═4606dfbb-e601-4da5-8ed0-e7cf1e5be3db
 # ╠═bd182ff6-48cc-445e-b067-e387b88ff08b
 # ╠═4488d59c-5ef0-4d3e-8695-161bfefaf51c
 # ╠═6951b817-887e-46b7-9e5c-e4840ffd6cf4
@@ -2854,6 +2887,7 @@ version = "17.4.0+2"
 # ╠═11d2af20-64fd-41de-b33c-76122c047bcb
 # ╠═621d6981-fed6-4665-85a2-f5df3a06519e
 # ╠═05576550-3ffb-4d2e-b89e-e4d00ed54d71
+# ╠═19be5fd8-ea30-4cb7-93a4-cc2171651194
 # ╠═5bdbc460-4df3-4d64-87d2-7820997d2317
 # ╠═b889ebe5-e259-4208-8685-cc32df37f58c
 # ╠═95d0ce5f-fe9a-4cd2-bb0f-90eb4a5e1f39
@@ -2913,8 +2947,11 @@ version = "17.4.0+2"
 # ╠═a7a7b50c-d555-4a1a-9197-963fac13aca5
 # ╠═a8f954bf-b8d6-45f1-b836-d9a4c977f7db
 # ╠═7d3e0971-ebf6-4897-bbc0-c3ce5befd187
+# ╠═8a28524d-7e70-40ec-aafb-53ce211fb052
 # ╠═91fbe086-cf7f-433a-8df6-afbd8eebf6cc
 # ╠═a49ee332-de38-4fd3-8d9b-04a8134f5a13
+# ╠═828ad2f8-7d1d-45b8-9263-67ccb673cee0
+# ╠═24a7185e-5dcd-47d2-b299-85bb5b210bd4
 # ╠═40c0228b-c30b-42a4-b3c6-3b10d5258da8
 # ╠═33ebb6b8-ba01-4941-bc51-45dec91e8bf2
 # ╠═0971bd47-9d39-4029-9d39-68be71109c66

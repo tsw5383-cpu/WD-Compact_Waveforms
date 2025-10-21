@@ -19,14 +19,14 @@ begin
 	const c::Float64 = 2.998e5    # km/s
 end=#
 
-function R0_WD(M_WD::T;mu_e=2.0::T)::T where T<:Real
+function R0_WD(M_WD::Real;mu_e=2.0::Real)::Real 
 	@assert M_WD > 0 # In production ready code, consider commenting out assertion
 	@assert mu_e > 0 # In production ready code, consider commenting out assertion
 	#white dwarf radius in km as ftn of mass in M_odot and mean molecular weight/electron=2
 	return(10^4 * (M_WD/0.7)^(-1/3) * (1-(M_WD/1.4)^(4/3))^(1/2) * (mu_e/2)^(-5/3))
 end
 
-function dynamical_timescale(M_WD::T,R_WD::T)::T where T<:Real
+function dynamical_timescale(M_WD::Real,R_WD::Real)
 	@assert M_WD > 0 # In production ready code, consider commenting out assertion
 	@assert R_WD > 0 # In production ready code, consider commenting out assertion
 	#returns dynamical timescale for perturbed white dwarf
@@ -35,7 +35,7 @@ function dynamical_timescale(M_WD::T,R_WD::T)::T where T<:Real
 end
 
 
-function Roche_Limit(r::T,M_WD::T,M_NS::T)::T where T<:Real
+function Roche_Limit(r::Real,M_WD::Real,M_NS::Real)
 	#@assert M_WD < M_NS # In production ready code, consider commenting out assertion
 	@assert r > 0 # In production ready code, consider commenting out assertion
 	#returns Roche limit of M_WD for companion of mass M_NS 
@@ -46,7 +46,7 @@ end
 
 
 # Orbital period
-function period(Mtot::T, a::T)::T where T<:Real
+function period(Mtot::Real, a::Real)::Real
 	@assert Mtot > 0 # In production ready code, consider commenting out assertion
 	@assert a > 0 # In production ready code, consider commenting out assertion
     return sqrt(4.0 * π^2 * a^3 / (G * Mtot))
@@ -54,10 +54,10 @@ end
 
 
 # Decretion rate
-function decretion_rate(a::T, r::T, R_WD::T,
-                        M_WD::T, M_NS::T; A::T=10.0)::T where T<:Real
+function decretion_rate(a::Real, r::Real, R_WD::Real,
+                        M_WD::Real, M_NS::Real; A::Real=10.0)::Real
 	@assert R_WD > 0 # In production ready code, consider commenting out assertion
-    RL::T where T<:Real = Roche_Limit(r, M_WD, M_NS)
+    RL = Roche_Limit(r, M_WD, M_NS)
     if RL > R_WD
         return 0.0
     end
@@ -66,8 +66,8 @@ end
 
 
 # Gamma (specific angular momentum of lost matter)
-function gamma(M_WD::T, M_NS::T; 
-               a_ring_frac::T=1.0, mode::String="Isotropic Re-emission")::T where T<:Real
+function gamma(M_WD::Real, M_NS::Real; 
+               a_ring_frac=1.0, mode::String="Isotropic Re-emission")::Real 
 	@assert M_WD > 0 # In production ready code, consider commenting out assertion
 	@assert M_NS > 0 # In production ready code, consider commenting out assertion
 	@assert a_ring_frac > 0 # In production ready code, consider commenting out assertion
@@ -85,7 +85,7 @@ end
 
 
 # Eddington accretion rate
-function eddington_rate(M::T; mu_e::T=2.0, eta_acc::T=0.1)::T where T<:Real
+function eddington_rate(M::Real; mu_e::Real=2.0, eta_acc::Real=0.1)::Real
     @assert M > 0 # In production ready code, consider commenting out assertion
 	@assert mu_e > 0 # In production ready code, consider commenting out assertion
 	@assert 0 < eta_acc <= 1 # In production ready code, consider commenting out assertion
@@ -94,10 +94,10 @@ end
 
 
 # Beta (fraction of accreted mass)
-function beta(a::T, r::T, R_WD::T, M_WD::T, M_NS::T; 
-              A::T=10.0, mu_e::T=2.0, eta_acc::T=0.1)::T where T<:Real
-    M_WD_dot::T where T<:Real = -decretion_rate(a, r, R_WD, M_WD, M_NS; A=A)
-    lam_edd::T where T<:Real = eddington_rate(M_NS; mu_e=mu_e, eta_acc=eta_acc)
+function beta(a::Real, r::Real, R_WD::Real, M_WD::Real, M_NS::Real; 
+              A::Real=10.0, mu_e::Real=2.0, eta_acc::Real=0.1)::Real
+    M_WD_dot = -decretion_rate(a, r, R_WD, M_WD, M_NS; A=A)
+    lam_edd = eddington_rate(M_NS; mu_e=mu_e, eta_acc=eta_acc)
     if M_WD_dot < lam_edd
         return 1.0
     end
@@ -106,39 +106,39 @@ end
 
 
 # Angular momentum loss rate
-function J_dot(J::T, a::T, r::T, R_WD::T, M_WD::T, M_NS::T; 
-               A::T=10.0, mu_e::T=2.0, eta_acc::T=0.1, 
-               a_ring_frac::T=1.0, mode::String="Isotropic")::T where T<:Real
-    g::T where T<:Real = gamma(M_WD, M_NS; a_ring_frac=a_ring_frac, mode=mode)
-    b::T where T<:Real = beta(a, r, R_WD, M_WD, M_NS; A=A, mu_e=mu_e, eta_acc=eta_acc)
+function J_dot(J::Real, a::Real, r::Real, R_WD::Real, M_WD::Real, M_NS::Real; 
+               A::Real=10.0, mu_e::Real=2.0, eta_acc::Real=0.1, 
+               a_ring_frac::Real=1.0, mode::String="Isotropic")::Real
+    g = gamma(M_WD, M_NS; a_ring_frac=a_ring_frac, mode=mode)
+    b = beta(a, r, R_WD, M_WD, M_NS; A=A, mu_e=mu_e, eta_acc=eta_acc)
 	@assert b <= 1.0 # In production-ready code, consider commenting this out
-    M_WD_dot::T where T<:Real = decretion_rate(a, r, R_WD, M_WD, M_NS; A=A)
+    M_WD_dot = decretion_rate(a, r, R_WD, M_WD, M_NS; A=A)
     return J * g * (1.0 - b) * M_WD_dot / (M_WD + M_NS)
 end
 
 
 # Semi-major axis change rate
-function a_dot(a::T, r::T, R_WD::T, M_WD::T, M_NS::T; 
-               A::T=10.0, mu_e::T=2.0, eta_acc::T=0.1, 
-               a_ring_frac::T=1.0, mode::String="Isotropic")::T where T<:Real
-    g::T where T<:Real = gamma(M_WD, M_NS; a_ring_frac=a_ring_frac, mode=mode)
-    b::T where T<:Real = beta(a, r, R_WD, M_WD, M_NS; A=A, mu_e=mu_e, eta_acc=eta_acc)
+function a_dot(a::Real, r::Real, R_WD::Real, M_WD::Real, M_NS::Real; 
+               A::Real=10.0, mu_e::Real=2.0, eta_acc::Real=0.1, 
+               a_ring_frac::Real=1.0, mode::String="Isotropic")::Real
+    g = gamma(M_WD, M_NS; a_ring_frac=a_ring_frac, mode=mode)
+    b = beta(a, r, R_WD, M_WD, M_NS; A=A, mu_e=mu_e, eta_acc=eta_acc)
 	@assert b <= 1.0 # In production-ready code, consider commenting this out
-    M_WD_dot::T where T<:Real = decretion_rate(a, r, R_WD, M_WD, M_NS; A=A)
+    M_WD_dot = decretion_rate(a, r, R_WD, M_WD, M_NS; A=A)
     return -2.0 * a * M_WD_dot / M_WD * (1.0 - b * M_WD / M_NS - (1.0 - b) * (g + 0.5) * M_WD / (M_WD + M_NS))
 end
 
 
 # White dwarf radius change
-function dot_R_WD(M_WD::T, R_WD::T)::T where T<:Real
-    natural_R::T where T<:Real = R0_WD(M_WD)
-    tau::T where T<:Real = dynamical_timescale(M_WD, R_WD)
+function dot_R_WD(M_WD::Real, R_WD::Real)::Real
+    natural_R = R0_WD(M_WD)
+    tau = dynamical_timescale(M_WD, R_WD)
     return (natural_R - R_WD) / tau
 end
 
 
 # Reduced mass
-function mu(M_WD::T, M_NS::T)::T where T<:Real
+function mu(M_WD::Real, M_NS::Real)
 	@assert M_WD > 0 # In production-ready code, consider commenting this out
 	@assert M_NS > 0 # In production-ready code, consider commenting this out
     return M_WD * M_NS / (M_WD + M_NS)
@@ -229,12 +229,12 @@ begin
 # Polar coordinate helpers=#
 
 
-function x(r::T, θ::T)::T where T<:Real
+function x(r::Real, θ::Real)::Real
     @assert r > 0 # In production-ready code, consider commenting this out
     return r * cos(θ)
 end
 
-function y(r::T, θ::T)::T where T<:Real
+function y(r::Real, θ::Real)::Real
     @assert r > 0 # In production-ready code, consider commenting this out
     return r * sin(θ)
 end
