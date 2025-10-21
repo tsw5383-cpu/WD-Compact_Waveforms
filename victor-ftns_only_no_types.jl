@@ -107,7 +107,7 @@ end
 
 # Angular momentum loss rate
 function J_dot(J, a, r, R_WD, M_WD, M_NS; 
-               A=10.0, mu_e=2.0, eta_acc:=0.1, 
+               A=10.0, mu_e=2.0, eta_acc=0.1, 
                a_ring_frac=1.0, mode::String="Isotropic")
     g = gamma(M_WD, M_NS; a_ring_frac=a_ring_frac, mode=mode)
     b = beta(a, r, R_WD, M_WD, M_NS; A=A, mu_e=mu_e, eta_acc=eta_acc)
@@ -118,7 +118,7 @@ end
 
 
 # Semi-major axis change rate
-function a_dot(a, r, R_WD, M_WD, M_NS:; 
+function a_dot(a, r, R_WD, M_WD, M_NS; 
                A=10.0, mu_e=2.0, eta_acc=0.1, 
                a_ring_frac=1.0, mode::String="Isotropic") 
     # Promote keyword values to T so arithmetic mixes consistently
@@ -183,7 +183,7 @@ function SFT(tensor::Matrix{Float64})::Matrix{Float64}
     return sym_part - (1.0 / 3.0) * tr_val * I(n)
 end
 
-
+=#
 # Angular momentum loss due to radiation reaction
 function dJ_rr(I2::Matrix{Float64}, I3::Matrix{Float64})::Float64
     # Corresponds to: -2G/(5c^5) * (dot(I2[0],I3[1]) - dot(I2[1],I3[0]))
@@ -191,7 +191,7 @@ function dJ_rr(I2::Matrix{Float64}, I3::Matrix{Float64})::Float64
     return -2.0 * G / (5.0 * c^5) * term
 end
 
-
+#=
 # Binary hardening due to radiation reaction
 function da_rr(a::Float64, J::Float64, I2::Matrix{Float64}, I3::Matrix{Float64})::Float64
 	@assert a > 0 # In production-ready code, consider commenting this out

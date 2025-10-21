@@ -73,6 +73,18 @@ md"Importing packages is causing me a world of problems."
 # ╔═╡ 8edaf48b-d27d-43c9-8a0c-e149654b6cd0
 
 
+# ╔═╡ 5519a048-4a4a-4091-af9e-8b2dc444775b
+
+
+# ╔═╡ c13a77be-813e-413f-b0b2-23cf7b5f309a
+
+
+# ╔═╡ 14fedf73-b9ca-4a37-a86c-e6f4c0a59ece
+
+
+# ╔═╡ abca47ab-091a-4677-8d5c-b13572bb7baa
+
+
 # ╔═╡ b97703e5-e4f3-46a9-8819-81568e8582d6
 
 
@@ -818,7 +830,7 @@ function acceleration!(du::Vector{Float64}, theta::Vector{Float64},p,t)
 
     #forces due to RR
     t_dJ_rr=dJ_rr(t_ddI,t_dddI)
-    t_da_rr=2.0 * theta[1] * dJ_rr(I2, I3) / theta[5]
+    t_da_rr=2.0 * theta[1] * t_dJ_rr / theta[5]
 
     #adding RR forces to MT forces
     dtheta[1]+=t_da_rr
@@ -828,6 +840,9 @@ function acceleration!(du::Vector{Float64}, theta::Vector{Float64},p,t)
     du .= dtheta
     #return(dtheta)
 end;
+
+# ╔═╡ f4650ecc-65c1-43d3-8d6a-676d3677df38
+
 
 # ╔═╡ 947f2460-c3e0-444e-8a8c-4a3bdea80793
 
@@ -2868,6 +2883,10 @@ version = "17.4.0+2"
 # ╠═6c59b881-5668-4894-950b-2c7bee5367ef
 # ╠═8edaf48b-d27d-43c9-8a0c-e149654b6cd0
 # ╠═0cac30f1-9101-4ba3-accc-52621bc1d16f
+# ╠═5519a048-4a4a-4091-af9e-8b2dc444775b
+# ╠═c13a77be-813e-413f-b0b2-23cf7b5f309a
+# ╠═14fedf73-b9ca-4a37-a86c-e6f4c0a59ece
+# ╠═abca47ab-091a-4677-8d5c-b13572bb7baa
 # ╠═b97703e5-e4f3-46a9-8819-81568e8582d6
 # ╠═4bef6030-10c5-4497-9ec2-edabee8432d1
 # ╠═17be5889-9440-4adb-965f-17de4875a922
@@ -3013,6 +3032,7 @@ version = "17.4.0+2"
 # ╠═987850ef-c086-4b16-8401-d11c753b800d
 # ╠═bc193a3e-052e-4860-854d-398fa08deeec
 # ╠═120ff400-43a9-4be6-b1a8-2017ae0b111a
+# ╠═f4650ecc-65c1-43d3-8d6a-676d3677df38
 # ╠═947f2460-c3e0-444e-8a8c-4a3bdea80793
 # ╠═52b828d3-a6b7-4aa6-abe5-5c23ef848bb2
 # ╠═a63692e2-f652-4f35-b5c8-57ed131d676e
