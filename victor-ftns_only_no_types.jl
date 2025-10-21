@@ -19,14 +19,14 @@ begin
 	const c::Float64 = 2.998e5    # km/s
 end=#
 
-function R0_WD(M_WD::Real;mu_e=2.0::Real)::Real 
+function R0_WD(M_WD;mu_e=2.0) 
 	@assert M_WD > 0 # In production ready code, consider commenting out assertion
 	@assert mu_e > 0 # In production ready code, consider commenting out assertion
 	#white dwarf radius in km as ftn of mass in M_odot and mean molecular weight/electron=2
 	return(10^4 * (M_WD/0.7)^(-1/3) * (1-(M_WD/1.4)^(4/3))^(1/2) * (mu_e/2)^(-5/3))
 end
 
-function dynamical_timescale(M_WD::Real,R_WD::Real)
+function dynamical_timescale(M_WD,R_WD)
 	@assert M_WD > 0 # In production ready code, consider commenting out assertion
 	@assert R_WD > 0 # In production ready code, consider commenting out assertion
 	#returns dynamical timescale for perturbed white dwarf
@@ -35,7 +35,7 @@ function dynamical_timescale(M_WD::Real,R_WD::Real)
 end
 
 
-function Roche_Limit(r::Real,M_WD::Real,M_NS::Real)
+function Roche_Limit(r,M_WD,M_NS)
 	#@assert M_WD < M_NS # In production ready code, consider commenting out assertion
 	@assert r > 0 # In production ready code, consider commenting out assertion
 	#returns Roche limit of M_WD for companion of mass M_NS 
@@ -46,7 +46,7 @@ end
 
 
 # Orbital period
-function period(Mtot::Real, a::Real)::Real
+function period(Mtot, a)
 	@assert Mtot > 0 # In production ready code, consider commenting out assertion
 	@assert a > 0 # In production ready code, consider commenting out assertion
     return sqrt(4.0 * π^2 * a^3 / (G * Mtot))
@@ -54,8 +54,8 @@ end
 
 
 # Decretion rate
-function decretion_rate(a::Real, r::Real, R_WD::Real,
-                        M_WD::Real, M_NS::Real; A::Real=10.0)::Real
+function decretion_rate(a, r, R_WD,
+                        M_WD, M_NS; A=10.0)
 	@assert R_WD > 0 # In production ready code, consider commenting out assertion
     RL = Roche_Limit(r, M_WD, M_NS)
     if RL > R_WD
@@ -66,8 +66,8 @@ end
 
 
 # Gamma (specific angular momentum of lost matter)
-function gamma(M_WD::Real, M_NS::Real; 
-               a_ring_frac=1.0, mode::String="Isotropic Re-emission")::Real 
+function gamma(M_WD, M_NS; 
+               a_ring_frac=1.0, mode::String="Isotropic Re-emission") 
 	@assert M_WD > 0 # In production ready code, consider commenting out assertion
 	@assert M_NS > 0 # In production ready code, consider commenting out assertion
 	@assert a_ring_frac > 0 # In production ready code, consider commenting out assertion
@@ -85,7 +85,7 @@ end
 
 
 # Eddington accretion rate
-function eddington_rate(M::Real; mu_e::Real=2.0, eta_acc::Real=0.1)::Real
+function eddington_rate(M; mu_e=2.0, eta_acc=0.1)
     @assert M > 0 # In production ready code, consider commenting out assertion
 	@assert mu_e > 0 # In production ready code, consider commenting out assertion
 	@assert 0 < eta_acc <= 1 # In production ready code, consider commenting out assertion
@@ -94,8 +94,8 @@ end
 
 
 # Beta (fraction of accreted mass)
-function beta(a::Real, r::Real, R_WD::Real, M_WD::Real, M_NS::Real; 
-              A::Real=10.0, mu_e::Real=2.0, eta_acc::Real=0.1)::Real
+function beta(a, r, R_WD, M_WD, M_NS; 
+              A=10.0, mu_e=2.0, eta_acc=0.1)
     M_WD_dot = -decretion_rate(a, r, R_WD, M_WD, M_NS; A=A)
     lam_edd = eddington_rate(M_NS; mu_e=mu_e, eta_acc=eta_acc)
     if M_WD_dot < lam_edd
@@ -106,9 +106,9 @@ end
 
 
 # Angular momentum loss rate
-function J_dot(J::Real, a::Real, r::Real, R_WD::Real, M_WD::Real, M_NS::Real; 
-               A::Real=10.0, mu_e::Real=2.0, eta_acc::Real=0.1, 
-               a_ring_frac::Real=1.0, mode::String="Isotropic")::Real
+function J_dot(J, a, r, R_WD, M_WD, M_NS; 
+               A=10.0, mu_e=2.0, eta_acc:=0.1, 
+               a_ring_frac=1.0, mode::String="Isotropic"):
     g = gamma(M_WD, M_NS; a_ring_frac=a_ring_frac, mode=mode)
     b = beta(a, r, R_WD, M_WD, M_NS; A=A, mu_e=mu_e, eta_acc=eta_acc)
 	@assert b <= 1.0 # In production-ready code, consider commenting this out
@@ -118,9 +118,10 @@ end
 
 
 # Semi-major axis change rate
-function a_dot(a::Real, r::Real, R_WD::Real, M_WD::Real, M_NS::Real; 
-               A::Real=10.0, mu_e::Real=2.0, eta_acc::Real=0.1, 
-               a_ring_frac::Real=1.0, mode::String="Isotropic")::Real
+function a_dot(a, r, R_WD, M_WD, M_NS:; 
+               A=10.0, mu_e=2.0, eta_acc=0.1, 
+               a_ring_frac=1.0, mode::String="Isotropic") 
+    # Promote keyword values to T so arithmetic mixes consistently
     g = gamma(M_WD, M_NS; a_ring_frac=a_ring_frac, mode=mode)
     b = beta(a, r, R_WD, M_WD, M_NS; A=A, mu_e=mu_e, eta_acc=eta_acc)
 	@assert b <= 1.0 # In production-ready code, consider commenting this out
@@ -130,7 +131,7 @@ end
 
 
 # White dwarf radius change
-function dot_R_WD(M_WD::Real, R_WD::Real)::Real
+function dot_R_WD(M_WD, R_WD)
     natural_R = R0_WD(M_WD)
     tau = dynamical_timescale(M_WD, R_WD)
     return (natural_R - R_WD) / tau
@@ -138,7 +139,7 @@ end
 
 
 # Reduced mass
-function mu(M_WD::Real, M_NS::Real)
+function mu(M_WD, M_NS)
 	@assert M_WD > 0 # In production-ready code, consider commenting this out
 	@assert M_NS > 0 # In production-ready code, consider commenting this out
     return M_WD * M_NS / (M_WD + M_NS)
@@ -229,12 +230,12 @@ begin
 # Polar coordinate helpers=#
 
 
-function x(r::Real, θ::Real)::Real
+function x(r, θ)
     @assert r > 0 # In production-ready code, consider commenting this out
     return r * cos(θ)
 end
 
-function y(r::Real, θ::Real)::Real
+function y(r, θ)
     @assert r > 0 # In production-ready code, consider commenting this out
     return r * sin(θ)
 end
