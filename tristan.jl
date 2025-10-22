@@ -205,10 +205,11 @@ end
 begin
 	""" Smooth accretion rate of the neutron star """
 	function dM_NS(a::T, R_WD::T, M_WD::T, M_NS::T;
-			A=10., mu_e=2.0, eta_acc=0.1, α=4) where T<:Real
+			A=10., mu_e=2.0, eta_acc=0.1, α=-4.) where T<:Real
 	    t_dM_WD=decretion_rate(a,a,R_WD,M_WD,M_NS,A=A)
+		
 	    t_edd=eddington_rate(M_NS, mu_e=mu_e, eta_acc=eta_acc)
-	    return(Boltzmann_Max(t_dM_WD,t_edd,α=α))
+	    return(Boltzmann_Max(-1*t_dM_WD,t_edd,α=α))
 	end
 
 
@@ -227,6 +228,24 @@ begin
 	end   
 end;
 
+# ╔═╡ 344fdbd0-96e3-4a34-8d9f-3b6c34cee2b3
+
+
+# ╔═╡ 5a5761f7-eb8e-419f-8bb6-15780de928d2
+
+
+# ╔═╡ 8f6900c9-352f-4deb-82e2-1bd99faffda4
+
+
+# ╔═╡ bb73d75d-eeeb-4b38-8db2-5f9cd4a440c3
+
+
+# ╔═╡ 15095435-54c0-4d8d-91c0-c278edd57700
+
+
+# ╔═╡ 870a48df-44ba-4585-b422-c92a84737a12
+
+
 # ╔═╡ 2e25bf2a-d4c0-41c6-b4f3-1fff15bd6032
 
 
@@ -238,6 +257,9 @@ end;
 
 # ╔═╡ 69640bb5-07a4-4257-9eea-6f16dfcce74c
 dM_NS(1.01, 1.01, 1.01, 1.01)
+
+# ╔═╡ 7faf665d-0bdc-499d-8cc6-72ebd7da30b7
+
 
 # ╔═╡ c42a4b21-75f4-4246-a34c-c51fdd752d0a
 
@@ -355,7 +377,7 @@ function time_derivative(ftn::Function, ind_vars_and_derivatives::AbstractVector
     #ftn is the function to be taken a time derivative of
     #ind_vars is an array with the values of the arguments of ftn
     #derivatives is an array with the known time derivatives of ind_vars
-	print(length(ind_vars_and_derivatives))
+	#print(length(ind_vars_and_derivatives))
     
     @assert mod(length(ind_vars_and_derivatives),6)==0
 
@@ -366,6 +388,9 @@ function time_derivative(ftn::Function, ind_vars_and_derivatives::AbstractVector
     
     return(sum(grad .* derivatives))#chain rule
 end
+
+# ╔═╡ 72720c31-b465-4755-b070-9f34311a0d97
+
 
 # ╔═╡ e1591006-147d-484b-8559-763e239af504
 
@@ -464,7 +489,7 @@ function next_derivative(in_ftn::Function; n::Integer=1)
     #n is the total derivatives past the given analytic form
 	@assert n>0
     function ftn(gen_theta_and_derivatives::AbstractVector{T}) where {T}
-		print(in_ftn)
+		#print(in_ftn)
         @assert length(gen_theta_and_derivatives)==6*(n+1) 
 
 		#outdated code
@@ -476,6 +501,9 @@ function next_derivative(in_ftn::Function; n::Integer=1)
     end
     return ftn
 end
+
+# ╔═╡ 509ec580-b9b1-42dd-ab81-b72d1e1f7293
+
 
 # ╔═╡ 19be5fd8-ea30-4cb7-93a4-cc2171651194
 
@@ -780,7 +808,7 @@ begin
 	    #to calculate third derivative of quadrupole moment 
 	    #(for use in calculating RR acceleration)
 
-		print(theta_ddtheta)
+		#print(theta_ddtheta)
 
 		dddtheta=zeros(6)
 	    #calculating second time derivatives due to MT only
@@ -798,6 +826,9 @@ begin
 	    return(dtheta,t_ddI,t_dddI)
 	end
 end;
+
+# ╔═╡ 8482ce78-48b8-4514-ba28-5d2ecf4f0e4e
+
 
 # ╔═╡ 850fa701-4427-4f4d-bd8d-369135841d07
 
@@ -838,8 +869,12 @@ function acceleration!(du::Vector{Float64}, theta::Vector{Float64},p,t)
 
     #mutate du
     du .= dtheta
+	println(du)
     #return(dtheta)
 end;
+
+# ╔═╡ 2f7ca955-4d59-483e-a86a-8363fb5795d6
+
 
 # ╔═╡ f4650ecc-65c1-43d3-8d6a-676d3677df38
 
@@ -927,6 +962,7 @@ begin
 	    #=Calculating ddI at the end of the step=#
 	        
 	    t_ddI=ddI_from_theta(updated_theta)
+		println(updated_theta)
 	    return(dt,updated_theta,t_ddI)
 	end
 
@@ -943,8 +979,8 @@ begin
 	    
 	    while t<time_limit && i<step_limit && theta[2]>0
 	        #integrate until time or step limit are elapsed or WD completely dissipates
-			println(theta)
-			println(isa(theta,Vector{Float64}))
+			#println(theta)
+			#println(isa(theta,Vector{Float64}))
 	        dt,t_theta,t_ddI=one_step(theta; dt_period=1e-2)
 	        i+=1
 	        t+=dt
@@ -958,6 +994,15 @@ begin
 	end
 end;
 
+# ╔═╡ 222bbd94-e4fd-469a-b600-532761d58899
+
+
+# ╔═╡ 907e110a-4c66-471b-b3dc-f38f2b9d3e63
+
+
+# ╔═╡ 680b68ef-660e-4e11-8129-6a1d16f24476
+
+
 # ╔═╡ 7d3e0971-ebf6-4897-bbc0-c3ce5befd187
 
 
@@ -965,6 +1010,9 @@ end;
 
 
 # ╔═╡ 91fbe086-cf7f-433a-8df6-afbd8eebf6cc
+initial_circular_orbit(1.0)
+
+# ╔═╡ c407c3e2-ef68-4a4c-8232-029b56e44aff
 
 
 # ╔═╡ a49ee332-de38-4fd3-8d9b-04a8134f5a13
@@ -2924,10 +2972,17 @@ version = "17.4.0+2"
 # ╠═b2dcf719-078c-4ec0-bde6-243972cfc957
 # ╠═4135feba-248d-4880-9e05-e3e85dae9963
 # ╠═2fb18e7f-30eb-4dff-b30f-f5086ec3e02d
+# ╠═344fdbd0-96e3-4a34-8d9f-3b6c34cee2b3
+# ╠═5a5761f7-eb8e-419f-8bb6-15780de928d2
+# ╠═8f6900c9-352f-4deb-82e2-1bd99faffda4
+# ╠═bb73d75d-eeeb-4b38-8db2-5f9cd4a440c3
+# ╠═15095435-54c0-4d8d-91c0-c278edd57700
+# ╠═870a48df-44ba-4585-b422-c92a84737a12
 # ╠═2e25bf2a-d4c0-41c6-b4f3-1fff15bd6032
 # ╠═7ffbc67d-2ad6-4ca2-8e52-7bcd81089da1
 # ╠═a18ec6f3-6036-4e0e-b8f2-6156e0497e8c
 # ╠═69640bb5-07a4-4257-9eea-6f16dfcce74c
+# ╠═7faf665d-0bdc-499d-8cc6-72ebd7da30b7
 # ╠═c42a4b21-75f4-4246-a34c-c51fdd752d0a
 # ╠═94e9ebac-2ffa-4e76-be6c-273f402064ae
 # ╠═57900831-e4f4-4557-bacc-422af3cc2d2b
@@ -2954,6 +3009,7 @@ version = "17.4.0+2"
 # ╠═fdd55e22-89d2-465a-80b8-5c59f5f7129b
 # ╠═92a94cfd-a3ff-4d62-af3b-dc8b0b57b0ba
 # ╠═28bdbf35-455c-4e01-a1bb-05c862abe361
+# ╠═72720c31-b465-4755-b070-9f34311a0d97
 # ╠═e1591006-147d-484b-8559-763e239af504
 # ╠═57002625-8ba1-43a1-b2e3-0094fa53c841
 # ╠═5e8ec2f8-d73a-4a81-86dc-bb9c3b538caa
@@ -2975,6 +3031,7 @@ version = "17.4.0+2"
 # ╠═11d2af20-64fd-41de-b33c-76122c047bcb
 # ╠═621d6981-fed6-4665-85a2-f5df3a06519e
 # ╠═05576550-3ffb-4d2e-b89e-e4d00ed54d71
+# ╠═509ec580-b9b1-42dd-ab81-b72d1e1f7293
 # ╠═19be5fd8-ea30-4cb7-93a4-cc2171651194
 # ╠═5bdbc460-4df3-4d64-87d2-7820997d2317
 # ╠═b889ebe5-e259-4208-8685-cc32df37f58c
@@ -3023,6 +3080,7 @@ version = "17.4.0+2"
 # ╠═50b7dfa1-0261-4de7-89a6-4bf1d6390310
 # ╠═5098b622-aacf-4df1-8341-637e8eac60e6
 # ╠═6208496a-07a7-4f27-9994-98a3347f018b
+# ╠═8482ce78-48b8-4514-ba28-5d2ecf4f0e4e
 # ╠═850fa701-4427-4f4d-bd8d-369135841d07
 # ╠═f9aaaa54-1e7a-46e6-954e-a6e20f637931
 # ╠═2d9276d6-cf9c-439e-bd66-9220fea56dde
@@ -3032,6 +3090,7 @@ version = "17.4.0+2"
 # ╠═987850ef-c086-4b16-8401-d11c753b800d
 # ╠═bc193a3e-052e-4860-854d-398fa08deeec
 # ╠═120ff400-43a9-4be6-b1a8-2017ae0b111a
+# ╠═2f7ca955-4d59-483e-a86a-8363fb5795d6
 # ╠═f4650ecc-65c1-43d3-8d6a-676d3677df38
 # ╠═947f2460-c3e0-444e-8a8c-4a3bdea80793
 # ╠═52b828d3-a6b7-4aa6-abe5-5c23ef848bb2
@@ -3047,9 +3106,13 @@ version = "17.4.0+2"
 # ╠═7e3f17c1-7b35-4a84-b8a5-36817549bda4
 # ╠═a7a7b50c-d555-4a1a-9197-963fac13aca5
 # ╠═a8f954bf-b8d6-45f1-b836-d9a4c977f7db
+# ╠═222bbd94-e4fd-469a-b600-532761d58899
+# ╠═907e110a-4c66-471b-b3dc-f38f2b9d3e63
+# ╠═680b68ef-660e-4e11-8129-6a1d16f24476
 # ╠═7d3e0971-ebf6-4897-bbc0-c3ce5befd187
 # ╠═8a28524d-7e70-40ec-aafb-53ce211fb052
 # ╠═91fbe086-cf7f-433a-8df6-afbd8eebf6cc
+# ╠═c407c3e2-ef68-4a4c-8232-029b56e44aff
 # ╠═a49ee332-de38-4fd3-8d9b-04a8134f5a13
 # ╠═828ad2f8-7d1d-45b8-9263-67ccb673cee0
 # ╠═24a7185e-5dcd-47d2-b299-85bb5b210bd4
