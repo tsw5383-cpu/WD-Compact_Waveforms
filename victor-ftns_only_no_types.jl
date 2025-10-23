@@ -20,15 +20,15 @@ begin
 end=#
 
 function R0_WD(M_WD;mu_e=2.0) 
-	@assert M_WD > 0 # In production ready code, consider commenting out assertion
+	#@assert M_WD > 0 # In production ready code, consider commenting out assertion
 	@assert mu_e > 0 # In production ready code, consider commenting out assertion
 	#white dwarf radius in km as ftn of mass in M_odot and mean molecular weight/electron=2
 	return(10^4 * (M_WD/0.7)^(-1/3) * (1-(M_WD/1.4)^(4/3))^(1/2) * (mu_e/2)^(-5/3))
 end
 
 function dynamical_timescale(M_WD,R_WD)
-	@assert M_WD > 0 # In production ready code, consider commenting out assertion
-	@assert R_WD > 0 # In production ready code, consider commenting out assertion
+	#@assert M_WD > 0 # In production ready code, consider commenting out assertion
+	#@assert R_WD > 0 # In production ready code, consider commenting out assertion
 	#returns dynamical timescale for perturbed white dwarf
 	#with radius R and mass M
 	return((R_WD^3/(G*M_WD))^(1/2))
@@ -56,7 +56,7 @@ end
 # Decretion rate
 function decretion_rate(a, r, R_WD,
                         M_WD, M_NS; A=10.0)
-	@assert R_WD > 0 # In production ready code, consider commenting out assertion
+	#@assert R_WD > 0 # In production ready code, consider commenting out assertion
     RL = Roche_Limit(r, M_WD, M_NS)
     if RL > R_WD
         return 0.0
@@ -68,7 +68,7 @@ end
 # Gamma (specific angular momentum of lost matter)
 function gamma(M_WD, M_NS; 
                a_ring_frac=1.0, mode::String="Isotropic Re-emission") 
-	@assert M_WD > 0 # In production ready code, consider commenting out assertion
+	#@assert M_WD > 0 # In production ready code, consider commenting out assertion
 	@assert M_NS > 0 # In production ready code, consider commenting out assertion
 	@assert a_ring_frac > 0 # In production ready code, consider commenting out assertion
     first_char = lowercase(first(mode))
@@ -140,7 +140,7 @@ end
 
 # Reduced mass
 function mu(M_WD, M_NS)
-	@assert M_WD > 0 # In production-ready code, consider commenting this out
+	#@assert M_WD > 0 # In production-ready code, consider commenting this out
 	@assert M_NS > 0 # In production-ready code, consider commenting this out
     return M_WD * M_NS / (M_WD + M_NS)
 end

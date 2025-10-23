@@ -692,7 +692,7 @@ begin
 	    a, M_WD, M_NS, R_WD, J, θ=theta
 
 		
-	    return(a_dot(a,a,M_WD,M_NS,R_WD;
+	    return(a_dot(a,a,R_WD, M_WD, M_NS;
 	            A=A,mu_e=mu_e,eta_acc=eta_acc,
 	            a_ring_frac=a_ring_frac,mode=mode))
 	end
@@ -755,6 +755,9 @@ begin
 	    return(I_xy(M_WD, M_NS, a, θ))
 	end
 end
+
+# ╔═╡ d2b49aa0-7630-49e5-a885-5d28d7efccd3
+
 
 # ╔═╡ bf13e120-01a9-4026-90ee-29576bfa784c
 
@@ -973,7 +976,13 @@ end;
 # ╔═╡ 2d9276d6-cf9c-439e-bd66-9220fea56dde
 
 
-# ╔═╡ 2c6982e2-ee7d-4d2b-8f59-0285d85f1063
+# ╔═╡ e2fa4587-922c-4691-bfd2-34cf729ad10f
+beta(28654.6, 28654.6, 10857.8, 0.4, 1.35)
+
+# ╔═╡ b96e4a38-2495-4c43-8dbb-25c9454bcedf
+a_dot(28654.6, 28654.6, 10857.8, 0.4, 1.35)
+
+# ╔═╡ ce02b62e-7eeb-49aa-9627-a0c09902c61b
 
 
 # ╔═╡ c9a96a65-a4f8-4440-840e-5467793dad63
@@ -1058,6 +1067,15 @@ end
 # ╔═╡ cbf1359d-0d47-4f3b-a712-7ed8308b19ff
 initial_circular_orbit(1.)
 
+# ╔═╡ 2c6982e2-ee7d-4d2b-8f59-0285d85f1063
+ddI_dddI_from_theta(initial_circular_orbit(0.4))
+
+# ╔═╡ a1b781ff-ae56-4809-8e46-2238c9d7ef2c
+initial_circular_orbit(0.4)
+
+# ╔═╡ 4e6ecfc7-7eb1-48b2-a596-8117b61324f0
+da_vector(initial_circular_orbit(0.4))
+
 # ╔═╡ d22de5fc-4b5e-4a60-9e27-9879ba7f1f1f
 
 
@@ -1110,10 +1128,107 @@ begin
 	    return(dt,updated_theta,t_ddI)
 	end
 
+	
+	"""formats the filename as YYYYMMDD_M_WD=*M_WD*_M_NS=*M_NS*.csv
+		if a filename is not provided"""
+	function format_filename(M_WD::Float64,M_NS::Float64;filename::Union{String,Int}=-1)::String
+		#
+		if filename==-1 
+		        today_str = Dates.format(Dates.now(), "yyyymmdd")
+		        base_filename = "Outputs/$(today_str)_M_WD=$(M_WD)_M_NS=$(M_NS).csv"
+		        filename = base_filename
+		        suffix = 2
+		        while isfile(filename)
+		            filename = "Outputs/$(today_str)_M_WD=$(M_WD)_M_NS=$(M_NS)_$(suffix).csv"
+		            suffix += 1
+				end
+		end
+		return filename
+	end
+		
+	"""writes array of format given in integrate to a file"""
+	function save_as_csv(datumses::AbstractMatrix{<:Real},
+					  M_WD::Float64,M_NS::Float64; filename::Union{String,Int}=-1)::Nothing
+		
+		
+		filename=format_filename(M_WD,M_NS;filename=filename)
+		# Writes the file to a CSV titled filename
+
+		isdir("Outputs") || mkdir("Outputs")
+		#creates output directory if not already extant
+		
+			CSV.write(filename, 
+						(t = datumses[:,1],
+     					ddI_xx = datumses[:,2],
+     					ddI_xy = datumses[:,3],
+						a = datumses[:,4],
+     					M_WD = datumses[:,5],
+     					M_NS = datumses[:,6],
+						R_WD = datumses[:,7],
+     					J = datumses[:,8],
+     					θ = datumses[:,9]))
+		return nothing
+	end
+		
+		
+		
+
+
 	"""Given an initial set of masses, `integrate` solves for the equations of motion from initial Roche Lobe overflow until the eventual complete dissipation of the white dwarf or the integration finishes according to user defined cutoff (either a limit on the number of orbits completed or on the integration steps taken). `integrate` stores and returns the second derivative of the quadrupole moment as a function of time for the orbit. The function also saves the run to a file named by the date and initial conditions if `write_file`. """
+	function integrate(M_WD::Float64; M_NS::Float64=1.35,mu_e::Float64=2., 
+	        orbit_limit::Float64=1e5, step_limit::Int=10^7,
+                   write_file::Bool=true, filename::Union{String,Int}=-1)::AbstractMatrix{<:Real}
+	    #returns time series second derivatives of the quadrupole moment
+	    t=0.
+	    theta=initial_circular_orbit(M_WD,M_NS=M_NS,mu_e=mu_e)
+	    #ts=zeros(step_limit)
+	    #ddIs=zeros(step_limit,2,2)
+		datumses=zeros(step_limit,9)
+		#print(ts_plus_times)
+	    i=0
+		
+		Flag=true
+	    
+	    while theta[6]<2*π*orbit_limit && i<step_limit && theta[2]>0 && Flag
+	        #integrate until time or step limit are elapsed or WD completely dissipates
+			#println(theta)
+			#println(isa(theta,Vector{Float64}))
+			try
+		        dt,t_theta,t_ddI=one_step(theta; dt_period=1e-2)
+		        i+=1
+		        t+=dt
+				#println(t," ", dt, " ", t_theta[6])
+		        
+	
+				t_ddI=ddI_from_theta(theta)
+				#print(t_ddI)
+	
+				#print([t, t_ddI[1,1], t_ddI[1,2]])
+	
+				#print(ts_plus_times[i])
+				datumses[i,:].=[t, t_ddI[1,1], t_ddI[1,2], t_theta... ]
+		
+		        theta=t_theta
+		        #ddIs[i, :, :].=ddI_from_theta(theta)
+			catch
+				Flag=false
+			end
+
+	    end
+
+		datumses=datumses[1:i,:]
+
+		if write_file #saves datumses to a csv in directory "Output"
+			save_as_csv(datumses,M_WD,M_NS,filename=filename)
+	    end
+		
+		
+	    return(datumses)
+	end
+end;
 
 	
-function integrate(M_WD::Float64; M_NS::Float64=1.35, mu_e::Float64=2.,
+#=function integrate(M_WD::Float64; M_NS::Float64=1.35, mu_e::Float64=2.,
                    orbit_limit::Float64=1e5, step_limit::Int=10^7,
                    write_file::Bool=true)
 
@@ -1224,6 +1339,9 @@ end;
 		
 	    return(ts_plus_times)
 	end=#
+=#
+
+# ╔═╡ 94ef0285-4cd9-453b-97f0-8616f841ccc7
 
 
 # ╔═╡ 842f2be3-4d05-434c-95d6-8100c0007742
@@ -1435,9 +1553,6 @@ end;
 
 # ╔═╡ cc725027-bee1-4115-ac1a-c4e361da043a
 
-
-# ╔═╡ 8ad974b5-ca88-41e5-813e-ebfe86d50197
-automated_write_test=CSV.read("Outputs/20251022_M_WD=1.0_M_NS=1.35_2.csv", DataFrame)
 
 # ╔═╡ 1e88b19d-bb91-450a-8191-33a65b0d8b1f
 
@@ -3644,6 +3759,7 @@ version = "17.4.0+2"
 # ╠═731205f1-64f9-4dd5-809f-a1cd20eabd47
 # ╠═528d99bb-0800-41d7-812b-8685a18c2ec0
 # ╠═3b211714-36b0-4b0d-9b62-6ae2939f66d9
+# ╠═d2b49aa0-7630-49e5-a885-5d28d7efccd3
 # ╠═bf13e120-01a9-4026-90ee-29576bfa784c
 # ╠═680002e1-a8e8-4fec-a37c-e6c92d8a6d2e
 # ╠═59b217a8-0b07-442e-bcd4-7fda42d5d03a
@@ -3684,6 +3800,11 @@ version = "17.4.0+2"
 # ╠═f9aaaa54-1e7a-46e6-954e-a6e20f637931
 # ╠═2d9276d6-cf9c-439e-bd66-9220fea56dde
 # ╠═2c6982e2-ee7d-4d2b-8f59-0285d85f1063
+# ╠═a1b781ff-ae56-4809-8e46-2238c9d7ef2c
+# ╠═e2fa4587-922c-4691-bfd2-34cf729ad10f
+# ╠═b96e4a38-2495-4c43-8dbb-25c9454bcedf
+# ╠═4e6ecfc7-7eb1-48b2-a596-8117b61324f0
+# ╠═ce02b62e-7eeb-49aa-9627-a0c09902c61b
 # ╠═c9a96a65-a4f8-4440-840e-5467793dad63
 # ╠═6a5b3c1f-f8b6-4578-915f-e35be805e608
 # ╠═987850ef-c086-4b16-8401-d11c753b800d
@@ -3707,6 +3828,7 @@ version = "17.4.0+2"
 # ╠═7e3f17c1-7b35-4a84-b8a5-36817549bda4
 # ╠═a7a7b50c-d555-4a1a-9197-963fac13aca5
 # ╠═a8f954bf-b8d6-45f1-b836-d9a4c977f7db
+# ╠═94ef0285-4cd9-453b-97f0-8616f841ccc7
 # ╠═842f2be3-4d05-434c-95d6-8100c0007742
 # ╠═a79497ee-61bf-435f-a49c-3969559f3973
 # ╠═cd38529a-e905-4f82-87a0-9f93232ac668
@@ -3770,7 +3892,6 @@ version = "17.4.0+2"
 # ╠═0d05b884-42b2-4872-9afa-668847d94ea7
 # ╠═f76606dd-979d-4f26-8567-740d6639a951
 # ╠═cc725027-bee1-4115-ac1a-c4e361da043a
-# ╠═8ad974b5-ca88-41e5-813e-ebfe86d50197
 # ╠═1e88b19d-bb91-450a-8191-33a65b0d8b1f
 # ╠═c8e2f809-a1ee-43a2-8f16-63d4c9d3fe47
 # ╠═7801e9ba-4c6d-40bf-945d-7f3d24750aff
