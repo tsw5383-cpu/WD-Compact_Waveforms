@@ -1121,7 +1121,7 @@ function integrate(M_WD::Float64; M_NS::Float64=1.35, mu_e::Float64=2.,
 	    t = 0.0
 	    theta = initial_circular_orbit(M_WD, M_NS=M_NS, mu_e=mu_e)
 		if write_file
-	    	ts_plus_times = zeros(10_000, 3)  # for incremental writes
+	    	ts_plus_times = zeros(step_limit, 3)  # for incremental writes
 		else 
 			ts_plus_times = zeros(step_limit, 3)
 		end
@@ -1146,7 +1146,7 @@ function integrate(M_WD::Float64; M_NS::Float64=1.35, mu_e::Float64=2.,
 	    end
 	
 	    # Integration loop
-	    while theta[6] < 2*π*orbit_limit && total_i < step_limit && theta[2] > 0
+	    while theta[6] < 2*π*orbit_limit && total_i < step_limit && theta[2] > 0 && theta[4] > 0
 	        dt, t_theta, t_ddI = one_step(theta; dt_period=1e-2)
 			 #integrate until time or step limit are elapsed or WD completely dissipates
 	        total_i += 1
@@ -1154,12 +1154,12 @@ function integrate(M_WD::Float64; M_NS::Float64=1.35, mu_e::Float64=2.,
 	
 	        t_ddI = ddI_from_theta(theta)
 	        buffer_i += 1
-	        ts_plus_times[buffer_i, :] .= [t, t_ddI[1,1], t_ddI[1,2]]
+	        ts_plus_times[total_i, :] .= [t, t_ddI[1,1], t_ddI[1,2]]
 	
 	        theta = t_theta
 	
-	        # backs up data every 10_000 integration steps
-	        if write_file && buffer_i == 10_000
+	        # backs up data every 10 integration steps
+	        if write_file && buffer_i == 10
 	            CSV.write(filename, 
 						  (t = ts_plus_times[:,1],
      				ddI_xx = ts_plus_times[:,2],
@@ -1172,9 +1172,9 @@ function integrate(M_WD::Float64; M_NS::Float64=1.35, mu_e::Float64=2.,
 	    # Saves any remaining rows
 	    if write_file && buffer_i > 0
 	        CSV.write(filename, 
-					  (t = ts_plus_times[1:buffer_i,1],
-     				ddI_xx = ts_plus_times[1:buffer_i,2],
-     				ddI_xy = ts_plus_times[1:buffer_i,3]);
+					  (t = ts_plus_times[:,1],
+     				ddI_xx = ts_plus_times[:,2],
+     				ddI_xy = ts_plus_times[:,3]);
 					  append=true, writeheader=false)
 			return nothing
 		else #return the full array if not saved as a csv
@@ -1224,6 +1224,21 @@ end;
 		
 	    return(ts_plus_times)
 	end=#
+
+
+# ╔═╡ 842f2be3-4d05-434c-95d6-8100c0007742
+
+
+# ╔═╡ a79497ee-61bf-435f-a49c-3969559f3973
+
+
+# ╔═╡ cd38529a-e905-4f82-87a0-9f93232ac668
+
+
+# ╔═╡ 026ec1f9-627b-470d-bb09-d85bc7e3b4a8
+
+
+# ╔═╡ 1c3153d2-2587-4760-8492-498f96730f26
 
 
 # ╔═╡ 4924e670-ef13-4425-b19d-006c37de6cc8
@@ -1400,6 +1415,9 @@ begin
 end;
 
 # ╔═╡ d27f8b79-3500-4e3e-90bf-c157ae3bbeb0
+integrate(1.0)
+
+# ╔═╡ 7758ed6f-4a2f-406a-aef1-477ece2a0a82
 
 
 # ╔═╡ cc725027-bee1-4115-ac1a-c4e361da043a
@@ -3676,6 +3694,11 @@ version = "17.4.0+2"
 # ╠═7e3f17c1-7b35-4a84-b8a5-36817549bda4
 # ╠═a7a7b50c-d555-4a1a-9197-963fac13aca5
 # ╠═a8f954bf-b8d6-45f1-b836-d9a4c977f7db
+# ╠═842f2be3-4d05-434c-95d6-8100c0007742
+# ╠═a79497ee-61bf-435f-a49c-3969559f3973
+# ╠═cd38529a-e905-4f82-87a0-9f93232ac668
+# ╠═026ec1f9-627b-470d-bb09-d85bc7e3b4a8
+# ╠═1c3153d2-2587-4760-8492-498f96730f26
 # ╠═4924e670-ef13-4425-b19d-006c37de6cc8
 # ╠═a5f95e2b-7e0b-42a7-b21a-9d73b4fb34b5
 # ╠═5c34adb5-b261-4284-b8d0-6100ab2cbbcc
@@ -3730,6 +3753,7 @@ version = "17.4.0+2"
 # ╠═91e4fc89-1284-4e31-8c97-93121782ea03
 # ╠═8f914e37-11f2-4620-b469-abc005e98312
 # ╠═d27f8b79-3500-4e3e-90bf-c157ae3bbeb0
+# ╠═7758ed6f-4a2f-406a-aef1-477ece2a0a82
 # ╠═cc725027-bee1-4115-ac1a-c4e361da043a
 # ╠═8ad974b5-ca88-41e5-813e-ebfe86d50197
 # ╠═1e88b19d-bb91-450a-8191-33a65b0d8b1f
