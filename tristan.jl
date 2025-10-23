@@ -1104,13 +1104,14 @@ begin
 
 	"""Given an initial set of masses, `integrate` solves for the equations of motion from initial Roche Lobe overflow until the eventual complete dissipation of the white dwarf or the integration finishes according to user defined cutoff (either a limit on the number of orbits completed or on the integration steps taken). `integrate` stores and returns the second derivative of the quadrupole moment as a function of time for the orbit. """
 	function integrate(M_WD::Float64; M_NS::Float64=1.35,mu_e::Float64=2., 
-	        orbit_limit::Float64=1e5, step_limit::Int=10^7)::Tuple{Vector{Float64}, Array{Float64,3}}
+	        orbit_limit::Float64=1e5, step_limit::Int=10^7)::AbstractMatrix{<:Real}
 	    #returns time series second derivatives of the quadrupole moment
 	    t=0.
 	    theta=initial_circular_orbit(M_WD,M_NS=M_NS,mu_e=mu_e)
 	    #ts=zeros(step_limit)
 	    #ddIs=zeros(step_limit,2,2)
 		ts_plus_times=zeros(step_limit,3)
+		#print(ts_plus_times)
 	    i=0
 	    
 	    while theta[6]<2*π*orbit_limit && i<step_limit && theta[2]>0
@@ -1120,25 +1121,84 @@ begin
 	        dt,t_theta,t_ddI=one_step(theta; dt_period=1e-2)
 	        i+=1
 	        t+=dt
-			println(t," ", dt, " ", t_theta[6])
+			#println(t," ", dt, " ", t_theta[6])
 	        
 
 			t_ddI=ddI_from_theta(theta)
+			#print(t_ddI)
 
-			print([t, t_ddI[1,1], t_ddI[1,2]])
+			#print([t, t_ddI[1,1], t_ddI[1,2]])
 
-
-			ts_plus_times[i]=[t, t_ddI[1,1], t_ddI[1,2] ]
+			#print(ts_plus_times[i])
+			ts_plus_times[i,:].=[t, t_ddI[1,1], t_ddI[1,2] ]
 	
 	        theta=t_theta
 	        #ddIs[i, :, :].=ddI_from_theta(theta)
 
-			ts
 	    end
-	
+		
 	    return(ts_plus_times)
 	end
 end;
+
+# ╔═╡ 84a15e51-0078-40b8-ad18-693d438eb70f
+
+
+# ╔═╡ 7d40fd08-e841-401e-908f-c765d3a01f78
+
+
+# ╔═╡ 56fd8555-eddb-4ad1-8ea7-273a12c49867
+
+
+# ╔═╡ 3b8d5316-6342-40af-b636-d0a837376686
+
+
+# ╔═╡ 2413dd9c-bd64-4923-a5c0-8471267401b8
+
+
+# ╔═╡ 3aafb99a-6a64-437c-b6d1-3c7e2d63746b
+
+
+# ╔═╡ c3affd3d-7d98-445d-9f8f-ae33a264dda3
+
+
+# ╔═╡ e748b1fb-36a5-452c-bfdf-cc20c328575d
+
+
+# ╔═╡ 63a48513-978d-47ce-afca-d58b4b9c3b2b
+
+
+# ╔═╡ 07e981af-ab4d-40ff-a47e-3616e24c4596
+
+
+# ╔═╡ 126d40bf-0cc2-4c7a-b07a-46bad76b011c
+begin
+	test_zeros=zeros(10,3)
+	println(test_zeros)
+	println(test_zeros[1,:])
+	test_zeros[1,:].=[1,2,3]
+end	
+
+# ╔═╡ 5cea1cab-aab4-438f-a285-f4468081cb25
+
+
+# ╔═╡ d7c80b56-73e2-4741-9381-23b123b7bcf0
+
+
+# ╔═╡ 29342c7d-7fb5-487c-8dfc-e843d07a78e3
+
+
+# ╔═╡ f58e96c8-1b26-410f-aa8c-09c26dbe2517
+
+
+# ╔═╡ e6f10232-59fb-4cb4-89d2-2134b0e96a60
+
+
+# ╔═╡ 1ccba8c4-964b-40c5-81e1-273d8b2afe70
+
+
+# ╔═╡ dfeb7a2f-cb87-43a7-9d9f-b068d1ae509f
+
 
 # ╔═╡ 094ae836-f7fd-4423-901e-89479ee28760
 
@@ -1236,10 +1296,37 @@ begin
 	test_integrate = integrate(1.0,step_limit=10)
 	
 
-	@test isa(test_integrate, Vector{Float64,3})
+	@test isa(test_integrate, AbstractMatrix{Float64})
 end;
 
+# ╔═╡ 8ad974b5-ca88-41e5-813e-ebfe86d50197
+
+
+# ╔═╡ 86caa09c-5683-407b-83e8-786ba4e50116
+
+
 # ╔═╡ a0869e2e-22b4-422c-904d-a57277467925
+test_integrate
+
+# ╔═╡ aff9a7ca-d8cd-4866-86f6-49d0397b0fff
+begin
+	test_df=DataFrame(test_integrate, :auto)
+	CSV.write("Outputs/test_csv.csv", test_df)
+end
+
+# ╔═╡ adf1800e-3fea-4f8a-8255-44248a041ef4
+test_read=CSV.read("Outputs/test_csv.csv", DataFrame)
+
+# ╔═╡ f8a70c92-3d1f-48a0-a146-7f0b02e76cff
+test_read
+
+# ╔═╡ 67ee3227-0143-4575-bad0-0dbd73b812b7
+
+
+# ╔═╡ b7ba9bd8-d96a-4f87-8b8b-0ec46c60fa10
+
+
+# ╔═╡ c0c71b33-06aa-41ba-8a5f-ad9026fa7daa
 
 
 # ╔═╡ 5fd7a5da-3505-4057-8947-7e2a061d147c
@@ -3461,6 +3548,24 @@ version = "17.4.0+2"
 # ╠═7e3f17c1-7b35-4a84-b8a5-36817549bda4
 # ╠═a7a7b50c-d555-4a1a-9197-963fac13aca5
 # ╠═a8f954bf-b8d6-45f1-b836-d9a4c977f7db
+# ╠═84a15e51-0078-40b8-ad18-693d438eb70f
+# ╠═7d40fd08-e841-401e-908f-c765d3a01f78
+# ╠═56fd8555-eddb-4ad1-8ea7-273a12c49867
+# ╠═3b8d5316-6342-40af-b636-d0a837376686
+# ╠═2413dd9c-bd64-4923-a5c0-8471267401b8
+# ╠═3aafb99a-6a64-437c-b6d1-3c7e2d63746b
+# ╠═c3affd3d-7d98-445d-9f8f-ae33a264dda3
+# ╠═e748b1fb-36a5-452c-bfdf-cc20c328575d
+# ╠═63a48513-978d-47ce-afca-d58b4b9c3b2b
+# ╠═07e981af-ab4d-40ff-a47e-3616e24c4596
+# ╠═126d40bf-0cc2-4c7a-b07a-46bad76b011c
+# ╠═5cea1cab-aab4-438f-a285-f4468081cb25
+# ╠═d7c80b56-73e2-4741-9381-23b123b7bcf0
+# ╠═29342c7d-7fb5-487c-8dfc-e843d07a78e3
+# ╠═f58e96c8-1b26-410f-aa8c-09c26dbe2517
+# ╠═e6f10232-59fb-4cb4-89d2-2134b0e96a60
+# ╠═1ccba8c4-964b-40c5-81e1-273d8b2afe70
+# ╠═dfeb7a2f-cb87-43a7-9d9f-b068d1ae509f
 # ╠═094ae836-f7fd-4423-901e-89479ee28760
 # ╠═99d6e037-b31a-4d47-a861-d6626128845d
 # ╠═411fe157-b5f6-4961-b9b2-aacaa773253f
@@ -3491,7 +3596,15 @@ version = "17.4.0+2"
 # ╠═1e16edf8-c038-461e-bc29-f8ed81c7caca
 # ╠═91e4fc89-1284-4e31-8c97-93121782ea03
 # ╠═8f914e37-11f2-4620-b469-abc005e98312
+# ╠═8ad974b5-ca88-41e5-813e-ebfe86d50197
+# ╠═86caa09c-5683-407b-83e8-786ba4e50116
 # ╠═a0869e2e-22b4-422c-904d-a57277467925
+# ╠═aff9a7ca-d8cd-4866-86f6-49d0397b0fff
+# ╠═adf1800e-3fea-4f8a-8255-44248a041ef4
+# ╠═f8a70c92-3d1f-48a0-a146-7f0b02e76cff
+# ╠═67ee3227-0143-4575-bad0-0dbd73b812b7
+# ╠═b7ba9bd8-d96a-4f87-8b8b-0ec46c60fa10
+# ╠═c0c71b33-06aa-41ba-8a5f-ad9026fa7daa
 # ╠═5fd7a5da-3505-4057-8947-7e2a061d147c
 # ╠═9526b140-ea6b-4feb-967d-16cc44d0a3af
 # ╠═77d5f408-ca5d-46af-a092-7834e49a3a8c
