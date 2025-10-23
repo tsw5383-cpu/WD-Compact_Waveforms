@@ -49,6 +49,8 @@ begin
 	#and integrating differential equations
 
 	using CSV, DataFrames
+	using Dates,DelimitedFiles, Printf
+	using FilePathsBase: joinpath
 	#for saving data as files
 	
 	current_path=@__DIR__
@@ -76,6 +78,12 @@ md"Importing packages is causing me a world of problems."
 
 
 # ╔═╡ 8edaf48b-d27d-43c9-8a0c-e149654b6cd0
+
+
+# ╔═╡ 2e8ac04e-e174-49c6-b276-72b1d5cfd808
+
+
+# ╔═╡ 68b38ae1-4f63-4d73-9b8f-8f91f9d2fc2a
 
 
 # ╔═╡ c79771dc-4bf2-4c03-9f84-dd6532c98bfd
@@ -1102,8 +1110,85 @@ begin
 	    return(dt,updated_theta,t_ddI)
 	end
 
-	"""Given an initial set of masses, `integrate` solves for the equations of motion from initial Roche Lobe overflow until the eventual complete dissipation of the white dwarf or the integration finishes according to user defined cutoff (either a limit on the number of orbits completed or on the integration steps taken). `integrate` stores and returns the second derivative of the quadrupole moment as a function of time for the orbit. """
-	function integrate(M_WD::Float64; M_NS::Float64=1.35,mu_e::Float64=2., 
+	"""Given an initial set of masses, `integrate` solves for the equations of motion from initial Roche Lobe overflow until the eventual complete dissipation of the white dwarf or the integration finishes according to user defined cutoff (either a limit on the number of orbits completed or on the integration steps taken). `integrate` stores and returns the second derivative of the quadrupole moment as a function of time for the orbit. The function also saves the run to a file named by the date and initial conditions if `write_file`. """
+
+	
+function integrate(M_WD::Float64; M_NS::Float64=1.35, mu_e::Float64=2.,
+                   orbit_limit::Float64=1e5, step_limit::Int=10^7,
+                   write_file::Bool=true)
+
+	    # Prepare storage
+	    t = 0.0
+	    theta = initial_circular_orbit(M_WD, M_NS=M_NS, mu_e=mu_e)
+		if write_file
+	    	ts_plus_times = zeros(10_000, 3)  # for incremental writes
+		else 
+			ts_plus_times = zeros(step_limit, 3)
+		end
+	
+	    buffer_i = 0 #counts up to 10000, then saves
+	    total_i = 0 
+	
+	    if write_file
+	        # formats 
+	        today_str = Dates.format(Dates.now(), "yyyymmdd")
+	        base_filename = "Outputs/$(today_str)_M_WD=$(M_WD)_M_NS=$(M_NS).csv"
+	        filename = base_filename
+	        suffix = 2
+	        while isfile(filename)
+	            filename = "Outputs/$(today_str)_M_WD=$(M_WD)_M_NS=$(M_NS)_$(suffix).csv"
+	            suffix += 1
+	        end
+	
+	        # Write headers once
+			headers = (t=Float64[], ddI_xx=Float64[], ddI_xy=Float64[])
+	        CSV.write(filename, Tables.columntable(headers))
+	    end
+	
+	    # Integration loop
+	    while theta[6] < 2*π*orbit_limit && total_i < step_limit && theta[2] > 0
+	        dt, t_theta, t_ddI = one_step(theta; dt_period=1e-2)
+			 #integrate until time or step limit are elapsed or WD completely dissipates
+	        total_i += 1
+	        t += dt
+	
+	        t_ddI = ddI_from_theta(theta)
+	        buffer_i += 1
+	        ts_plus_times[buffer_i, :] .= [t, t_ddI[1,1], t_ddI[1,2]]
+	
+	        theta = t_theta
+	
+	        # backs up data every 10_000 integration steps
+	        if write_file && buffer_i == 10_000
+	            CSV.write(filename, 
+						  (t = ts_plus_times[:,1],
+     				ddI_xx = ts_plus_times[:,2],
+     				ddI_xy = ts_plus_times[:,3]);
+						  append=true, writeheader=false)
+	            buffer_i = 0
+	        end
+	    end
+	
+	    # Saves any remaining rows
+	    if write_file && buffer_i > 0
+	        CSV.write(filename, 
+					  (t = ts_plus_times[1:buffer_i,1],
+     				ddI_xx = ts_plus_times[1:buffer_i,2],
+     				ddI_xy = ts_plus_times[1:buffer_i,3]);
+					  append=true, writeheader=false)
+			return nothing
+		else #return the full array if not saved as a csv
+			return ts_plus_times
+	    end
+
+	
+	      
+	end
+end;
+
+
+	
+	#=function integrate(M_WD::Float64; M_NS::Float64=1.35,mu_e::Float64=2., 
 	        orbit_limit::Float64=1e5, step_limit::Int=10^7)::AbstractMatrix{<:Real}
 	    #returns time series second derivatives of the quadrupole moment
 	    t=0.
@@ -1138,8 +1223,23 @@ begin
 	    end
 		
 	    return(ts_plus_times)
-	end
-end;
+	end=#
+
+
+# ╔═╡ 4924e670-ef13-4425-b19d-006c37de6cc8
+
+
+# ╔═╡ a5f95e2b-7e0b-42a7-b21a-9d73b4fb34b5
+
+
+# ╔═╡ 5c34adb5-b261-4284-b8d0-6100ab2cbbcc
+
+
+# ╔═╡ c7d512c8-770f-4036-8416-a3345c115a5e
+
+
+# ╔═╡ ff724261-6575-459a-ad6b-274c01965879
+
 
 # ╔═╡ 84a15e51-0078-40b8-ad18-693d438eb70f
 
@@ -1293,13 +1393,28 @@ md"Below is an integration check--success depends on each function from victor.j
 # ╔═╡ 8f914e37-11f2-4620-b469-abc005e98312
 begin
 	
-	test_integrate = integrate(1.0,step_limit=10)
+	test_integrate = integrate(1.0,step_limit=10,write_file=false)
 	
 
 	@test isa(test_integrate, AbstractMatrix{Float64})
 end;
 
+# ╔═╡ d27f8b79-3500-4e3e-90bf-c157ae3bbeb0
+
+
+# ╔═╡ cc725027-bee1-4115-ac1a-c4e361da043a
+
+
 # ╔═╡ 8ad974b5-ca88-41e5-813e-ebfe86d50197
+automated_write_test=CSV.read("Outputs/20251022_M_WD=1.0_M_NS=1.35_2.csv", DataFrame)
+
+# ╔═╡ 1e88b19d-bb91-450a-8191-33a65b0d8b1f
+
+
+# ╔═╡ c8e2f809-a1ee-43a2-8f16-63d4c9d3fe47
+
+
+# ╔═╡ 7801e9ba-4c6d-40bf-945d-7f3d24750aff
 
 
 # ╔═╡ 86caa09c-5683-407b-83e8-786ba4e50116
@@ -1504,12 +1619,16 @@ PLUTO_PROJECT_TOML_CONTENTS = """
 BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
+DelimitedFiles = "8bb1440f-4735-579b-a4ab-409b98df4dab"
+FilePathsBase = "48062228-2e41-5def-b9a4-89aafe57970f"
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 OrdinaryDiffEq = "1dea7af3-3e70-54e6-95c3-0bf5283fa5ed"
 PlutoLinks = "0ff47ea0-7a50-410d-8455-4348d5de0420"
 PlutoTeachingTools = "661c6b06-c737-4d37-b85c-46df65de6f69"
 PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
+Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 Profile = "9abbd945-dff8-562f-b5e8-e1ebf5ef1b79"
 ProfileCanvas = "efd6af41-a80b-495e-886c-e51b0c7d77a3"
 SciMLBase = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
@@ -1519,6 +1638,7 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 BenchmarkTools = "~1.6.0"
 CSV = "~0.10.15"
 DataFrames = "~1.8.0"
+FilePathsBase = "~0.9.24"
 ForwardDiff = "~1.2.1"
 OrdinaryDiffEq = "~6.102.1"
 PlutoLinks = "~0.1.6"
@@ -1534,7 +1654,7 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.11.2"
 manifest_format = "2.0"
-project_hash = "628a2aae8bddd1947218aff5ef12631559b21207"
+project_hash = "762849dd20b20371543ab854bfa4200de9b9e7cc"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "27cecae79e5cc9935255f90c53bb831cc3c870d7"
@@ -1819,6 +1939,12 @@ version = "1.0.0"
 deps = ["Printf"]
 uuid = "ade2ca70-3891-5945-98fb-dc099432e06a"
 version = "1.11.0"
+
+[[deps.DelimitedFiles]]
+deps = ["Mmap"]
+git-tree-sha1 = "9e2f36d3c96a820c678f2f1f1782582fcf685bae"
+uuid = "8bb1440f-4735-579b-a4ab-409b98df4dab"
+version = "1.9.1"
 
 [[deps.DiffEqBase]]
 deps = ["ArrayInterface", "ConcreteStructs", "DocStringExtensions", "EnzymeCore", "FastBroadcast", "FastClosures", "FastPower", "FunctionWrappers", "FunctionWrappersWrappers", "LinearAlgebra", "Logging", "Markdown", "MuladdMacro", "PrecompileTools", "Printf", "RecursiveArrayTools", "Reexport", "SciMLBase", "SciMLOperators", "SciMLStructures", "Setfield", "Static", "StaticArraysCore", "Statistics", "SymbolicIndexingInterface", "TruncatedStacktraces"]
@@ -3340,6 +3466,8 @@ version = "17.4.0+2"
 # ╠═511606a0-8594-45a3-af99-29a3ffbebe68
 # ╠═8edaf48b-d27d-43c9-8a0c-e149654b6cd0
 # ╠═0cac30f1-9101-4ba3-accc-52621bc1d16f
+# ╠═2e8ac04e-e174-49c6-b276-72b1d5cfd808
+# ╠═68b38ae1-4f63-4d73-9b8f-8f91f9d2fc2a
 # ╠═c79771dc-4bf2-4c03-9f84-dd6532c98bfd
 # ╠═33f9cc9a-a207-4a09-bfa3-0f54546c05c3
 # ╠═e2833dab-01a3-4d20-a42d-7d182f9e610d
@@ -3548,6 +3676,11 @@ version = "17.4.0+2"
 # ╠═7e3f17c1-7b35-4a84-b8a5-36817549bda4
 # ╠═a7a7b50c-d555-4a1a-9197-963fac13aca5
 # ╠═a8f954bf-b8d6-45f1-b836-d9a4c977f7db
+# ╠═4924e670-ef13-4425-b19d-006c37de6cc8
+# ╠═a5f95e2b-7e0b-42a7-b21a-9d73b4fb34b5
+# ╠═5c34adb5-b261-4284-b8d0-6100ab2cbbcc
+# ╠═c7d512c8-770f-4036-8416-a3345c115a5e
+# ╠═ff724261-6575-459a-ad6b-274c01965879
 # ╠═84a15e51-0078-40b8-ad18-693d438eb70f
 # ╠═7d40fd08-e841-401e-908f-c765d3a01f78
 # ╠═56fd8555-eddb-4ad1-8ea7-273a12c49867
@@ -3596,7 +3729,12 @@ version = "17.4.0+2"
 # ╠═1e16edf8-c038-461e-bc29-f8ed81c7caca
 # ╠═91e4fc89-1284-4e31-8c97-93121782ea03
 # ╠═8f914e37-11f2-4620-b469-abc005e98312
+# ╠═d27f8b79-3500-4e3e-90bf-c157ae3bbeb0
+# ╠═cc725027-bee1-4115-ac1a-c4e361da043a
 # ╠═8ad974b5-ca88-41e5-813e-ebfe86d50197
+# ╠═1e88b19d-bb91-450a-8191-33a65b0d8b1f
+# ╠═c8e2f809-a1ee-43a2-8f16-63d4c9d3fe47
+# ╠═7801e9ba-4c6d-40bf-945d-7f3d24750aff
 # ╠═86caa09c-5683-407b-83e8-786ba4e50116
 # ╠═a0869e2e-22b4-422c-904d-a57277467925
 # ╠═aff9a7ca-d8cd-4866-86f6-49d0397b0fff
