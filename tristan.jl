@@ -1418,6 +1418,19 @@ end;
 integrate(1.0)
 
 # ╔═╡ 7758ed6f-4a2f-406a-aef1-477ece2a0a82
+for m in LinRange(0.1, 1.4, 14)
+	try 
+		integrate(m)
+	catch
+		@warn "Integration concluded for M_WD = $m" 
+        continue  
+	end
+end;
+
+# ╔═╡ 0d05b884-42b2-4872-9afa-668847d94ea7
+
+
+# ╔═╡ f76606dd-979d-4f26-8567-740d6639a951
 
 
 # ╔═╡ cc725027-bee1-4115-ac1a-c4e361da043a
@@ -3754,6 +3767,8 @@ version = "17.4.0+2"
 # ╠═8f914e37-11f2-4620-b469-abc005e98312
 # ╠═d27f8b79-3500-4e3e-90bf-c157ae3bbeb0
 # ╠═7758ed6f-4a2f-406a-aef1-477ece2a0a82
+# ╠═0d05b884-42b2-4872-9afa-668847d94ea7
+# ╠═f76606dd-979d-4f26-8567-740d6639a951
 # ╠═cc725027-bee1-4115-ac1a-c4e361da043a
 # ╠═8ad974b5-ca88-41e5-813e-ebfe86d50197
 # ╠═1e88b19d-bb91-450a-8191-33a65b0d8b1f
