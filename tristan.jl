@@ -48,6 +48,8 @@ begin
 	#packages used for chain rules of large derivatives
 	#and integrating differential equations
 
+	using CSV, DataFrames
+	#for saving data as files
 	
 	current_path=@__DIR__
 	include(current_path*"/victor-ftns_only_no_types.jl")
@@ -70,7 +72,22 @@ end;
 # ╔═╡ 6c59b881-5668-4894-950b-2c7bee5367ef
 md"Importing packages is causing me a world of problems."
 
+# ╔═╡ 511606a0-8594-45a3-af99-29a3ffbebe68
+
+
 # ╔═╡ 8edaf48b-d27d-43c9-8a0c-e149654b6cd0
+
+
+# ╔═╡ c79771dc-4bf2-4c03-9f84-dd6532c98bfd
+
+
+# ╔═╡ 33f9cc9a-a207-4a09-bfa3-0f54546c05c3
+
+
+# ╔═╡ e2833dab-01a3-4d20-a42d-7d182f9e610d
+
+
+# ╔═╡ 1db7cf48-6630-4701-b163-c2fcc632a050
 
 
 # ╔═╡ 5519a048-4a4a-4091-af9e-8b2dc444775b
@@ -172,11 +189,41 @@ md"We model the neutron star as accreting conservatively until it reaches its Ed
 # ╔═╡ 4f1118f3-e8f8-479f-819a-db201f36e447
 
 
-# ╔═╡ 86648226-52f9-4951-bd85-bebc21018567
+# ╔═╡ 86420e50-5f10-43aa-ac65-a8708be68dc6
 """Smooth approximation to the minimum function"""
-function Boltzmann_Max(x1::T, x2::T; α=-4.) where T<:Real
+function Boltzmann_Max(x1::T, x2::T; α=-10.) where T<:Real
     return((x1*exp(α*x1)+x2*exp(α*x2))/(exp(α*x1)+exp(α*x2)))
 end
+
+# ╔═╡ 6d4270fb-21e4-4e8c-b7e4-0e7bc83870c6
+
+
+# ╔═╡ 94098f26-fc8d-4df5-84fe-9ebb7b8c994a
+#=function Boltzmann_Min(x1, x2; α=-10.)
+    Δ = α * (x2 - x1)
+	out=0
+    if Δ > 50
+        out=x1           # exp(Δ) overflows → x1 << x2
+    elseif Δ < -50
+        out=x2           # exp(-Δ) overflows → x2 << x1
+    else
+        w = 1 / (1 + exp(Δ))
+        out= w * x1 + (1 - w) * x2
+	end		
+	return out 
+end=#
+
+# ╔═╡ 256492bf-b826-49aa-b051-55991228703c
+
+
+# ╔═╡ a3e1afb5-0a7b-41aa-b50f-dc959a36a1e6
+
+
+# ╔═╡ 69081296-10a7-4628-a62d-b116548bdbae
+
+
+# ╔═╡ bfbaf692-db1f-41f9-a147-95ccb8de9e1e
+
 
 # ╔═╡ 1de07299-8623-49fe-bba3-136dc45e7c82
 
@@ -204,14 +251,33 @@ end
 # ╔═╡ 2fb18e7f-30eb-4dff-b30f-f5086ec3e02d
 begin
 	""" Smooth accretion rate of the neutron star """
-	function dM_NS(a::T, R_WD::T, M_WD::T, M_NS::T;
-			A=10., mu_e=2.0, eta_acc=0.1, α=-4.) where T<:Real
+	#=function dM_NS(a::T, R_WD::T, M_WD::T, M_NS::T;
+			A=10., mu_e=2.0, eta_acc=0.1, α=-10.) where T<:Real
 	    t_dM_WD=decretion_rate(a,a,R_WD,M_WD,M_NS,A=A)
 		
 	    t_edd=eddington_rate(M_NS, mu_e=mu_e, eta_acc=eta_acc)
-	    return(Boltzmann_Max(-1*t_dM_WD,t_edd,α=α))
-	end
 
+		out=Boltzmann_Max(-1*t_dM_WD,t_edd,α=α)
+
+		println(t_dM_WD)
+		println(t_edd)
+		println(out)
+		@assert out>0
+		@assert out<-1.5*t_dM_WD
+		@assert out<1.5*t_edd
+	    return(out)
+	end=#
+
+	function dM_NS(a::T, R_WD::T, M_WD::T, M_NS::T;
+			A=10., mu_e=2.0, eta_acc=0.1, α=-10.) where T<:Real
+	    t_dM_WD=decretion_rate(a,a,R_WD,M_WD,M_NS,A=A)
+		
+	    t_edd=eddington_rate(M_NS, mu_e=mu_e, eta_acc=eta_acc)
+		return(min(-t_dM_WD,t_edd))
+	end
+	
+
+	println(dM_NS(14088.7,5338.49,1.,1.35))
 
 	"""Reduced mass in effective one body formalism"""
 	function mu(M_WD::T, M_NS::T) where T<:Real
@@ -224,11 +290,53 @@ begin
 		@assert M_WD > 0 # In production-ready code, consider commenting this out
 		@assert M_NS > 0 # In production-ready code, consider commenting this out
 		@assert a > 0 # In production-ready code, consider commenting this out
-		return(J/(a*mu(M_WD,M_NS)))
+		return(J/(a^2*mu(M_WD,M_NS)))
 	end   
 end;
 
+# ╔═╡ f784cf7a-6cf3-48b0-b705-acf708b75db8
+
+
+# ╔═╡ d43a93a0-3f71-4d7f-b548-6057a1513f87
+
+
+# ╔═╡ d45576f6-f2ad-47e5-a4a7-6bf6f95d42c9
+
+
+# ╔═╡ 557daf12-69f8-4f4f-894f-6bc435fa91ab
+
+
+# ╔═╡ df23f515-ffc2-4965-b695-c3875c5bf29d
+
+
+# ╔═╡ 760d0fda-81d0-4d36-9e3d-46912d0ddfa4
+
+
+# ╔═╡ 6ac10460-5123-487d-a55d-6183de743a5e
+
+
+# ╔═╡ d93a9205-0f8c-4b47-af4e-5ad0b6437353
+
+
 # ╔═╡ 344fdbd0-96e3-4a34-8d9f-3b6c34cee2b3
+dM_NS(1,1,1,1)
+
+# ╔═╡ 5512bb36-6de6-41e6-93a4-d736f8b69b3d
+dM_NS(14088.7,5338.49,1.,1.35)
+
+# ╔═╡ a1e4b8ec-de2e-42ab-8d52-2f62cf5d92dd
+dot_R_WD()
+
+# ╔═╡ c16514a9-c297-451b-9e6d-1d21d15d0f28
+
+
+# ╔═╡ d9e0ca74-8f4b-4d10-8255-7a1dae0d49d7
+
+
+# ╔═╡ 7fc2e8cf-556f-421f-a993-34e845c4ed3f
+
+
+# ╔═╡ 0757c720-c651-44bc-aca6-20798890e01b
 
 
 # ╔═╡ 5a5761f7-eb8e-419f-8bb6-15780de928d2
@@ -589,7 +697,7 @@ begin
 	end
 	
 	function dM_NS_vector(theta::AbstractVector{T};
-	        A::T=10, mu_e::T=2.0, eta_acc::T=0.1, α=4) where {T}
+	        A=10, mu_e=2.0, eta_acc=0.1, α=-10.) where {T}
 
 		A = T(A)
 	    mu_e = T(mu_e)
@@ -605,7 +713,7 @@ begin
 		mu_e = T(mu_e)
 		
 	    a, M_WD, M_NS, R_WD, J, θ=theta
-	    return( R0_WD(M_WD, mu_e=mu_e))
+	    return( dot_R_WD(M_WD, R_WD))
 	end
 	    
 	function dJ_vector(theta::AbstractVector{T}; 
@@ -639,6 +747,18 @@ begin
 	    return(I_xy(M_WD, M_NS, a, θ))
 	end
 end
+
+# ╔═╡ bf13e120-01a9-4026-90ee-29576bfa784c
+
+
+# ╔═╡ 680002e1-a8e8-4fec-a37c-e6c92d8a6d2e
+
+
+# ╔═╡ 59b217a8-0b07-442e-bcd4-7fda42d5d03a
+
+
+# ╔═╡ d0db0f15-0632-4f3b-bdc0-af1342ae03a7
+
 
 # ╔═╡ 2f9e1da8-3522-4aad-af07-00d13602b610
 
@@ -708,7 +828,7 @@ md"The below block of code uses the vectorized derivatives above to output funct
 begin
     dda_vector=next_derivative(da_vector)
     ddM_WD_vector=next_derivative(dM_WD_vector)
-    ddM_NS_vector=next_derivative(dM_WD_vector)
+    ddM_NS_vector=next_derivative(dM_NS_vector)
     ddR_WD_vector=next_derivative(dR_WD_vector)
     ddJ_vector=next_derivative(dJ_vector)
     ddθ_vector=next_derivative(dθ_vector)
@@ -729,6 +849,9 @@ begin
     dddI_xy_vector=next_derivative(Ixy_vector,n=3)
 end;  
 
+# ╔═╡ e434ffd6-ce0c-4765-8aef-564180e51309
+
+
 # ╔═╡ a602a9fd-f5af-44f9-bef5-60974e100a9a
 
 
@@ -736,10 +859,13 @@ end;
 # ╔═╡ 0e80bd6c-80af-45b3-8637-22fa8bfe8a5c
 #=bundling derivatives together which will prove convenient later=#
 begin
-    first_derivatives=[da_vector, dM_WD_vector, dM_WD_vector, dR_WD_vector, dJ_vector, dθ_vector]
-    second_derivatives=[dda_vector, ddM_WD_vector, ddM_WD_vector, ddR_WD_vector, ddJ_vector, ddθ_vector]
-    third_derivatives=[ddda_vector, dddM_WD_vector, dddM_WD_vector, dddR_WD_vector, dddJ_vector, dddθ_vector]
+    first_derivatives=[da_vector, dM_WD_vector, dM_NS_vector, dR_WD_vector, dJ_vector, dθ_vector]
+    second_derivatives=[dda_vector, ddM_WD_vector, ddM_NS_vector, ddR_WD_vector, ddJ_vector, ddθ_vector]
+    third_derivatives=[ddda_vector, dddM_WD_vector, dddM_NS_vector, dddR_WD_vector, dddJ_vector, dddθ_vector]
 end;
+
+# ╔═╡ a22c8171-4ca3-47e3-99c7-5e6e822983d8
+
 
 # ╔═╡ 7f728824-950f-4631-bb6b-2b4654f6dc7f
 #=Constructs a symmetric 2x2 tensor from a plus and times polarization=#
@@ -869,9 +995,12 @@ function acceleration!(du::Vector{Float64}, theta::Vector{Float64},p,t)
 
     #mutate du
     du .= dtheta
-	println(du)
+	#println(du)
     #return(dtheta)
 end;
+
+# ╔═╡ f6882fb5-f97e-4898-855e-23b8ccc0f205
+
 
 # ╔═╡ 2f7ca955-4d59-483e-a86a-8363fb5795d6
 
@@ -904,7 +1033,7 @@ begin
 	"""Calculates the angular momentum of the system at initial Roche Lobe overflow """	
 	function circular_J(a::Float64,M_WD::Float64,M_NS::Float64)::Float64
 	    #returns angular momentum for a circular orbit
-	    return((2 * a * G * M_WD ^ 2 * M_NS ^ 2 / (M_WD + M_NS))^(1/2))
+	    return(( a * G * M_WD ^ 2 * M_NS ^ 2 / (M_WD + M_NS))^(1/2))
 	end
 	"""Defines theta at initial Roche Lobe overflow for  """
 	function initial_circular_orbit(M_WD::Float64;M_NS::Float64=1.35,mu_e::Float64=2.)::Vector{Float64}
@@ -917,6 +1046,12 @@ begin
 	    return([a, M_WD, M_NS, R_WD, J, 0.])
 	end
 end
+
+# ╔═╡ cbf1359d-0d47-4f3b-a712-7ed8308b19ff
+initial_circular_orbit(1.)
+
+# ╔═╡ d22de5fc-4b5e-4a60-9e27-9879ba7f1f1f
+
 
 # ╔═╡ e33d1f4e-7e39-456b-88cb-e70f3bb4dec9
 
@@ -955,6 +1090,7 @@ begin
 	    #or as a fraction of the orbital period determined by dt_period
 	    if dt==-1
 	        dt=dt_period*period(theta[2]+theta[3], theta[1])
+			#print(dt)
 	    end
 	    prob = ODEProblem(acceleration!,theta,(0,dt),[])
 	    updated_theta = solve(prob, alg=Vern9()).u[end]
@@ -962,7 +1098,7 @@ begin
 	    #=Calculating ddI at the end of the step=#
 	        
 	    t_ddI=ddI_from_theta(updated_theta)
-		println(updated_theta)
+		#println(updated_theta)
 	    return(dt,updated_theta,t_ddI)
 	end
 
@@ -972,29 +1108,57 @@ begin
 	    #returns time series second derivatives of the quadrupole moment
 	    t=0.
 	    theta=initial_circular_orbit(M_WD,M_NS=M_NS,mu_e=mu_e)
-	    ts=zeros(step_limit)
-	    ddIs=zeros(step_limit,2,2)
+	    #ts=zeros(step_limit)
+	    #ddIs=zeros(step_limit,2,2)
+		ts_plus_times=zeros(step_limit,3)
 	    i=0
-	    time_limit=orbit_limit*period(M_WD+M_NS,theta[1])
 	    
-	    while t<time_limit && i<step_limit && theta[2]>0
+	    while theta[6]<2*π*orbit_limit && i<step_limit && theta[2]>0
 	        #integrate until time or step limit are elapsed or WD completely dissipates
 			#println(theta)
 			#println(isa(theta,Vector{Float64}))
 	        dt,t_theta,t_ddI=one_step(theta; dt_period=1e-2)
 	        i+=1
 	        t+=dt
-	        ts[i]=t
+			println(t," ", dt, " ", t_theta[6])
+	        
+
+			t_ddI=ddI_from_theta(theta)
+
+			print([t, t_ddI[1,1], t_ddI[1,2]])
+
+
+			ts_plus_times[i]=[t, t_ddI[1,1], t_ddI[1,2] ]
 	
 	        theta=t_theta
-	        ddIs[i, :, :].=ddI_from_theta(theta)
+	        #ddIs[i, :, :].=ddI_from_theta(theta)
+
+			ts
 	    end
 	
-	    return(ts[1:i],ddIs[1:i, :, :])
+	    return(ts_plus_times)
 	end
 end;
 
-# ╔═╡ 222bbd94-e4fd-469a-b600-532761d58899
+# ╔═╡ 094ae836-f7fd-4423-901e-89479ee28760
+
+
+# ╔═╡ 99d6e037-b31a-4d47-a861-d6626128845d
+
+
+# ╔═╡ 411fe157-b5f6-4961-b9b2-aacaa773253f
+
+
+# ╔═╡ ea2cc713-c5e8-4d3a-bb8d-1bb868fb67ad
+
+
+# ╔═╡ f00501ef-b2f0-4ca6-8225-faa31292f12f
+
+
+# ╔═╡ 858944c4-387d-4880-b22a-c24561f1305c
+
+
+# ╔═╡ d0bbabe3-b785-4559-b2a3-65a181de6448
 
 
 # ╔═╡ 907e110a-4c66-471b-b3dc-f38f2b9d3e63
@@ -1013,6 +1177,9 @@ end;
 initial_circular_orbit(1.0)
 
 # ╔═╡ c407c3e2-ef68-4a4c-8232-029b56e44aff
+period(2.35,14088.7)
+
+# ╔═╡ bb9acbb3-9397-4d27-8bbc-21faaf415ea3
 
 
 # ╔═╡ a49ee332-de38-4fd3-8d9b-04a8134f5a13
@@ -1067,13 +1234,39 @@ md"Below is an integration check--success depends on each function from victor.j
 begin
 	
 	test_integrate = integrate(1.0,step_limit=10)
-
 	
-	@test isa(test_integrate[1], Vector{Float64})
-	@test isa(test_integrate[2], Array{Float64,3})
+
+	@test isa(test_integrate, Vector{Float64,3})
 end;
 
+# ╔═╡ a0869e2e-22b4-422c-904d-a57277467925
+
+
 # ╔═╡ 5fd7a5da-3505-4057-8947-7e2a061d147c
+test_integrate[1]
+
+# ╔═╡ 9526b140-ea6b-4feb-967d-16cc44d0a3af
+
+
+# ╔═╡ 77d5f408-ca5d-46af-a092-7834e49a3a8c
+
+
+# ╔═╡ 2ee86e92-bfd3-4e8a-b1c6-e5fb563dc32b
+test_integrate[2]
+
+# ╔═╡ ec8c7cd5-90c7-4465-ba27-f2eaedcdfc85
+
+
+# ╔═╡ 3f208986-9ef2-4a0e-a89c-ce13c46a7183
+
+
+# ╔═╡ 18d49c62-f3d1-4d0c-b095-fdef4a319d2d
+
+
+# ╔═╡ 27eabe5a-bc40-4314-a7bd-e6993657ed1b
+
+
+# ╔═╡ cd2657d4-adc8-4732-8abb-c6148f8211c6
 
 
 # ╔═╡ 3ad72f7d-4c5e-416f-bd0f-bf1b04dc05b8
@@ -1222,6 +1415,8 @@ function dI_yy(M_WD::Float64, M_NS::Float64, a::Float64, θ::Float64, R_WD::Floa
 PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
 BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
+CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
+DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 OrdinaryDiffEq = "1dea7af3-3e70-54e6-95c3-0bf5283fa5ed"
@@ -1235,6 +1430,8 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [compat]
 BenchmarkTools = "~1.6.0"
+CSV = "~0.10.15"
+DataFrames = "~1.8.0"
 ForwardDiff = "~1.2.1"
 OrdinaryDiffEq = "~6.102.1"
 PlutoLinks = "~0.1.6"
@@ -1250,7 +1447,7 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.11.2"
 manifest_format = "2.0"
-project_hash = "3c79810c2f850ce594469b798ef98cb730ffbfe8"
+project_hash = "628a2aae8bddd1947218aff5ef12631559b21207"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "27cecae79e5cc9935255f90c53bb831cc3c870d7"
@@ -1389,6 +1586,12 @@ git-tree-sha1 = "f3a21d7fc84ba618a779d1ed2fcca2e682865bab"
 uuid = "2a0fbf3d-bb9c-48f3-b0a9-814d99fd7ab9"
 version = "0.2.7"
 
+[[deps.CSV]]
+deps = ["CodecZlib", "Dates", "FilePathsBase", "InlineStrings", "Mmap", "Parsers", "PooledArrays", "PrecompileTools", "SentinelArrays", "Tables", "Unicode", "WeakRefStrings", "WorkerUtilities"]
+git-tree-sha1 = "deddd8725e5e1cc49ee205a1964256043720a6c3"
+uuid = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
+version = "0.10.15"
+
 [[deps.ChainRulesCore]]
 deps = ["Compat", "LinearAlgebra"]
 git-tree-sha1 = "e4c6a16e77171a5f5e25e9646617ab1c276c5607"
@@ -1410,6 +1613,12 @@ deps = ["InteractiveUtils", "UUIDs"]
 git-tree-sha1 = "980f01d6d3283b3dbdfd7ed89405f96b7256ad57"
 uuid = "da1fd8a2-8d9e-5ec2-8556-3022fb5608a2"
 version = "2.0.1"
+
+[[deps.CodecZlib]]
+deps = ["TranscodingStreams", "Zlib_jll"]
+git-tree-sha1 = "962834c22b66e32aa10f7611c08c8ca4e20749a9"
+uuid = "944b1d66-785c-5afd-91f1-9de20f533193"
+version = "0.7.8"
 
 [[deps.ColorTypes]]
 deps = ["FixedPointNumbers", "Random"]
@@ -1492,11 +1701,32 @@ git-tree-sha1 = "fcbb72b032692610bfbdb15018ac16a36cf2e406"
 uuid = "adafc99b-e345-5852-983c-f28acb93d879"
 version = "0.3.1"
 
+[[deps.Crayons]]
+git-tree-sha1 = "249fe38abf76d48563e2f4556bebd215aa317e15"
+uuid = "a8cc5b0e-0ffa-5ad4-8c14-923d3ee1735f"
+version = "4.1.1"
+
+[[deps.DataAPI]]
+git-tree-sha1 = "abe83f3a2f1b857aac70ef8b269080af17764bbe"
+uuid = "9a962f9c-6df0-11e9-0e5d-c546b8b5ee8a"
+version = "1.16.0"
+
+[[deps.DataFrames]]
+deps = ["Compat", "DataAPI", "DataStructures", "Future", "InlineStrings", "InvertedIndices", "IteratorInterfaceExtensions", "LinearAlgebra", "Markdown", "Missings", "PooledArrays", "PrecompileTools", "PrettyTables", "Printf", "Random", "Reexport", "SentinelArrays", "SortingAlgorithms", "Statistics", "TableTraits", "Tables", "Unicode"]
+git-tree-sha1 = "c967271c27a95160e30432e011b58f42cd7501b5"
+uuid = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+version = "1.8.0"
+
 [[deps.DataStructures]]
 deps = ["OrderedCollections"]
 git-tree-sha1 = "6c72198e6a101cccdd4c9731d3985e904ba26037"
 uuid = "864edb3b-99cc-5e75-8d2d-829cb0a9cfe8"
 version = "0.19.1"
+
+[[deps.DataValueInterfaces]]
+git-tree-sha1 = "bfc1187b79289637fa0ef6d4436ebdfe6905cbd6"
+uuid = "e2d170a0-9d28-54be-80f0-106bbe20a464"
+version = "1.0.0"
 
 [[deps.Dates]]
 deps = ["Printf"]
@@ -1693,6 +1923,17 @@ version = "1.1.3"
     ReverseDiff = "37e2e3b7-166d-5795-8a7a-e32c996b4267"
     Tracker = "9f7883ad-71c0-57eb-9f7f-b5c9e6d3789c"
 
+[[deps.FilePathsBase]]
+deps = ["Compat", "Dates"]
+git-tree-sha1 = "3bab2c5aa25e7840a4b065805c0cdfc01f3068d2"
+uuid = "48062228-2e41-5def-b9a4-89aafe57970f"
+version = "0.9.24"
+weakdeps = ["Mmap", "Test"]
+
+    [deps.FilePathsBase.extensions]
+    FilePathsBaseMmapExt = "Mmap"
+    FilePathsBaseTestExt = "Test"
+
 [[deps.FileWatching]]
 uuid = "7b1f6079-737a-58dc-b8bc-7a2ca5c1b5ee"
 version = "1.11.0"
@@ -1809,6 +2050,19 @@ git-tree-sha1 = "debdd00ffef04665ccbb3e150747a77560e8fad1"
 uuid = "615f187c-cbe4-4ef1-ba3b-2fcf58d6d173"
 version = "0.1.1"
 
+[[deps.InlineStrings]]
+git-tree-sha1 = "8f3d257792a522b4601c24a577954b0a8cd7334d"
+uuid = "842dd82b-1e85-43dc-bf29-5d0ee9dffc48"
+version = "1.4.5"
+
+    [deps.InlineStrings.extensions]
+    ArrowTypesExt = "ArrowTypes"
+    ParsersExt = "Parsers"
+
+    [deps.InlineStrings.weakdeps]
+    ArrowTypes = "31f734f8-188a-4ce0-8406-c8a06bd891cd"
+    Parsers = "69de0a69-1ddd-5017-9359-2bf0b02dc9f0"
+
 [[deps.IntelOpenMP_jll]]
 deps = ["Artifacts", "JLLWrappers", "LazyArtifacts", "Libdl"]
 git-tree-sha1 = "ec1debd61c300961f98064cfb21287613ad7f303"
@@ -1829,6 +2083,11 @@ weakdeps = ["Dates", "Test"]
     [deps.InverseFunctions.extensions]
     InverseFunctionsDatesExt = "Dates"
     InverseFunctionsTestExt = "Test"
+
+[[deps.InvertedIndices]]
+git-tree-sha1 = "6da3c4316095de0f5ee2ebd875df8721e7e0bdbe"
+uuid = "41ab1584-1d38-5bbf-9106-f11c6c58b48f"
+version = "1.3.1"
 
 [[deps.IrrationalConstants]]
 git-tree-sha1 = "e2222959fbc6c19554dc15174c81bf7bf3aa691c"
@@ -2097,6 +2356,12 @@ weakdeps = ["SparseArrays"]
 deps = ["Artifacts", "Libdl"]
 uuid = "c8ffd9c3-330d-5841-b78e-0817d7145fa1"
 version = "2.28.6+0"
+
+[[deps.Missings]]
+deps = ["DataAPI"]
+git-tree-sha1 = "ec4f7fbeab05d7747bdf98eb74d130a2a2ed298d"
+uuid = "e1d29d7a-bbdc-5cf2-9ac0-f12de2c33e28"
+version = "1.2.0"
 
 [[deps.Mmap]]
 uuid = "a63ad114-7e13-5084-954f-fe012c677804"
@@ -2500,6 +2765,12 @@ git-tree-sha1 = "645bed98cd47f72f67316fd42fc47dee771aefcd"
 uuid = "1d0040c9-8b98-4ee7-8388-3f51789ca0ad"
 version = "0.2.2"
 
+[[deps.PooledArrays]]
+deps = ["DataAPI", "Future"]
+git-tree-sha1 = "36d8b4b899628fb92c2749eb488d884a926614d3"
+uuid = "2dfb63ee-cc39-5dd5-95bd-886bf059d720"
+version = "1.4.3"
+
 [[deps.PreallocationTools]]
 deps = ["Adapt", "ArrayInterface", "PrecompileTools"]
 git-tree-sha1 = "c05b4c6325262152483a1ecb6c69846d2e01727b"
@@ -2527,6 +2798,12 @@ deps = ["TOML"]
 git-tree-sha1 = "0f27480397253da18fe2c12a4ba4eb9eb208bf3d"
 uuid = "21216c6a-2e73-6563-6e65-726566657250"
 version = "1.5.0"
+
+[[deps.PrettyTables]]
+deps = ["Crayons", "LaTeXStrings", "Markdown", "PrecompileTools", "Printf", "REPL", "Reexport", "StringManipulation", "Tables"]
+git-tree-sha1 = "60f23271568238b236899d00fc290e43d1f2658f"
+uuid = "08abe8d2-0d0c-5749-adfa-8a2ac140af0d"
+version = "3.0.10"
 
 [[deps.Printf]]
 deps = ["Unicode"]
@@ -2698,6 +2975,12 @@ git-tree-sha1 = "566c4ed301ccb2a44cbd5a27da5f885e0ed1d5df"
 uuid = "53ae85a6-f571-4167-b2af-e1d143709226"
 version = "1.7.0"
 
+[[deps.SentinelArrays]]
+deps = ["Dates", "Random"]
+git-tree-sha1 = "712fb0231ee6f9120e005ccd56297abbc053e7e0"
+uuid = "91c51154-3ec4-41a3-a24f-3f23e20d615c"
+version = "1.4.8"
+
 [[deps.Serialization]]
 uuid = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
 version = "1.11.0"
@@ -2732,6 +3015,12 @@ version = "1.1.0"
 [[deps.Sockets]]
 uuid = "6462fe0b-24de-5631-8697-dd941f90decc"
 version = "1.11.0"
+
+[[deps.SortingAlgorithms]]
+deps = ["DataStructures"]
+git-tree-sha1 = "64d974c2e6fdf07f8155b5b2ca2ffa9069b608d9"
+uuid = "a2af1166-a08f-5f64-846c-94a0d3cef48c"
+version = "1.2.2"
 
 [[deps.SparseArrays]]
 deps = ["Libdl", "LinearAlgebra", "Random", "Serialization", "SuiteSparse_jll"]
@@ -2816,6 +3105,12 @@ git-tree-sha1 = "83151ba8065a73f53ca2ae98bc7274d817aa30f2"
 uuid = "7792a7ef-975c-4747-a70f-980b88e8d1da"
 version = "0.5.8"
 
+[[deps.StringManipulation]]
+deps = ["PrecompileTools"]
+git-tree-sha1 = "725421ae8e530ec29bcbdddbe91ff8053421d023"
+uuid = "892a3eda-7b42-436c-8928-eab12a02cf0e"
+version = "0.4.1"
+
 [[deps.StyledStrings]]
 uuid = "f489334b-da3d-4c2e-b8f0-e476e12c162b"
 version = "1.11.0"
@@ -2830,17 +3125,27 @@ deps = ["Accessors", "ArrayInterface", "RuntimeGeneratedFunctions", "StaticArray
 git-tree-sha1 = "617400a198bd433f921ca2a4e89999f835dd3fde"
 uuid = "2efcf032-c050-4f8e-a9bb-153293bab1f5"
 version = "0.3.45"
+weakdeps = ["PrettyTables"]
 
     [deps.SymbolicIndexingInterface.extensions]
     SymbolicIndexingInterfacePrettyTablesExt = "PrettyTables"
-
-    [deps.SymbolicIndexingInterface.weakdeps]
-    PrettyTables = "08abe8d2-0d0c-5749-adfa-8a2ac140af0d"
 
 [[deps.TOML]]
 deps = ["Dates"]
 uuid = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
 version = "1.0.3"
+
+[[deps.TableTraits]]
+deps = ["IteratorInterfaceExtensions"]
+git-tree-sha1 = "c06b2f539df1c6efa794486abfb6ed2022561a39"
+uuid = "3783bdb8-4a98-5b6b-af9a-565f29a5fe9c"
+version = "1.0.1"
+
+[[deps.Tables]]
+deps = ["DataAPI", "DataValueInterfaces", "IteratorInterfaceExtensions", "OrderedCollections", "TableTraits"]
+git-tree-sha1 = "f2c1efbc8f3a609aadf318094f8fc5204bdaf344"
+uuid = "bd369af6-aec1-5ad0-b16a-f7cc5008161c"
+version = "1.12.1"
 
 [[deps.Tar]]
 deps = ["ArgTools", "SHA"]
@@ -2869,6 +3174,11 @@ version = "0.5.29"
 
     [deps.TimerOutputs.weakdeps]
     FlameGraphs = "08572546-2f56-4bcf-ba4e-bab62c3a3f89"
+
+[[deps.TranscodingStreams]]
+git-tree-sha1 = "0c45878dcfdcfa8480052b6ab162cdd138781742"
+uuid = "3bb67fe8-82b1-5028-8e26-92a6c54297fa"
+version = "0.11.3"
 
 [[deps.Tricks]]
 git-tree-sha1 = "372b90fe551c019541fafc6ff034199dc19c8436"
@@ -2900,6 +3210,17 @@ version = "1.0.2"
 uuid = "4ec0a83e-493e-50e2-b9ac-8f72acf5a8f5"
 version = "1.11.0"
 
+[[deps.WeakRefStrings]]
+deps = ["DataAPI", "InlineStrings", "Parsers"]
+git-tree-sha1 = "b1be2855ed9ed8eac54e5caff2afcdb442d52c23"
+uuid = "ea10d353-3f73-51f8-a26c-33c1cb351aa5"
+version = "1.4.2"
+
+[[deps.WorkerUtilities]]
+git-tree-sha1 = "cd1659ba0d57b71a464a29e64dbc67cfe83d54e7"
+uuid = "76eceee3-57b5-4d4a-8e66-0e911cebbf60"
+version = "1.6.1"
+
 [[deps.Zlib_jll]]
 deps = ["Libdl"]
 uuid = "83775a58-1f1d-513f-b197-d71354ab007a"
@@ -2929,8 +3250,13 @@ version = "17.4.0+2"
 
 # ╔═╡ Cell order:
 # ╠═6c59b881-5668-4894-950b-2c7bee5367ef
+# ╠═511606a0-8594-45a3-af99-29a3ffbebe68
 # ╠═8edaf48b-d27d-43c9-8a0c-e149654b6cd0
 # ╠═0cac30f1-9101-4ba3-accc-52621bc1d16f
+# ╠═c79771dc-4bf2-4c03-9f84-dd6532c98bfd
+# ╠═33f9cc9a-a207-4a09-bfa3-0f54546c05c3
+# ╠═e2833dab-01a3-4d20-a42d-7d182f9e610d
+# ╠═1db7cf48-6630-4701-b163-c2fcc632a050
 # ╠═5519a048-4a4a-4091-af9e-8b2dc444775b
 # ╠═c13a77be-813e-413f-b0b2-23cf7b5f309a
 # ╠═14fedf73-b9ca-4a37-a86c-e6f4c0a59ece
@@ -2964,7 +3290,13 @@ version = "17.4.0+2"
 # ╠═d06e9c81-4436-4054-a7cc-c85b7ee13df9
 # ╠═07ca0c95-f9b3-42ad-8a49-3d305002b20f
 # ╠═4f1118f3-e8f8-479f-819a-db201f36e447
-# ╠═86648226-52f9-4951-bd85-bebc21018567
+# ╠═86420e50-5f10-43aa-ac65-a8708be68dc6
+# ╠═6d4270fb-21e4-4e8c-b7e4-0e7bc83870c6
+# ╠═94098f26-fc8d-4df5-84fe-9ebb7b8c994a
+# ╠═256492bf-b826-49aa-b051-55991228703c
+# ╠═a3e1afb5-0a7b-41aa-b50f-dc959a36a1e6
+# ╠═69081296-10a7-4628-a62d-b116548bdbae
+# ╠═bfbaf692-db1f-41f9-a147-95ccb8de9e1e
 # ╠═1de07299-8623-49fe-bba3-136dc45e7c82
 # ╠═ea61a15f-1982-4469-8e0b-22f309d1bef5
 # ╠═89014777-e6e0-406a-863c-72a310e37f7e
@@ -2972,7 +3304,22 @@ version = "17.4.0+2"
 # ╠═b2dcf719-078c-4ec0-bde6-243972cfc957
 # ╠═4135feba-248d-4880-9e05-e3e85dae9963
 # ╠═2fb18e7f-30eb-4dff-b30f-f5086ec3e02d
+# ╠═f784cf7a-6cf3-48b0-b705-acf708b75db8
+# ╠═d43a93a0-3f71-4d7f-b548-6057a1513f87
+# ╠═d45576f6-f2ad-47e5-a4a7-6bf6f95d42c9
+# ╠═557daf12-69f8-4f4f-894f-6bc435fa91ab
+# ╠═df23f515-ffc2-4965-b695-c3875c5bf29d
+# ╠═760d0fda-81d0-4d36-9e3d-46912d0ddfa4
+# ╠═6ac10460-5123-487d-a55d-6183de743a5e
+# ╠═d93a9205-0f8c-4b47-af4e-5ad0b6437353
 # ╠═344fdbd0-96e3-4a34-8d9f-3b6c34cee2b3
+# ╠═cbf1359d-0d47-4f3b-a712-7ed8308b19ff
+# ╠═5512bb36-6de6-41e6-93a4-d736f8b69b3d
+# ╠═a1e4b8ec-de2e-42ab-8d52-2f62cf5d92dd
+# ╠═c16514a9-c297-451b-9e6d-1d21d15d0f28
+# ╠═d9e0ca74-8f4b-4d10-8255-7a1dae0d49d7
+# ╠═7fc2e8cf-556f-421f-a993-34e845c4ed3f
+# ╠═0757c720-c651-44bc-aca6-20798890e01b
 # ╠═5a5761f7-eb8e-419f-8bb6-15780de928d2
 # ╠═8f6900c9-352f-4deb-82e2-1bd99faffda4
 # ╠═bb73d75d-eeeb-4b38-8db2-5f9cd4a440c3
@@ -3051,6 +3398,10 @@ version = "17.4.0+2"
 # ╠═731205f1-64f9-4dd5-809f-a1cd20eabd47
 # ╠═528d99bb-0800-41d7-812b-8685a18c2ec0
 # ╠═3b211714-36b0-4b0d-9b62-6ae2939f66d9
+# ╠═bf13e120-01a9-4026-90ee-29576bfa784c
+# ╠═680002e1-a8e8-4fec-a37c-e6c92d8a6d2e
+# ╠═59b217a8-0b07-442e-bcd4-7fda42d5d03a
+# ╠═d0db0f15-0632-4f3b-bdc0-af1342ae03a7
 # ╠═2f9e1da8-3522-4aad-af07-00d13602b610
 # ╠═fd1ffa20-5780-4ee5-8f6d-248c02a1656e
 # ╠═736914e5-11e5-40bb-8792-236e132699d5
@@ -3073,8 +3424,10 @@ version = "17.4.0+2"
 # ╠═4b422cf8-bedc-441b-862d-e7d89319bdb7
 # ╠═8b8cf6b2-70ef-4c0c-b729-551637947f0c
 # ╠═9878e729-0b7c-4684-a0fd-e0cf73465199
+# ╠═e434ffd6-ce0c-4765-8aef-564180e51309
 # ╠═a602a9fd-f5af-44f9-bef5-60974e100a9a
 # ╠═0e80bd6c-80af-45b3-8637-22fa8bfe8a5c
+# ╠═a22c8171-4ca3-47e3-99c7-5e6e822983d8
 # ╠═7f728824-950f-4631-bb6b-2b4654f6dc7f
 # ╠═2aaf2282-5dd7-4f93-9e32-b7a45b5dc3ff
 # ╠═50b7dfa1-0261-4de7-89a6-4bf1d6390310
@@ -3090,12 +3443,14 @@ version = "17.4.0+2"
 # ╠═987850ef-c086-4b16-8401-d11c753b800d
 # ╠═bc193a3e-052e-4860-854d-398fa08deeec
 # ╠═120ff400-43a9-4be6-b1a8-2017ae0b111a
+# ╠═f6882fb5-f97e-4898-855e-23b8ccc0f205
 # ╠═2f7ca955-4d59-483e-a86a-8363fb5795d6
 # ╠═f4650ecc-65c1-43d3-8d6a-676d3677df38
 # ╠═947f2460-c3e0-444e-8a8c-4a3bdea80793
 # ╠═52b828d3-a6b7-4aa6-abe5-5c23ef848bb2
 # ╠═a63692e2-f652-4f35-b5c8-57ed131d676e
 # ╠═72bfe0e8-11f2-47f6-97ba-09708af3fad3
+# ╠═d22de5fc-4b5e-4a60-9e27-9879ba7f1f1f
 # ╠═e33d1f4e-7e39-456b-88cb-e70f3bb4dec9
 # ╠═84227259-c32e-431d-8a9c-9bc1e0af252b
 # ╠═1b671c3f-3fad-40aa-bf2e-e1768b6838ca
@@ -3106,13 +3461,20 @@ version = "17.4.0+2"
 # ╠═7e3f17c1-7b35-4a84-b8a5-36817549bda4
 # ╠═a7a7b50c-d555-4a1a-9197-963fac13aca5
 # ╠═a8f954bf-b8d6-45f1-b836-d9a4c977f7db
-# ╠═222bbd94-e4fd-469a-b600-532761d58899
+# ╠═094ae836-f7fd-4423-901e-89479ee28760
+# ╠═99d6e037-b31a-4d47-a861-d6626128845d
+# ╠═411fe157-b5f6-4961-b9b2-aacaa773253f
+# ╠═ea2cc713-c5e8-4d3a-bb8d-1bb868fb67ad
+# ╠═f00501ef-b2f0-4ca6-8225-faa31292f12f
+# ╠═858944c4-387d-4880-b22a-c24561f1305c
+# ╠═d0bbabe3-b785-4559-b2a3-65a181de6448
 # ╠═907e110a-4c66-471b-b3dc-f38f2b9d3e63
 # ╠═680b68ef-660e-4e11-8129-6a1d16f24476
 # ╠═7d3e0971-ebf6-4897-bbc0-c3ce5befd187
 # ╠═8a28524d-7e70-40ec-aafb-53ce211fb052
 # ╠═91fbe086-cf7f-433a-8df6-afbd8eebf6cc
 # ╠═c407c3e2-ef68-4a4c-8232-029b56e44aff
+# ╠═bb9acbb3-9397-4d27-8bbc-21faaf415ea3
 # ╠═a49ee332-de38-4fd3-8d9b-04a8134f5a13
 # ╠═828ad2f8-7d1d-45b8-9263-67ccb673cee0
 # ╠═24a7185e-5dcd-47d2-b299-85bb5b210bd4
@@ -3129,7 +3491,16 @@ version = "17.4.0+2"
 # ╠═1e16edf8-c038-461e-bc29-f8ed81c7caca
 # ╠═91e4fc89-1284-4e31-8c97-93121782ea03
 # ╠═8f914e37-11f2-4620-b469-abc005e98312
+# ╠═a0869e2e-22b4-422c-904d-a57277467925
 # ╠═5fd7a5da-3505-4057-8947-7e2a061d147c
+# ╠═9526b140-ea6b-4feb-967d-16cc44d0a3af
+# ╠═77d5f408-ca5d-46af-a092-7834e49a3a8c
+# ╠═2ee86e92-bfd3-4e8a-b1c6-e5fb563dc32b
+# ╠═ec8c7cd5-90c7-4465-ba27-f2eaedcdfc85
+# ╠═3f208986-9ef2-4a0e-a89c-ce13c46a7183
+# ╠═18d49c62-f3d1-4d0c-b095-fdef4a319d2d
+# ╠═27eabe5a-bc40-4314-a7bd-e6993657ed1b
+# ╠═cd2657d4-adc8-4732-8abb-c6148f8211c6
 # ╠═3ad72f7d-4c5e-416f-bd0f-bf1b04dc05b8
 # ╠═a1faafde-cafa-4392-bb61-e1a8af311b28
 # ╠═8fbfc816-261c-4585-9f60-3740a9c68149
