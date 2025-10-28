@@ -19,6 +19,10 @@ begin
 	const c::Float64 = 2.998e5    # km/s
 end=#
 
+const G_internal::Float64 = 1.327e11
+const period_factor::Float64 = sqrt(4.0 * π^2 / G)
+const dJ_rr_factor::Float64 = -2.0 * G / (5.0 * c^5)
+
 function R0_WD(M_WD;mu_e=2.0) 
 	#@assert M_WD > 0 # In production ready code, consider commenting out assertion
 	@assert mu_e > 0 # In production ready code, consider commenting out assertion
@@ -34,14 +38,15 @@ function dynamical_timescale(M_WD,R_WD)
 	return((R_WD^3/(G*M_WD))^(1/2))
 end
 
-
+# *** #
 function Roche_Limit(r,M_WD,M_NS)
 	#@assert M_WD < M_NS # In production ready code, consider commenting out assertion
 	@assert r > 0 # In production ready code, consider commenting out assertion
 	#returns Roche limit of M_WD for companion of mass M_NS 
 	#at a separation of distance r 
 	q=M_WD/M_NS
-	return(r * 0.49*q^(2/3)/(0.6*q^(2/3)+log(1+q^(1/3))))
+    q_2_3rds = q^(2/3)
+	return(r * 0.49*q_2_3rds/(0.6*q_2_3rds+log(1+q^(1/3))))
 end
 
 
@@ -49,7 +54,8 @@ end
 function period(Mtot, a)
 	@assert Mtot > 0 # In production ready code, consider commenting out assertion
 	@assert a > 0 # In production ready code, consider commenting out assertion
-    return sqrt(4.0 * π^2 * a^3 / (G * Mtot))
+    #return sqrt(4.0 * π^2 * a^3 / (G * Mtot))
+    return period_factor * sqrt(a^3 / Mtot)
 end
 
 
@@ -89,7 +95,8 @@ function eddington_rate(M; mu_e=2.0, eta_acc=0.1)
     @assert M > 0 # In production ready code, consider commenting out assertion
 	@assert mu_e > 0 # In production ready code, consider commenting out assertion
 	@assert 0 < eta_acc <= 1 # In production ready code, consider commenting out assertion
-	return 1.41e-15 * M * (mu_e / 2.0) * (0.1 / eta_acc)
+	#return 1.41e-15 * M * (mu_e / 2.0) * (0.1 / eta_acc)
+    return 0.0705e-15 * M * (mu_e / eta_acc) 
 end
 
 
@@ -116,7 +123,7 @@ function J_dot(J, a, r, R_WD, M_WD, M_NS;
     return J * g * (1.0 - b) * M_WD_dot / (M_WD + M_NS)
 end
 
-
+# *** #
 # Semi-major axis change rate
 function a_dot(a, r, R_WD, M_WD, M_NS; 
                A=10.0, mu_e=2.0, eta_acc=0.1, 
@@ -126,7 +133,8 @@ function a_dot(a, r, R_WD, M_WD, M_NS;
     b = beta(a, r, R_WD, M_WD, M_NS; A=A, mu_e=mu_e, eta_acc=eta_acc)
 	@assert b <= 1.0 # In production-ready code, consider commenting this out
     M_WD_dot = decretion_rate(a, r, R_WD, M_WD, M_NS; A=A)
-    return -2.0 * a * M_WD_dot / M_WD * (1.0 - b * M_WD / M_NS - (1.0 - b) * (g + 0.5) * M_WD / (M_WD + M_NS))
+    one_minus_b = 1 - b
+    return -2.0 * a * M_WD_dot / M_WD * (one_minus_b * M_WD / M_NS - one_minus_b * (g + 0.5) * M_WD / (M_WD + M_NS))
 end
 
 
@@ -188,7 +196,8 @@ end
 function dJ_rr(I2::Matrix{Float64}, I3::Matrix{Float64})::Float64
     # Corresponds to: -2G/(5c^5) * (dot(I2[0],I3[1]) - dot(I2[1],I3[0]))
     term::Float64 = dot(I2[:, 1], I3[:, 2]) - dot(I2[:, 2], I3[:, 1])
-    return -2.0 * G / (5.0 * c^5) * term
+    #return -2.0 * G / (5.0 * c^5) * term
+    return dJ_rr_factor * term
 end
 
 #=

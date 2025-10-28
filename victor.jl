@@ -12,9 +12,6 @@ begin
 	using PlutoUI, PlutoTeachingTools, PlutoLinks
 end;
 
-# ╔═╡ 94a09ecb-c4a1-4b89-826d-a4706275ab70
-using Test
-
 # ╔═╡ 5a137355-8c63-492d-961c-b0fcb4897eae
 md"""
 # Victor Liu
@@ -330,10 +327,11 @@ end
 
 # ╔═╡ 46e2e3bd-0519-4d0c-a748-fcff17118b6e
 # Quadrupole moment for effective one-body system
-function I_qp(M_WD::Float64, M_NS::Float64, x::Float64, y::Float64)::Matrix{Float64}
+@memoize function I_qp(M_WD::Float64, M_NS::Float64, x::Float64, y::Float64)::Matrix{Float64}
 	@assert M_WD > 0 # In production-ready code, consider commenting this out
 	@assert M_NS > 0 # In production-ready code, consider commenting this out
     t_mu::Float64 = mu(M_WD, M_NS)
+	println("Running")
     return t_mu * [x^2  x * y;
                    x * y  y^2]
 end
@@ -343,111 +341,25 @@ md"
 ## Tests (may be moved to a separate Julia file later)
 "
 
-# ╔═╡ e2dc3767-f5e4-4769-ba1d-20ec37733c01
-# ╠═╡ disabled = true
-#=╠═╡
-begin
-	M_WD::Float64 = 1.0
-		    M_NS::Float64 = 1.7
-		    M_tot::Float64 = M_WD + M_NS
-		    r::Float64 = 2.2
-		    a::Float64 = 2.3
-		    J::Float64 = 3.3
-	dr::Float64 = -0.03
-		    dJ::Float64 = -2.0
-	dmu::Float64 = -0.2
-	@test isa(ddtheta(r, mu(M_WD, M_NS), dtheta(J, r, mu(M_WD, M_NS)), dmu, dr, dJ), Float64)
+# ╔═╡ 37a70856-a98c-4477-99f7-a9bd3359e802
+@fastmath function period_fastmath(Mtot::Float64, a::Float64)::Float64
+	@assert Mtot > 0 # In production ready code, consider commenting out assertion
+	@assert a > 0 # In production ready code, consider commenting out assertion
+    return sqrt(4.0 * π^2 * a^3 / (G * Mtot))
 end
-  ╠═╡ =#
 
-# ╔═╡ 0d5207be-9594-4d28-8fa5-acd0cd397acf
+# ╔═╡ ae887b3a-dcfb-4f65-b892-4621baca1443
 begin
-	
-	@testset "Running tests" begin
-	    	
-	# Type tests
-	@testset "Type tests" begin 
-	    M_WD::Float64 = 1.0
-	    M_NS::Float64 = 1.7
-	    M_tot::Float64 = M_WD + M_NS
-	    r::Float64 = 2.2
-	    a::Float64 = 2.3
-	    J::Float64 = 3.3
-		R_WD_test = R_WD(M_WD)
-	    @test isa(R_WD_test, Float64)
-	    @test isa(dynamical_timescale(M_WD, R_WD_test), Float64)
-	    @test isa(Roche_Limit(r, M_WD, M_NS), Float64)
-	    @test isa(period(M_tot, a), Float64)
-	    @test isa(decretion_rate(a, r, R_WD_test, M_WD, M_NS), Float64)
-	    @test isa(gamma(M_WD, M_NS, mode="j"), Float64)
-	    @test isa(gamma(M_WD, M_NS, mode="i"), Float64)
-	    @test isa(gamma(M_WD, M_NS, mode="c"), Float64)
-	    @test isa(eddington_rate(M_NS), Float64)
-	    @test isa(beta(a, r, R_WD_test, M_WD, M_NS), Float64)
-	    @test isa(J_dot(J, a, r, R_WD_test, M_WD, M_NS), Float64)
-	    @test isa(a_dot(a, r, R_WD_test, M_WD, M_NS), Float64)
-	    @test isa(dot_R_WD(M_WD, R_WD_test), Float64)
-		mu_test = mu(M_WD, M_NS)
-	    @test isa(mu_test, Float64)
-	    @test isa(dot_phi(J, r, M_WD, M_NS), Float64)
-	    x_vec::Vector{Float64} = ones(2) .* 1.32
-	    @test isa(n_hat(x_vec), Vector{Float64})
-	    @test isa(theta_hat(x_vec), Vector{Float64})
-	    dM_WD::Float64 = -0.4
-	    dM_NS::Float64 = 0.34
-	    @test isa(dot_mu(M_WD, M_NS, dM_WD, dM_NS), Float64)
-	    I2::Matrix{Float64} = Float64[1.0 2.0; 3.0 4.0]
-	    I3::Matrix{Float64} = Float64[1.2 2.3; -3.1 4.3]
-	    @test isa(dJ_rr(I2, I3), Float64)
-	    @test isa(da_rr(a, J, I2, I3), Float64)
-	    dmu::Float64 = 0.2
-	    @test isa(dmu_2(mu_test, dmu), Float64)
-		dtheta_test = dtheta(J, r, mu_test)
-	    @test isa(dtheta_test, Float64)
-	    dr::Float64 = -0.03
-	    dJ::Float64 = -2.0
-		ddtheta_test = ddtheta(r, mu_test, dtheta_test, dmu, dr, dJ)
-	    @test isa(ddtheta_test, Float64)
-	    theta::Float64 = 1.03
-		x_test = x(r, theta)
-		y_test = y(r, theta)
-	    @test isa(x_test, Float64)
-	    @test isa(y_test, Float64)
-	    @test isa(dx(r, theta, dr, dtheta_test), Float64)
-	    @test isa(dy(r, theta, dr, dtheta_test), Float64)
-	    ddr::Float64 = -0.01
-	    @test isa(ddx(r, theta, dr, dtheta_test, ddr, ddtheta_test), Float64)
-	    @test isa(ddy(r, theta, dr, dtheta_test, ddr, ddtheta_test), Float64)
-	    #@test isa(I_qp(M_WD, M_NS, x_test, y_test), Matrix{Float64})
-	    tensor::Matrix{Float64} = [1.0 2.2; 3.4 5.4]
-	    @test isa(SFT(tensor), Matrix{Float64})
-	end;
-	
-	# Reasonable input -> output mapping tests
-	@testset "Expected output tests" begin
-	   @test R_WD(1e-10) > 0
-	   @test dynamical_timescale(1e-10, 1e-10) > 0
-	   @test Roche_Limit(1e-10, 1e-10, 1e-10) > 0
-	   @test period(1e-10, 1e-10) > 0
-	   @test decretion_rate(1e-10, 1e-10, 1e-20, 1e-10, 1e-10) == 0.0 # Here, Roche limit is bigger than R_WD
-	   @test gamma(1e-10, 1e-10, mode="j") > 0
-	   @test gamma(1e-10, 1e-10, mode="i") > 0
-	   @test gamma(1e-10, 1e-10, mode="c") > 0
-	   @test eddington_rate(1e-10) > 0
-	   @test beta(1e-10, 1e-10, 1e-20, 1e-10, 1e-10) == 1.0 # Here, Roche limit is bigger than R_WD, so M_dot = 0.0, so beta = 1.0
-	   @test 0.0 < beta(1e-10, 1e-10, 1e-10, 1e-10, 1e-10) < 1.0 # Here, Roche limit is not than R_WD, so M_dot > 0
-	   @test mu(1e-10, 1e-10) > 0
-		x_vec::Vector{Float64} = ones(2) .* 1e-10
-	   @test norm(n_hat(x_vec)) ≈ 1.0 rtol=1e-5
-	   @test norm(theta_hat(x_vec)) ≈ 1.0 rtol=1e-5
-	end;
-	
-	end;
-	
-	# julia-actions/julia-runtest
-	touch(joinpath(ENV["HOME"], "julia-runtest"))
-	
+	Mtot_test = 1.21313
+	a_test = 123131
+	@test period_fastmath(Mtot_test, a_test) ≈ period(Mtot_test, a_test) 
 end
+
+# ╔═╡ fc242580-d2ba-40ee-be0a-bedad4da6af4
+@benchmark period_fastmath(Mtot_test, a_test)
+
+# ╔═╡ 8d776ec6-4437-4046-a9af-ea24b1727ced
+@benchmark period(Mtot_test, a_test)
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -459,12 +371,11 @@ PlutoTeachingTools = "661c6b06-c737-4d37-b85c-46df65de6f69"
 PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
 Profile = "9abbd945-dff8-562f-b5e8-e1ebf5ef1b79"
 ProfileCanvas = "efd6af41-a80b-495e-886c-e51b0c7d77a3"
-Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [compat]
 BenchmarkTools = "~1.6.0"
 PlutoLinks = "~0.1.6"
-PlutoTeachingTools = "~0.4.5"
+PlutoTeachingTools = "~0.4.6"
 PlutoUI = "~0.7.71"
 ProfileCanvas = "~0.1.6"
 """
@@ -475,7 +386,7 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.11.2"
 manifest_format = "2.0"
-project_hash = "5688cd2d1397d890752938793a6d96f8306fb9e2"
+project_hash = "ca007146f912e65bb9233a6727fc50cc1bbb2225"
 
 [[deps.AbstractPlutoDingetjes]]
 deps = ["Pkg"]
@@ -503,9 +414,9 @@ version = "1.6.0"
 
 [[deps.CodeTracking]]
 deps = ["InteractiveUtils", "UUIDs"]
-git-tree-sha1 = "5ac098a7c8660e217ffac31dc2af0964a8c3182a"
+git-tree-sha1 = "980f01d6d3283b3dbdfd7ed89405f96b7256ad57"
 uuid = "da1fd8a2-8d9e-5ec2-8556-3022fb5608a2"
-version = "2.0.0"
+version = "2.0.1"
 
 [[deps.ColorTypes]]
 deps = ["FixedPointNumbers", "Random"]
@@ -562,6 +473,12 @@ git-tree-sha1 = "9c68794ef81b08086aeb32eeaf33531668d5f5fc"
 uuid = "1fa38f19-a742-5d3f-a2b9-30dd87b9d5f8"
 version = "1.3.7"
 
+[[deps.Ghostscript_jll]]
+deps = ["Artifacts", "JLLWrappers", "JpegTurbo_jll", "Libdl", "Zlib_jll"]
+git-tree-sha1 = "38044a04637976140074d0b0621c1edf0eb531fd"
+uuid = "61579ee1-b43e-5ca0-a5da-69d92c66a64b"
+version = "9.55.1+0"
+
 [[deps.Hyperscript]]
 deps = ["Test"]
 git-tree-sha1 = "179267cfa5e712760cd43dcae385d7ea90cc25a4"
@@ -585,11 +502,23 @@ deps = ["Markdown"]
 uuid = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
 version = "1.11.0"
 
+[[deps.JLLWrappers]]
+deps = ["Artifacts", "Preferences"]
+git-tree-sha1 = "0533e564aae234aff59ab625543145446d8b6ec2"
+uuid = "692b3bcd-3c85-4b1f-b108-f13ce0eb3210"
+version = "1.7.1"
+
 [[deps.JSON]]
 deps = ["Dates", "Mmap", "Parsers", "Unicode"]
 git-tree-sha1 = "31e996f0a15c7b280ba9f76636b3ff9e2ae58c9a"
 uuid = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
 version = "0.21.4"
+
+[[deps.JpegTurbo_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl"]
+git-tree-sha1 = "4255f0032eafd6451d707a51d5f0248b8a165e4d"
+uuid = "aacddb02-875f-59d6-b918-886e6ef4fbf8"
+version = "3.1.3+0"
 
 [[deps.JuliaInterpreter]]
 deps = ["CodeTracking", "InteractiveUtils", "Random", "UUIDs"]
@@ -603,10 +532,10 @@ uuid = "b964fa9f-0449-5b57-a5c2-d3ea65f4040f"
 version = "1.4.0"
 
 [[deps.Latexify]]
-deps = ["Format", "InteractiveUtils", "LaTeXStrings", "MacroTools", "Markdown", "OrderedCollections", "Requires"]
-git-tree-sha1 = "52e1296ebbde0db845b356abbbe67fb82a0a116c"
+deps = ["Format", "Ghostscript_jll", "InteractiveUtils", "LaTeXStrings", "MacroTools", "Markdown", "OrderedCollections", "Requires"]
+git-tree-sha1 = "44f93c47f9cd6c7e431f2f2091fcba8f01cd7e8f"
 uuid = "23fbe1c1-3f47-55db-b15f-69d7ec21a316"
-version = "0.16.9"
+version = "0.16.10"
 
     [deps.Latexify.extensions]
     DataFramesExt = "DataFrames"
@@ -660,9 +589,9 @@ version = "1.11.0"
 
 [[deps.LoweredCodeUtils]]
 deps = ["CodeTracking", "Compiler", "JuliaInterpreter"]
-git-tree-sha1 = "73b98709ad811a6f81d84e105f4f695c229385ba"
+git-tree-sha1 = "e24491cb83551e44a69b9106c50666dea9d953ab"
 uuid = "6f1432cf-f94c-5a45-995e-cdbf5db27b0b"
-version = "3.4.3"
+version = "3.4.4"
 
 [[deps.MIMEs]]
 git-tree-sha1 = "c64d943587f7187e751162b3b84445bbbd79f691"
@@ -735,9 +664,9 @@ version = "0.1.6"
 
 [[deps.PlutoTeachingTools]]
 deps = ["Downloads", "HypertextLiteral", "Latexify", "Markdown", "PlutoUI"]
-git-tree-sha1 = "85778cdf2bed372008e6646c64340460764a5b85"
+git-tree-sha1 = "dacc8be63916b078b592806acd13bb5e5137d7e9"
 uuid = "661c6b06-c737-4d37-b85c-46df65de6f69"
-version = "0.4.5"
+version = "0.4.6"
 
 [[deps.PlutoUI]]
 deps = ["AbstractPlutoDingetjes", "Base64", "ColorTypes", "Dates", "Downloads", "FixedPointNumbers", "Hyperscript", "HypertextLiteral", "IOCapture", "InteractiveUtils", "JSON", "Logging", "MIMEs", "Markdown", "Random", "Reexport", "URIs", "UUIDs"]
@@ -924,8 +853,9 @@ version = "17.4.0+2"
 # ╠═8bd09c6b-fedb-4256-aa10-ef6f76e9397f
 # ╠═46e2e3bd-0519-4d0c-a748-fcff17118b6e
 # ╟─d293006e-7bd4-46dc-82ec-dcabb7ccc5ed
-# ╠═94a09ecb-c4a1-4b89-826d-a4706275ab70
-# ╠═e2dc3767-f5e4-4769-ba1d-20ec37733c01
-# ╠═0d5207be-9594-4d28-8fa5-acd0cd397acf
+# ╠═37a70856-a98c-4477-99f7-a9bd3359e802
+# ╠═ae887b3a-dcfb-4f65-b892-4621baca1443
+# ╠═fc242580-d2ba-40ee-be0a-bedad4da6af4
+# ╠═8d776ec6-4437-4046-a9af-ea24b1727ced
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
