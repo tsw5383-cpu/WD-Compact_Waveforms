@@ -19,7 +19,8 @@ begin
 	const c::Float64 = 2.998e5    # km/s
 end=#
 
-const G_internal::Float64 = 1.327e11
+const G::Float64 = 1.327e11
+const c::Float64 = 2.998e5
 const period_factor::Float64 = sqrt(4.0 * π^2 / G)
 const dJ_rr_factor::Float64 = -2.0 * G / (5.0 * c^5)
 

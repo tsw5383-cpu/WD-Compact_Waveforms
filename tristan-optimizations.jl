@@ -36,9 +36,6 @@ begin
 	
 	current_path=@__DIR__
 	include(current_path*"/victor-ftns_only_no_types.jl")
-
-	const G::Float64 = 1.327e11   # km^3 / M⊙ / s^2
-	const c::Float64 = 2.998e5    # km/s
 	#victor-functions_only.jl:
 	#file with a lot of helpful functions
 	#This is the biggest current issue: 
@@ -122,7 +119,6 @@ end;
 
 # *** #
 """Given a function, its vectorized parameters, and the time derivatives of those parameters, returns the time derivative of the function as calculated via the chain rule."""
-"""Wraps the vectorized parameters and their derivatives into one input vector ind_vars_and_derivatives"""
 function time_derivative(ftn::Function, ind_vars_and_derivatives::AbstractVector{T}; mode::String="Debug") where {T}
     #ftn is the function to be taken a time derivative of
     #ind_vars is an array with the values of the arguments of ftn
@@ -142,7 +138,7 @@ end
 
 # *** #
 """Given a function, defines its next derivative based on the function's parameters and their time derivatives. `n` determines how many time derivatives of \vec{θ} (i.e., the parameters to be integrated) are parameters of the function itself. """
-function next_derivative(in_ftn::Function; n::Integer=1; mode::String="Debug")
+function next_derivative(in_ftn::Function; n::Integer=1, mode::String="Debug")
     #returns a function which is the next higher derivative of the in_ftn
     #n is the total derivatives past the given analytic form
     if mode=="Debug"
@@ -533,7 +529,7 @@ md"Note: For peer review, we do NOT recommend running `integrate` fully (until t
 function gravitational_waveform_ftn(i::Float64, φ::Float64, DL::Float64; mode::String="Debug")::Function
     #fixes a function to return gravitational wave given orientation and distance
     #DL is in Mpc
-    if mode=="Debug":
+    if mode=="Debug"
         @assert 0<=i<=π
         @assert 0<=φ<2π
         @assert DL<10000 #Ensure correct units for DL
