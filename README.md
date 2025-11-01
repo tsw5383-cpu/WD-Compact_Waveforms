@@ -5,17 +5,6 @@
 GitHub Actions : [![Build Status](https://github.com/PsuAstro528/project-template/workflows/CI/badge.svg)](https://github.com/PsuAstro528/project-template/actions?query=workflow%3ACI+branch%3Amain)
 
 
-## Project Goals:  
-- Put software development skills learned during class and lab exercises into practice on a real world problem
-- Gain experience optimizing real scientific code
-- Gain experience parallelizing a real scientific code 
-- Investigate how performance scales with problem size and number of processors
-- Share lessons learned with the class
-
-Prior to the [peer code review](https://psuastro528.github.io/Fall2023/project/code_reviews/), update this readme, so as to make it easy for your peer code reviewer to be helpful.  What should they know before starting the review?  Where should they look first?  
-
-Remember to commit often and push your repository to GitHub prior to each project deadline.
-
 ## Class Project Schedule
 - [Project proposal](proposal.md) (due Sept 12)
 - Serial version of code (due Oct 8)
@@ -24,6 +13,13 @@ Remember to commit often and push your repository to GitHub prior to each projec
 - Second parallel version of code (distributed-memory or GPU) (due Nov 21)
 - Completed code, documentation, tests, packaging (optional) & reflection (due Dec 3)
 - Class presentations (Dec 3 - Dec 12, [detailed schedule](https://github.com/PsuAstro528/PresentationsSchedule2025) )
+
+# Installation
+```
+git clone https://github.com/PsuAstro528/project-wd_ns_interaction.git
+cd project-wd_ns_interaction
+julia install.jl
+```
 
 # Code Description
 Our code provides a semi-analytic model of mass transfer in a close white dwarf-neutron star binary (henceforth WD-NS, respectively) to determine an time series gravitational waveform. In principal, assuming typical neutron star mass $M_{\rm NS}=1.35\, M_\odot$, the user should be able to run the code with only four parameters: the initial white dwarf mass ($M_{\rm WD}$) and parameters specifying the binary orientation (inclination $i$ and initial phase angle $\varphi$) and luminosity distance ($D_L$ in Mpc). In the current version of the code, the second derivative of the quadrupole moment ($\ddot I^{ij}$) is calculated as a time series from initial $M_{\rm WD}$, and a separate method is given to calculate waveform $h^{ij}$ given $\ddot I^{ij}$ and $i,\,\varphi,\,D_L$. (In practice, the expensive and delicate part of the calculation is calculating $\ddot I^{ij}$ and it is fairly straightforward to then calculate gravitational waveforms for a variety of geometries afterward. To use our code for analysis, we would likely direct the user to output timeseries $\ddot{I}^{ij}$ as permanent files, and then from these template $\ddot{I}^{ij}$ to calculate $h^{ij}$ as temporary objects on which to perform analysis.)

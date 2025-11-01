@@ -1,4 +1,7 @@
-"""formats the filename as YYYYMMDD_M_WD=*M_WD*_M_NS=*M_NS*.csv
+module Save
+    using CSV, Dates
+    
+    """Formats the filename as YYYYMMDD_M_WD=*M_WD*_M_NS=*M_NS*.csv
 		if a filename is not provided"""
 	function format_filename(M_WD::Float64,M_NS::Float64;filename::Union{String,Int}=-1)::String
 		#
@@ -15,7 +18,7 @@
 		return filename
 	end
 		
-	"""writes array of format given in integrate to a file"""
+	"""Writes array of format given in Integrate.integrate() to a file."""
 	function save_as_csv(datumses::AbstractMatrix{<:Real},
 					  M_WD::Float64,M_NS::Float64; filename::Union{String,Int}=-1)::Nothing
 		
@@ -38,3 +41,4 @@
      					θ = datumses[:,9]))
 		return nothing
 	end
+end
