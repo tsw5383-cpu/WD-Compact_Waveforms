@@ -12,17 +12,17 @@ begin
     using Test
 end;
 
-#=
+
 # Constants
 begin
 	const G::Float64 = 1.327e11   # km^3 / M⊙ / s^2
 	const c::Float64 = 2.998e5    # km/s
-end=#
+    const period_factor::Float64 = sqrt(4.0 * π^2 / G)
+    const dJ_rr_factor::Float64 = -2.0 * G / (5.0 * c^5)
+end
 
-const G::Float64 = 1.327e11
-const c::Float64 = 2.998e5
-const period_factor::Float64 = sqrt(4.0 * π^2 / G)
-const dJ_rr_factor::Float64 = -2.0 * G / (5.0 * c^5)
+
+
 
 function R0_WD(M_WD;mu_e=2.0) 
 	#@assert M_WD > 0 # In production ready code, consider commenting out assertion
@@ -68,7 +68,7 @@ function decretion_rate(a, r, R_WD,
     if RL > R_WD
         return 0.0
     end
-    return -A * M_WD / period(M_WD + M_NS, a) * ((R_WD - RL) / RL)^3
+    return -A * M_WD / period(M_WD + M_NS, a) * ((R_WD - RL) / R_WD)^3
 end
 
 
