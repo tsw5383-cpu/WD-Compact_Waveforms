@@ -97,7 +97,7 @@ function eddington_rate(M; mu_e=2.0, eta_acc=0.1)
 	@assert mu_e > 0 # In production ready code, consider commenting out assertion
 	@assert 0 < eta_acc <= 1 # In production ready code, consider commenting out assertion
 	#return 1.41e-15 * M * (mu_e / 2.0) * (0.1 / eta_acc)
-    return 0.0705e-15 * M * (mu_e / eta_acc) 
+    return 0.0705e-15 * M * (0.1 / eta_acc) 
 end
 
 
