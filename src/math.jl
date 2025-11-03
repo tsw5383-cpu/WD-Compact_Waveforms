@@ -145,7 +145,8 @@ module Math
         @assert M > 0 # In production ready code, consider commenting out assertion
     	@assert 0 < eta_acc <= 1 # In production ready code, consider commenting out assertion
         # 4πG*m_p / (σ_T * eta_acc * c) * M
-        return 1.3977e+14 * M / eta_acc  # M in solar masses
+        # = 7.05e-16 * M * (0.1 / eta_acc)
+        return 7.05e-17 * M / eta_acc  # M in solar masses
     end
     
     

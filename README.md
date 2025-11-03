@@ -31,7 +31,18 @@ The second part of the code involves uniting the effects of mass transfer and '2
 The key producable of our code is a time-series waveform given an initial mass WD orbiting a 1.35 $M_\odot$ NS. The gravitational waveform is calculated with `integrate(M_WD)` in `tristan.jl`. 
 
 # Mathematical Basis
-Please see [this note](https://www.overleaf.com/read/zzzprcdvzkzz#d5f227) which serves as the mathematical basis for our project, especially `victor.jl`. (I was unable to get this in `README.md` in a nice format.)
+Please see [this note](https://www.overleaf.com/read/zzzprcdvzkzz#d5f227) which serves as the mathematical basis for our project and especially for `src/math.jl`. (I was unable to get these notes in `README.md` in a nice format.)
+
+The units for everything are in solar masses, km, and seconds. Notably, the simulation's output file contains:
+- t, time in seconds
+- ddI_xx, second time derivative of quadrupole moment's xx component in solar mass * km^2
+- ddI_xy, second time derivative of quadrupole moment's xy component in solar mass * km^2
+- a, total orbital separation in km
+- M_WD, mass of the white dwarf in solar mass
+- M_NS, mass of the neutron star in solar mass
+- R_WD, radius of the white dwarf in km
+- J, total angular momentum in solar mass * km^2 / s
+- $\theta$, phase
 
 <!--
 The following section documents the mathematical treatment of the 2.5-PN RR and MT forces used to calculate a gravitational waveform in a close WD-NS binary. 
