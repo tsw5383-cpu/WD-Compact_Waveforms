@@ -523,7 +523,9 @@ module Math
         #forces due to RR
         t_dJ_rr=dJ_rr(t_ddI,t_dddI)
         @inbounds begin
-            t_da_rr=2.0 * theta[1] * t_dJ_rr / theta[5]
+            a = theta[1]
+            J = theta[5]
+            t_da_rr= 2.0 * a * t_dJ_rr / J
         
             #adding RR forces to MT forces
             dtheta[1]+=t_da_rr

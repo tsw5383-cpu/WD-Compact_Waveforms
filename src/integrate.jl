@@ -30,24 +30,24 @@ module Integrate
     end
     
     #"Below is the heart of the integration process"
-    """Integrates theta forward one step with time interval either given explicitly (dt!=-1) or as a fraction of the orbital period determined by dt_period. Returns the absolute time step taken, the updated theta parameters, and the instantaneous second derivative of the quadupole moment at the end of the timestep."""
-    function one_step(theta::Vector{Float64}; dt_period::Float64=1e-2, dt::Float64=-1., mode::String="Debug")::Tuple{Float64, Vector{Float64}, Array{Float64,2}}
+    """Integrates theta forward one step with time interval either given explicitly (dt!=-1) or as a fraction of the orbital period determined by dt_period. Returns the absolute time step taken and the updated theta parameters."""
+    function one_step!(theta::Vector{Float64}; dt_period::Float64=1e-2, dt::Float64=-1., mode::String="Debug")::Tuple{Float64, Vector{Float64}}
         if mode=="Debug"
             @assert length(theta)==6
         end
         #integrates forward one step with time interval either given explicitly (dt!=-1)
         #or as a fraction of the orbital period determined by dt_period
         if dt==-1
-            dt=dt_period*Math.period(theta[1], theta[2]+theta[3])
-            #print(dt)
+            @inbounds begin
+                a = theta[1]
+                M_WD = theta[2]
+                M_NS = theta[3]
+                dt=dt_period*Math.period(a, M_WD + M_NS)
+            end
         end
         prob = ODEProblem(Math.acceleration!,theta,(0,dt),[])
-        updated_theta = solve(prob, alg=Vern9()).u[end]
-    
-        #=Calculating ddI at the end of the step=#
-            
-        t_ddI=Math.ddI_from_theta(updated_theta)
-        return(dt,updated_theta,t_ddI)
+        theta .= solve(prob, alg=Vern9()).u[end]
+        dt,theta
     end
     
     """Given an initial set of masses, `integrate` solves for the equations of motion from initial Roche Lobe overflow until the eventual complete dissipation of the white dwarf or the integration finishes according to user defined cutoff (either a limit on the number of orbits completed or on the integration steps taken). `integrate` stores and returns the second derivative of the quadrupole moment as a function of time for the orbit. The function also saves the run to a file named by the date and initial conditions if `write_file`. """
@@ -58,27 +58,23 @@ module Integrate
         t=0.
         theta=initial_circular_orbit(M_WD,M_NS=M_NS,mu_e=mu_e)
         ddI=Math.ddI_from_theta(theta)
-        #ts=zeros(step_limit)
-        #ddIs=zeros(step_limit,2,2)
         datumses=zeros(step_limit+1,9)
         datumses[1,:].=[t, ddI[1,1], ddI[1,2], theta... ]
-        #print(ts_plus_times)
         i=1
-        
-        Flag=true
-        
-        while theta[6]<2*π*orbit_limit && i<step_limit && theta[2]>0
-            #integrate until time or step limit are elapsed or WD completely dissipates
-            #println(theta)
-            #println(isa(theta,Vector{Float64}))
+
+        @inbounds begin
+            phase = theta[6]
+            M_WD = theta[2]
+            while phase<2*π*orbit_limit && i<step_limit && M_WD>0
+                #integrate until time or step limit are elapsed or WD completely dissipates
+                
+                dt,theta=one_step!(theta; dt_period=1e-2)
+                ddI=Math.ddI_from_theta(theta)
+                i+=1
+                t+=dt
             
-            dt,t_theta,t_ddI=one_step(theta; dt_period=1e-2)
-            i+=1
-            t+=dt
-        
-            datumses[i,:].=[t, t_ddI[1,1], t_ddI[1,2], t_theta... ]
-    
-            theta=t_theta
+                datumses[i,:].=[t, ddI[1,1], ddI[1,2], theta... ]
+            end
         end
     
         datumses=datumses[1:i,:]
