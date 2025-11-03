@@ -2,6 +2,7 @@ module Math
 	using ForwardDiff #package used for chain rules of large derivatives
     using LinearAlgebra
 	using Memoization
+    using Base.Threads
 
     # Constants
     const c::Float64 = 2.998e5    # km/s
@@ -174,7 +175,7 @@ module Math
         M_WD_dot = decretion_rate(a, R_WD, M_WD, M_NS; A=A)
         return J * g * (1.0 - b) * M_WD_dot / (M_WD + M_NS)
     end
-    
+
     """
         Returns the rate of change for total orbital separation.
     """
@@ -184,7 +185,7 @@ module Math
         # Promote keyword values to T so arithmetic mixes consistently
         g = gamma(M_WD, M_NS; a_ring_frac=a_ring_frac, mode=mode)
         b = beta(a, R_WD, M_WD, M_NS; A=A, eta_acc=eta_acc)
-    	@assert b <= 1.0 # In production-ready code, consider commenting this out
+        @assert b <= 1.0 # In production-ready code, consider commenting this out
         M_WD_dot = decretion_rate(a, R_WD, M_WD, M_NS; A=A)
         one_minus_b = 1 - b
         return -2.0 * a * M_WD_dot / M_WD * (one_minus_b * M_WD / M_NS - one_minus_b * (g + 0.5) * M_WD / (M_WD + M_NS))
@@ -464,15 +465,16 @@ module Math
         #calulates a list of values which will be helpful in the next two functions
         dtheta=zeros(6)
         #calculating first time derivatives due to MT only
-        @inbounds for i in 1:6
-            dtheta[i]=first_derivatives[i](theta)
+        
+        Threads.@threads for i in 1:6
+           @inbounds dtheta[i]=first_derivatives[i](theta)
         end
     
         theta_dtheta=vcat(theta,dtheta)
         ddtheta=zeros(6)
         #calculating second time derivatives due to MT only
-        @inbounds for i in 1:6
-            ddtheta[i]=second_derivatives[i](theta_dtheta)
+        Threads.@threads for i in 1:6
+            @inbounds ddtheta[i]=second_derivatives[i](theta_dtheta)
         end
     
         theta_ddtheta=vcat(theta_dtheta,ddtheta)
@@ -485,7 +487,7 @@ module Math
         )
         return(dtheta, ddtheta, theta_ddtheta, t_ddI)
     end
-    
+
     """Returns the second derivative of the quadrupole moment as calculated in `ddI_Helper`. """
     function ddI_from_theta(theta::Vector{Float64})::Array{Float64,2}
         return(ddI_helper(theta)[end])
@@ -503,8 +505,8 @@ module Math
         
         dddtheta=zeros(6)
         #calculating second time derivatives due to MT only
-        @inbounds for i in 1:6
-            dddtheta[i]=third_derivatives[i](theta_ddtheta)
+        Threads.@threads for i in 1:6
+            @inbounds dddtheta[i]=third_derivatives[i](theta_ddtheta)
         end
     
         theta_dddtheta=vcat(theta_ddtheta,dddtheta)
@@ -569,18 +571,18 @@ module Math
         es=[e1,e2]
     
         matrices=zeros(4,2,2)
-        @inbounds for i in 1:2
-            @inbounds for j in 1:2
-                matrices[2*(i-1)+j ,:,:] = es[i] * es[j] #OUTER PRODUCT OF VECTORS
+        for i in 1:2
+            for j in 1:2
+                @inbounds matrices[2*(i-1)+j ,:,:] = es[i] * es[j] #OUTER PRODUCT OF VECTORS
             end
         end
     
         #given fixed outer products, calculate gravitational wave strain tensor
         function ftn(ddI::Vector{Float64})::Matrix{Float64}
             prod=zeros(2,2) #will end up being in transverse gauge
-            @inbounds for i in 1:2
-                @inbounds for j in 1:2
-                    prod[i,j] = sum(matrices[i,j]) #OUTER PRODUCT OF VECTORS    
+            for i in 1:2
+                for j in 1:2
+                    @inbounds prod[i,j] = sum(matrices[i,j]) #OUTER PRODUCT OF VECTORS    
                 end
             end
             prod_TT = prod .- (prod[1,1]+prod[2,2]) .* [1 0; 0 1] #traceless
