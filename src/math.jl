@@ -97,7 +97,7 @@ module Math
         if RL > R_WD
             return 0.0
         end
-        return -A * M_WD / period(M_WD + M_NS, a) * ((R_WD - RL) / R_WD)^3
+        return -A * M_WD / period(a, M_WD + M_NS) * ((R_WD - RL) / R_WD)^3
     end
     
     """
@@ -135,19 +135,17 @@ module Math
     """
         Returns the Eddington accretion rate onto an object.
         ```julia
-        eddington_rate(M; mu_e=2.0, eta_acc=0.1)
+        eddington_rate(M; eta_acc=0.1)
         ```
         M = mass of the accretor.
-        mu_e = mean molecular mass per electron (default 2).
         eta_acc = accretion rate efficiency (default 0.1).
         Default values apply to Eddington accretion onto the neutron star from the white dwarf.
     """
-    function eddington_rate(M; mu_e=2.0, eta_acc=0.1)
+    function eddington_rate(M; eta_acc=0.1)
         @assert M > 0 # In production ready code, consider commenting out assertion
-    	@assert mu_e > 0 # In production ready code, consider commenting out assertion
     	@assert 0 < eta_acc <= 1 # In production ready code, consider commenting out assertion
-    	#return 1.41e-15 * M * (mu_e / 2.0) * (0.1 / eta_acc)
-        return 0.0705e-15 * M * (mu_e / eta_acc) 
+        # 4πG*m_p / (σ_T * eta_acc * c) * M
+        return 1.3977e+14 * M / eta_acc  # M in solar masses
     end
     
     
@@ -155,9 +153,9 @@ module Math
         Returns the (fraction of) mass accreted onto the neutron star over the mass lost from the white dwarf per unit time.
     """
     function beta(a, R_WD, M_WD, M_NS; 
-                  A=10.0, mu_e=2.0, eta_acc=0.1)
+                  A=10.0, eta_acc=0.1)
         M_WD_dot = -decretion_rate(a, R_WD, M_WD, M_NS; A=A)
-        lam_edd = eddington_rate(M_NS; mu_e=mu_e, eta_acc=eta_acc)
+        lam_edd = eddington_rate(M_NS; eta_acc=eta_acc)
         if M_WD_dot < lam_edd
             return 1.0
         end
@@ -169,10 +167,10 @@ module Math
         Returns the rate of total angular momentum loss of the binary due to non-conservative mass transfer.
     """
     function J_dot(J, a, R_WD, M_WD, M_NS; 
-                   A=10.0, mu_e=2.0, eta_acc=0.1, 
+                   A=10.0, eta_acc=0.1, 
                    a_ring_frac=1.0, mode::String="Isotropic Re-emission")
         g = gamma(M_WD, M_NS; a_ring_frac=a_ring_frac, mode=mode)
-        b = beta(a, R_WD, M_WD, M_NS; A=A, mu_e=mu_e, eta_acc=eta_acc)
+        b = beta(a, R_WD, M_WD, M_NS; A=A, eta_acc=eta_acc)
     	@assert b <= 1.0 # In production-ready code, consider commenting this out
         M_WD_dot = decretion_rate(a, R_WD, M_WD, M_NS; A=A)
         return J * g * (1.0 - b) * M_WD_dot / (M_WD + M_NS)
@@ -182,11 +180,11 @@ module Math
         Returns the rate of change for total orbital separation.
     """
     function a_dot(a, R_WD, M_WD, M_NS; 
-                   A=10.0, mu_e=2.0, eta_acc=0.1, 
+                   A=10.0, eta_acc=0.1, 
                    a_ring_frac=1.0, mode::String="Isotropic") 
         # Promote keyword values to T so arithmetic mixes consistently
         g = gamma(M_WD, M_NS; a_ring_frac=a_ring_frac, mode=mode)
-        b = beta(a, R_WD, M_WD, M_NS; A=A, mu_e=mu_e, eta_acc=eta_acc)
+        b = beta(a, R_WD, M_WD, M_NS; A=A, eta_acc=eta_acc)
     	@assert b <= 1.0 # In production-ready code, consider commenting this out
         M_WD_dot = decretion_rate(a, R_WD, M_WD, M_NS; A=A)
         one_minus_b = 1 - b
@@ -202,8 +200,8 @@ module Math
         M_WD = mass of white dwarf.
         R_WD = radius of white dwarf.
     """
-    function dot_R_WD(M_WD, R_WD)
-        natural_R = R0_WD(M_WD)
+    function dot_R_WD(M_WD, R_WD; mu_e=2.0)
+        natural_R = R0_WD(M_WD, mu_e=mu_e)
         tau = dynamical_timescale(M_WD, R_WD)
         return (natural_R - R_WD) / tau
     end
@@ -241,34 +239,34 @@ module Math
     """
         Converts polar coordinates to Cartesian coordinates.
     """
-    function x(r, θ)
+    function x(r::T, phase::T)::T where {T<:Real}
         @assert r > 0 # In production-ready code, consider commenting this out
-        return r * cos(θ)
+        return r * cos(phase)
     end
     
     """
         Converts polar coordinates to Cartesian coordinates.
     """
-    function y(r, θ)
+    function y(r::T, phase::T)::T where {T<:Real}
         @assert r > 0 # In production-ready code, consider commenting this out
-        return r * sin(θ)
+        return r * sin(phase)
     end
     
     """ 
         Returns rate of change of neutron star mass.
     """
     function dM_NS(a::T, R_WD::T, M_WD::T, M_NS::T;
-            A=10., mu_e=2.0, eta_acc=0.1) where T<:Real
+            A=10., eta_acc=0.1)::T where T<:Real
         t_dM_WD=decretion_rate(a,R_WD,M_WD,M_NS,A=A)
         
-        t_edd=eddington_rate(M_NS, mu_e=mu_e, eta_acc=eta_acc)
+        t_edd=eddington_rate(M_NS, eta_acc=eta_acc)
         return(min(-t_dM_WD,t_edd))
     end
     
     """ 
         Returns rate of change of orbital phase of the white dwarf.???
     """
-    function dθ(J::T,a::T,M_WD::T, M_NS::T; mode::String="Debug") where T<:Real
+    function dphase(J::T,a::T,M_WD::T, M_NS::T; mode::String="Debug")::T where T<:Real
         if mode=="Debug"
             @assert M_WD > 0 # In production-ready code, consider commenting this out
             @assert M_NS > 0 # In production-ready code, consider commenting this out
@@ -281,38 +279,38 @@ module Math
     """
         Returns I_{xx}, where I is the quadrupole moment tensor.
         ```julia
-        I_xx(M_WD::T, M_NS::T, r::T, θ::T; mode::String="Debug")
+        I_xx(M_WD::T, M_NS::T, r::T, phase::T; mode::String="Debug")
         ```
     """
-    function I_xx(M_WD::T, M_NS::T, r::T, θ::T; mode::String="Debug") where T<:Real
+    function I_xx(M_WD::T, M_NS::T, r::T, phase::T; mode::String="Debug")::T where T<:Real
         if mode=="Debug"
             @assert M_WD > 0 # In production-ready code, consider commenting this out
             @assert M_NS > 0 # In production-ready code, consider commenting this out
             @assert r > 0 # In production-ready code, consider commenting this out
         end
-        return (mu(M_WD, M_NS) * (x(r,θ))^2)
+        return (mu(M_WD, M_NS) * (x(r,phase))^2)
     end           
     
     """Given polar orbital parameters, calculates I_{xy}, where I is the quadrupole moment tensor."""
-    function I_xy(M_WD::T, M_NS::T, r::T, θ::T; mode::String="Debug") where T<:Real
+    function I_xy(M_WD::T, M_NS::T, r::T, phase::T; mode::String="Debug")::T where T<:Real
         if mode=="Debug"
             @assert M_WD > 0 # In production-ready code, consider commenting this out
             @assert M_NS > 0 # In production-ready code, consider commenting this out
             @assert r > 0 # In production-ready code, consider commenting this out
         end
-        return mu(M_WD, M_NS) * x(r,θ) * y(r,θ)
+        return mu(M_WD, M_NS) * x(r,phase) * y(r,phase)
     end                
     
     """Fixes the higher derivatives of the function so that it is formatted in a way that ForwardDiff is comfortable with."""
-    function fix_higher_derivatives(ftn::Function,higher_derivatives::AbstractVector{T}) where {T} 
-    	function inner_ftn(gen_theta::AbstractVector{T}) where {T}
+    function fix_higher_derivatives(ftn::Function,higher_derivatives::AbstractVector{T})::Function where {T<:Real} 
+    	function inner_ftn(gen_theta::AbstractVector{T}) where {T<:Real}
     		return(ftn(gen_theta,higher_derivatives))
     	end
     	return ftn 
     end;
     
     """Given a function, its vectorized parameters, and the time derivatives of those parameters, returns the time derivative of the function as calculated via the chain rule."""
-    function time_derivative(ftn::Function, ind_vars_and_derivatives::AbstractVector{T}; mode::String="Debug") where {T}
+    function time_derivative(ftn::Function, ind_vars_and_derivatives::AbstractVector{T}; mode::String="Debug") where {T<:Real}
         #ftn is the function to be taken a time derivative of
         #ind_vars is an array with the values of the arguments of ftn
         #derivatives is an array with the known time derivatives of ind_vars
@@ -329,109 +327,101 @@ module Math
         return(sum(grad .* derivatives))#chain rule
     end
     
-    """Given a function, defines its next derivative based on the function's parameters and their time derivatives. `n` determines how many time derivatives of \vec{θ} (i.e., the parameters to be integrated) are parameters of the function itself. """
-    function next_derivative(in_ftn::Function; n::Integer=1, mode::String="Debug")
+    """Given a function, defines its next derivative based on the function's parameters and their time derivatives. `n` determines how many time derivatives of \vec{phase} (i.e., the parameters to be integrated) are parameters of the function itself. """
+    function next_derivative(in_ftn::Function; n::Integer=1, mode::String="Debug")::Function
         #returns a function which is the next higher derivative of the in_ftn
         #n is the total derivatives past the given analytic form
         if mode=="Debug"
         	@assert n>0
         end
-        function ftn(gen_theta_and_derivatives::AbstractVector{T}) where {T}
-    		#print(in_ftn)
+        function ftn(gen_theta_and_derivatives::AbstractVector{T}) where {T<:Real}
             if mode=="Debug"
                 @assert length(gen_theta_and_derivatives)==6*(n+1) 
             end
-    		#outdated code
-    		#=gen_theta=gen_theta_and_derivatives[1:end-6]
-    		gen_dtheta=gen_theta_and_derivatives[end-5:end]=#
-            #requires gen_theta to be [theta, dtheta, d...dtheta] for n=number of ds
-            #requires gen_theta to be [dtheta, ddtheta d...ddtheta] for n+1=number of ds
+    		
             return(time_derivative(in_ftn, gen_theta_and_derivatives))
         end
         return ftn
     end
     
-    #The following functions wrap the original derivatives in vectors to make life easier when taking derivatives due to mass transfer only. In particular, `theta` is of the form `[a, M_WD, M_NS, R_WD, J, θ]`.
+    #The following functions wrap the original derivatives in vectors to make life easier when taking derivatives due to mass transfer only. In particular, `theta` is of the form `[a, M_WD, M_NS, R_WD, J, phase]`.
     """Wrapper function for time derivative of total orbital separation."""
     function da_vector(theta::AbstractVector{T}; 
-            A=10.0, mu_e=2.0, eta_acc=0.1, 
-            a_ring_frac=1.0, mode::String="Isotropic") where {T}
+            A=10.0, eta_acc=0.1, 
+            a_ring_frac=1.0, mode::String="Isotropic")::T where {T<:Real}
     
         # promote the numeric keyword args to match the type of the inputs
         A = T(A)
-        mu_e = T(mu_e)
         eta_acc = T(eta_acc)
         a_ring_frac = T(a_ring_frac)
     
         #unpacking theta
-        a, M_WD, M_NS, R_WD, J, θ=theta
+        a, M_WD, M_NS, R_WD, J, phase=theta
     
         
         return(a_dot(a,R_WD, M_WD, M_NS;
-                A=A,mu_e=mu_e,eta_acc=eta_acc,
+                A=A,eta_acc=eta_acc,
                 a_ring_frac=a_ring_frac,mode=mode))
     end
     
     """Wrapper function for time derivative of white dwarf mass."""
-    function dM_WD_vector(theta::AbstractVector{T}; A=10.) where {T}
+    function dM_WD_vector(theta::AbstractVector{T}; A=10.)::T where {T<:Real}
         A = T(A)
         
-        a, M_WD, M_NS, R_WD, J, θ=theta
+        a, M_WD, M_NS, R_WD, J, phase=theta
         return(decretion_rate(a, R_WD, M_WD, M_NS; A=A))
     end
     
     """Wrapper function for time derivative of neutron star mass."""
     function dM_NS_vector(theta::AbstractVector{T};
-            A=10, mu_e=2.0, eta_acc=0.1) where {T}
+            A=10, eta_acc=0.1)::T where {T<:Real}
     
         A = T(A)
-        mu_e = T(mu_e)
         eta_acc = T(eta_acc)
         
-        a, M_WD, M_NS, R_WD, J, θ=theta
+        a, M_WD, M_NS, R_WD, J, phase=theta
         return(dM_NS(a, R_WD, M_WD, M_NS;
-            A=a, mu_e=mu_e, eta_acc=eta_acc))
+            A=a, eta_acc=eta_acc))
     end
     
     """Wrapper function for time derivative of white dwarf radius."""
-    function dR_WD_vector(theta::AbstractVector{T}; mu_e=2.) where {T} 
+    function dR_WD_vector(theta::AbstractVector{T}; mu_e=2.)::T where {T<:Real} 
         mu_e = T(mu_e)
         
-        a, M_WD, M_NS, R_WD, J, θ=theta
-        return( dot_R_WD(M_WD, R_WD))
+        a, M_WD, M_NS, R_WD, J, phase=theta
+        return( dot_R_WD(M_WD, R_WD, mu_e=mu_e))
     end
     
     """Wrapper function for time derivative of total orbital momentum of the binary."""
     function dJ_vector(theta::AbstractVector{T}; 
-                   A=10.0, mu_e=2.0, eta_acc=0.1, 
-                   a_ring_frac=1.0, mode::String="Isotropic") where {T}
+                   A=10.0, eta_acc=0.1, 
+                   a_ring_frac=1.0, mode::String="Isotropic")::T where {T<:Real}
         A = T(A)
-        mu_e = T(mu_e)
         eta_acc = T(eta_acc)
         a_ring_frac = T(a_ring_frac)
         
-        a, M_WD, M_NS, R_WD, J, θ=theta
+        a, M_WD, M_NS, R_WD, J, phase=theta
         return(J_dot(J, a, R_WD, M_WD, M_NS, 
-                   A=A, mu_e=mu_e, eta_acc=eta_acc, 
+                   A=A, eta_acc=eta_acc, 
                    a_ring_frac=a_ring_frac, mode=mode))
     end
     
     """Wrapper function for time derivative of ???."""
-    function dθ_vector(theta::AbstractVector{T}) where {T} 
-        a, M_WD, M_NS, R_WD, J, θ=theta
-        return(dθ(J,a,M_WD, M_NS))
+    function dphase_vector(theta::AbstractVector{T})::T where {T<:Real} 
+        a, M_WD, M_NS, R_WD, J, phase=theta
+        return(dphase(J,a,M_WD, M_NS))
     end
     
     """Wrapper function for quadrupole moment tensor's xx component."""
-    function Ixx_vector(theta::AbstractVector{T}) where {T} 
-        a, M_WD, M_NS, R_WD, J, θ=theta
-        return(I_xx(M_WD, M_NS, a, θ))
+    function Ixx_vector(theta::AbstractVector{T})::T where {T<:Real} 
+        a, M_WD, M_NS, R_WD, J, phase=theta
+        return(I_xx(M_WD, M_NS, a, phase))
     end
     
     """Wrapper function for quadrupole moment tensor's xy component."""
-    function Ixy_vector(theta::AbstractVector{T})  where {T} 
-        a, M_WD, M_NS, R_WD, J, θ=theta
-        return(I_xy(M_WD, M_NS, a, θ))
+    function Ixy_vector(theta::AbstractVector{T})::T  where {T<:Real} 
+        a, M_WD, M_NS, R_WD, J, phase=theta
+        return(I_xy(M_WD, M_NS, a, phase))
     end
     
     #"The below block of code uses the vectorized derivatives above to output functions which take higher time derivatives of $\vec{\theta}$ and $I_{ij}$ as a function of $\theta$. "
@@ -440,14 +430,14 @@ module Math
     ddM_NS_vector=next_derivative(dM_NS_vector)
     ddR_WD_vector=next_derivative(dR_WD_vector)
     ddJ_vector=next_derivative(dJ_vector)
-    ddθ_vector=next_derivative(dθ_vector)
+    ddphase_vector=next_derivative(dphase_vector)
     
     ddda_vector=next_derivative(dda_vector,n=2)
     dddM_WD_vector=next_derivative(ddM_WD_vector,n=2)
     dddM_NS_vector=next_derivative(ddM_NS_vector,n=2)
     dddR_WD_vector=next_derivative(ddR_WD_vector,n=2)
     dddJ_vector=next_derivative(ddJ_vector,n=2)
-    dddθ_vector=next_derivative(ddθ_vector,n=2)
+    dddphase_vector=next_derivative(ddphase_vector,n=2)
     
     dI_xx_vector=next_derivative(Ixx_vector)
     ddI_xx_vector=next_derivative(Ixx_vector,n=2)
@@ -458,9 +448,9 @@ module Math
     dddI_xy_vector=next_derivative(Ixy_vector,n=3)
     
     #=bundling derivatives together which will prove convenient later=#
-    first_derivatives=[da_vector, dM_WD_vector, dM_NS_vector, dR_WD_vector, dJ_vector, dθ_vector]
-    second_derivatives=[dda_vector, ddM_WD_vector, ddM_NS_vector, ddR_WD_vector, ddJ_vector, ddθ_vector]
-    third_derivatives=[ddda_vector, dddM_WD_vector, dddM_NS_vector, dddR_WD_vector, dddJ_vector, dddθ_vector]
+    first_derivatives=[da_vector, dM_WD_vector, dM_NS_vector, dR_WD_vector, dJ_vector, dphase_vector]
+    second_derivatives=[dda_vector, ddM_WD_vector, ddM_NS_vector, ddR_WD_vector, ddJ_vector, ddphase_vector]
+    third_derivatives=[ddda_vector, dddM_WD_vector, dddM_NS_vector, dddR_WD_vector, dddJ_vector, dddphase_vector]
 
     """Constructs a symmetric 2x2 gravitational-wave strain tensor corresponding to given “plus” (+) and “cross” (×) polarization amplitudes."""
     function tensor_plus_cross(plus::Float64, cross::Float64)::Matrix{Float64}
@@ -471,7 +461,7 @@ module Math
     #"The below block of code is central to the interface between the mass transfer and radiation reaction effects. It also sits in the innermost loop of our integrator. This is a good place to peer review."
     #=Central Engine of the integrator=#
     """Calculates the second derivative of the quadrupole moment `t_ddI` due to kinematics of keplerian motion and mass transfer `dtheta`. Also returns higher derivatives of theta useful for calculating the third derivative of the quadrupole moment."""
-    function ddI_helper(theta::AbstractVector{T}) where {T}
+    function ddI_helper(theta::AbstractVector{T})::Tuple{Vector{T},Vector{T},Vector{T},Array{T, 2}} where {T}
         #calulates a list of values which will be helpful in the next two functions
         dtheta=zeros(6)
         #calculating first time derivatives due to MT only
@@ -511,9 +501,7 @@ module Math
         #using orbital elements and first through third time derivatives  
         #to calculate third derivative of quadrupole moment 
         #(for use in calculating RR acceleration)
-    
-        #print(theta_ddtheta)
-    
+        
         dddtheta=zeros(6)
         #calculating second time derivatives due to MT only
         @inbounds for i in 1:6

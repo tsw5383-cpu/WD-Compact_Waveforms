@@ -21,6 +21,7 @@ include("src/integrate.jl")
 
 M_WD::Float64 = 1.0
 step_limit::Int=100
+Integrate.integrate(M_WD, step_limit=1,write_file=false)
 @time Integrate.integrate(M_WD, step_limit=step_limit,write_file=true)
 
 #using Profile
