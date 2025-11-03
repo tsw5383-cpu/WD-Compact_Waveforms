@@ -1,6 +1,6 @@
-using Documenter, MyProject
+using Documenter, Math, Integrate, Save
 
-makedocs(modules = [MyProject], sitename = "MyProject.jl",
+makedocs(modules = [Math, Integrate, Save], sitename = "WD_NS_Interaction.jl",
          format = Documenter.HTML())
 
 deploydocs(repo = "github.com/PsuAstro528/project-template.git", target = "build",
