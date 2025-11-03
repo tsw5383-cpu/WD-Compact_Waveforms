@@ -45,7 +45,7 @@ module Integrate
                 dt=dt_period*Math.period(a, M_WD + M_NS)
             end
         end
-        prob = ODEProblem(Math.acceleration!,theta,(0,dt),[])
+        prob = ODEProblem(Math.acceleration!,theta,(0.,dt),[])
         theta .= solve(prob, alg=Vern9()).u[end]
         dt,theta
     end

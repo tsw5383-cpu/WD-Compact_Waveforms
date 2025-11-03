@@ -1,8 +1,7 @@
 module Math
-	using ForwardDiff
+	using ForwardDiff #package used for chain rules of large derivatives
     using LinearAlgebra
-	#packages used for chain rules of large derivatives
-	#and integrating differential equations
+	using Memoization
 
     # Constants
     const c::Float64 = 2.998e5    # km/s
@@ -19,7 +18,7 @@ module Math
         M_WD = mass of the white dwarf.
         mu_e = mean molecular mass per electron (default 2 for white dwarfs of all but the most exotic chemical compositions (e.g., ONeMG)).
     """
-    function R0_WD(M_WD;mu_e=2.0) 
+    @memoize function R0_WD(M_WD;mu_e=2.0) 
     	#@assert M_WD > 0 # In production ready code, consider commenting out assertion
     	@assert mu_e > 0 # In production ready code, consider commenting out assertion
     	#white dwarf radius in km as ftn of mass in M_odot and mean molecular weight/electron=2
@@ -34,7 +33,7 @@ module Math
         M_WD = mass of the white dwarf.
         R_WD = radius of the white dwarf.
     """
-    function dynamical_timescale(M_WD,R_WD)
+    @memoize function dynamical_timescale(M_WD,R_WD)
     	#@assert M_WD > 0 # In production ready code, consider commenting out assertion
     	#@assert R_WD > 0 # In production ready code, consider commenting out assertion
     	#returns dynamical timescale for perturbed white dwarf
@@ -51,7 +50,7 @@ module Math
         M_WD = mass of the white dwarf.
         M_NS = mass of the neutron star.
     """
-    function Roche_Limit(a,M_WD,M_NS)
+    @memoize function Roche_Limit(a,M_WD,M_NS)
     	#@assert M_WD < M_NS # In production ready code, consider commenting out assertion
     	@assert a > 0 # In production ready code, consider commenting out assertion
     	#returns Roche limit of M_WD for companion of mass M_NS 
@@ -70,7 +69,7 @@ module Math
         a = total orbital separation of the binary.
         M_tot = total mass of the binary (white dwarf + neutron star).
     """
-    function period(a, M_tot)
+    @memoize function period(a, M_tot)
         @assert a > 0 # In production ready code, consider commenting out assertion
     	@assert M_tot > 0 # In production ready code, consider commenting out assertion
         #return sqrt(4.0 * π^2 * a^3 / (G * Mtot))
@@ -90,7 +89,7 @@ module Math
         A = numerical constant determined from fluid mechanics (default 10).
         If Roche lobe is greater than radius of white dwarf, returns 0.
     """
-    function decretion_rate(a, R_WD,
+    @memoize function decretion_rate(a, R_WD,
                             M_WD, M_NS; A=10.0)
     	#@assert R_WD > 0 # In production ready code, consider commenting out assertion
         RL = Roche_Limit(a, M_WD, M_NS)
@@ -114,7 +113,7 @@ module Math
         Isotropic re-emission - material first accretes onto the neutron star, then is ejected isotropically, carrying the accretor’s angular momentum.
         Circumbinary ring - material forms a ring around both stars at some radius a_ring = a x a_ring_frac, where a is the total binary separation.
     """
-    function gamma(M_WD, M_NS; 
+    @memoize function gamma(M_WD, M_NS; 
                    a_ring_frac=1.0, mode::String="Isotropic Re-emission") 
     	#@assert M_WD > 0 # In production ready code, consider commenting out assertion
     	@assert M_NS > 0 # In production ready code, consider commenting out assertion
@@ -141,7 +140,7 @@ module Math
         eta_acc = accretion rate efficiency (default 0.1).
         Default values apply to Eddington accretion onto the neutron star from the white dwarf.
     """
-    function eddington_rate(M; eta_acc=0.1)
+    @memoize function eddington_rate(M; eta_acc=0.1)
         @assert M > 0 # In production ready code, consider commenting out assertion
     	@assert 0 < eta_acc <= 1 # In production ready code, consider commenting out assertion
         # 4πG*m_p / (σ_T * eta_acc * c) * M
@@ -152,7 +151,7 @@ module Math
     """
         Returns the (fraction of) mass accreted onto the neutron star over the mass lost from the white dwarf per unit time.
     """
-    function beta(a, R_WD, M_WD, M_NS; 
+    @memoize function beta(a, R_WD, M_WD, M_NS; 
                   A=10.0, eta_acc=0.1)
         M_WD_dot = -decretion_rate(a, R_WD, M_WD, M_NS; A=A)
         lam_edd = eddington_rate(M_NS; eta_acc=eta_acc)
@@ -166,7 +165,7 @@ module Math
     """
         Returns the rate of total angular momentum loss of the binary due to non-conservative mass transfer.
     """
-    function J_dot(J, a, R_WD, M_WD, M_NS; 
+    @memoize function J_dot(J, a, R_WD, M_WD, M_NS; 
                    A=10.0, eta_acc=0.1, 
                    a_ring_frac=1.0, mode::String="Isotropic Re-emission")
         g = gamma(M_WD, M_NS; a_ring_frac=a_ring_frac, mode=mode)
@@ -179,7 +178,7 @@ module Math
     """
         Returns the rate of change for total orbital separation.
     """
-    function a_dot(a, R_WD, M_WD, M_NS; 
+    @memoize function a_dot(a, R_WD, M_WD, M_NS; 
                    A=10.0, eta_acc=0.1, 
                    a_ring_frac=1.0, mode::String="Isotropic") 
         # Promote keyword values to T so arithmetic mixes consistently
@@ -200,7 +199,7 @@ module Math
         M_WD = mass of white dwarf.
         R_WD = radius of white dwarf.
     """
-    function dot_R_WD(M_WD, R_WD; mu_e=2.0)
+    @memoize function dot_R_WD(M_WD, R_WD; mu_e=2.0)
         natural_R = R0_WD(M_WD, mu_e=mu_e)
         tau = dynamical_timescale(M_WD, R_WD)
         return (natural_R - R_WD) / tau
@@ -215,7 +214,7 @@ module Math
         M_WD = mass of white dwarf.
         M_NS = mass of neutron star.
     """
-    function mu(M_WD, M_NS)
+    @memoize function mu(M_WD, M_NS)
     	#@assert M_WD > 0 # In production-ready code, consider commenting this out
     	@assert M_NS > 0 # In production-ready code, consider commenting this out
         return M_WD * M_NS / (M_WD + M_NS)
@@ -229,7 +228,7 @@ module Math
         I2 = second order time derivative of quadrupole moment (quadrupole acceleration tensor).
         I3 = third order time derivative of quadrupole moment (quadrupole jerk tensor).
     """
-    function dJ_rr(I2::Matrix{Float64}, I3::Matrix{Float64})::Float64
+    @memoize function dJ_rr(I2::Matrix{Float64}, I3::Matrix{Float64})::Float64
         # Corresponds to: -2G/(5c^5) * (dot(I2[0],I3[1]) - dot(I2[1],I3[0]))
         term::Float64 = dot(I2[:, 1], I3[:, 2]) - dot(I2[:, 2], I3[:, 1])
         #return -2.0 * G / (5.0 * c^5) * term
@@ -239,7 +238,7 @@ module Math
     """
         Converts polar coordinates to Cartesian coordinates.
     """
-    function x(r::T, phase::T)::T where {T<:Real}
+    @memoize function x(r::T, phase::T)::T where {T<:Real}
         @assert r > 0 # In production-ready code, consider commenting this out
         return r * cos(phase)
     end
@@ -247,7 +246,7 @@ module Math
     """
         Converts polar coordinates to Cartesian coordinates.
     """
-    function y(r::T, phase::T)::T where {T<:Real}
+    @memoize function y(r::T, phase::T)::T where {T<:Real}
         @assert r > 0 # In production-ready code, consider commenting this out
         return r * sin(phase)
     end
@@ -255,7 +254,7 @@ module Math
     """ 
         Returns rate of change of neutron star mass.
     """
-    function dM_NS(a::T, R_WD::T, M_WD::T, M_NS::T;
+    @memoize function dM_NS(a::T, R_WD::T, M_WD::T, M_NS::T;
             A=10., eta_acc=0.1)::T where T<:Real
         t_dM_WD=decretion_rate(a,R_WD,M_WD,M_NS,A=A)
         
@@ -266,7 +265,7 @@ module Math
     """ 
         Returns rate of change of orbital phase of the white dwarf.???
     """
-    function dphase(J::T,a::T,M_WD::T, M_NS::T; mode::String="Debug")::T where T<:Real
+    @memoize function dphase(J::T,a::T,M_WD::T, M_NS::T; mode::String="Debug")::T where T<:Real
         if mode=="Debug"
             @assert M_WD > 0 # In production-ready code, consider commenting this out
             @assert M_NS > 0 # In production-ready code, consider commenting this out
@@ -282,7 +281,7 @@ module Math
         I_xx(M_WD::T, M_NS::T, r::T, phase::T; mode::String="Debug")
         ```
     """
-    function I_xx(M_WD::T, M_NS::T, r::T, phase::T; mode::String="Debug")::T where T<:Real
+    @memoize function I_xx(M_WD::T, M_NS::T, r::T, phase::T; mode::String="Debug")::T where T<:Real
         if mode=="Debug"
             @assert M_WD > 0 # In production-ready code, consider commenting this out
             @assert M_NS > 0 # In production-ready code, consider commenting this out
@@ -292,7 +291,7 @@ module Math
     end           
     
     """Given polar orbital parameters, calculates I_{xy}, where I is the quadrupole moment tensor."""
-    function I_xy(M_WD::T, M_NS::T, r::T, phase::T; mode::String="Debug")::T where T<:Real
+    @memoize function I_xy(M_WD::T, M_NS::T, r::T, phase::T; mode::String="Debug")::T where T<:Real
         if mode=="Debug"
             @assert M_WD > 0 # In production-ready code, consider commenting this out
             @assert M_NS > 0 # In production-ready code, consider commenting this out
@@ -517,7 +516,7 @@ module Math
     end
     
     """ An "in place" implementation of the full time derivative of theta including effects from both mass transfer and radiation reaction.""" 
-    function acceleration!(du::Vector{Float64}, theta::Vector{Float64},p,t)
+    function acceleration!(du::Vector{Float64}, theta::Vector{Float64},p::Vector{Any},t::Float64)
         dtheta,t_ddI,t_dddI=ddI_dddI_from_theta(theta)
     
         #forces due to RR

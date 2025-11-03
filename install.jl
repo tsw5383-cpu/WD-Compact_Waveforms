@@ -10,6 +10,7 @@ function ensure_package_installed(pkg_name::String)
     end
 end
 
+ensure_package_installed("Memoization")
 ensure_package_installed("LinearAlgebra")
 ensure_package_installed("OrdinaryDiffEq")
 ensure_package_installed("ForwardDiff")
