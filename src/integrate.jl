@@ -52,7 +52,7 @@ module Integrate
     
     """Given an initial set of masses, `integrate` solves for the equations of motion from initial Roche Lobe overflow until the eventual complete dissipation of the white dwarf or the integration finishes according to user defined cutoff (either a limit on the number of orbits completed or on the integration steps taken). `integrate` stores and returns the second derivative of the quadrupole moment as a function of time for the orbit. The function also saves the run to a file named by the date and initial conditions if `write_file`. """
     function integrate(M_WD::Float64; M_NS::Float64=1.35,mu_e::Float64=2., 
-            orbit_limit::Float64=1e5, step_limit::Int=10^7,
+            orbit_limit::Float64=1e5, step_limit::Int=10^7, mass_limit::Float64=1e-3
                    write_file::Bool=true, filename::Union{String,Int}=-1)::AbstractMatrix{<:Real}
         #returns time series second derivatives of the quadrupole moment
         t=0.
@@ -65,7 +65,7 @@ module Integrate
         @inbounds begin
             phase = theta[6]
             M_WD = theta[2]
-            while phase<2*π*orbit_limit && i<step_limit && M_WD>0
+            while phase<2*π*orbit_limit && i<step_limit && theta[2]>0
                 #integrate until time or step limit are elapsed or WD completely dissipates
                 
                 dt,theta=one_step!(theta; dt_period=1e-2)
