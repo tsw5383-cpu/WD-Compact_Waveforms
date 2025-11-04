@@ -10,6 +10,7 @@ module Math
     const period_factor::Float64 = sqrt(4.0 * π^2 / G)
     const dJ_rr_factor::Float64 = -2.0 * G / (5.0 * c^5)
     const Mpc_to_km_factor = 2*G*3.2e-20/c^4 #for conversion from Mpc to km
+    const M_ch=1.44 #Chandresekhar mass in M⊙
     
     """
         Returns the natural radius of a white dwarf.
@@ -19,11 +20,19 @@ module Math
         M_WD = mass of the white dwarf.
         mu_e = mean molecular mass per electron (default 2 for white dwarfs of all but the most exotic chemical compositions (e.g., ONeMG)).
     """
-    @memoize function R0_WD(M_WD;mu_e=2.0) 
+    @memoize function R0_WD(M_WD;mu_e=2.0,equation=1) 
     	#@assert M_WD > 0 # In production ready code, consider commenting out assertion
-    	@assert mu_e > 0 # In production ready code, consider commenting out assertion
+    	#@assert mu_e > 0 # In production ready code, consider commenting out assertion
     	#white dwarf radius in km as ftn of mass in M_odot and mean molecular weight/electron=2
-    	return(10^4 * (M_WD/0.7)^(-1/3) * (1-(M_WD/1.4)^(4/3))^(1/2) * (mu_e/2)^(-5/3))
+        
+        x=M_WD/M_ch
+        y=M_WD/0.00057
+        #see Even (2009; https://arxiv.org/pdf/0908.2116) for summary
+        if equation==1 #Nauenberg equation
+        	return(15584/mu_e * x^(-1/3) * (1-x^(4/3))^(1/2))
+        else #Eggleton equation
+            return(7931*(x^(-2/3)-x^(2/3))^(1/2) * (1+3.5*y^(-2/3)+y^(-1))^(-2/3)) 
+        end
     end
     
     """
