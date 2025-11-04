@@ -600,8 +600,13 @@ end
 
     
     """ An "in place" implementation of the full time derivative of theta including effects from both mass transfer and radiation reaction.""" 
-    function acceleration!(du::Vector{Float64}, theta::Vector{Float64},p::Vector{Any},t::Float64)
-        dtheta,t_ddI,t_dddI=ddI_dddI_from_theta(theta)
+    function acceleration!(du::Vector{Float64}, theta::Vector{Float64},p::Vector{Any},t::Float64; uneven::Bool=false)
+        if uneven 
+            #keyword argument dictates the style of parallelization to be used 
+            #(mostly for benchmarking purposes)
+            dtheta,t_ddI,t_dddI=ddI_dddI_from_theta_uneven(theta)
+        else
+            dtheta,t_ddI,t_dddI=ddI_dddI_from_theta(theta)
     
         #forces due to RR
         t_dJ_rr=dJ_rr(t_ddI,t_dddI)
@@ -618,6 +623,18 @@ end
         #mutate du
         du .= dtheta
     end
+
+    """ Normal parallelization implementation of in-place acceleration! function"""    
+    function acceleration_even!(du::Vector{Float64}, theta::Vector{Float64},p::Vector{Any},t::Float64)
+        acceleration!(du, theta, p, t)
+    end
+
+    """ Uneven parallelization implementation of in-place acceleration! function"""    
+    function acceleration_uneven!(du::Vector{Float64}, theta::Vector{Float64},p::Vector{Any},t::Float64)
+        acceleration!(du, theta, p, t, uneven=true)
+    end
+        
+
     
     #"The next several blocks define functions intended to initiate the orbit beginning at mass transfer for initial masses, take an integration step forward calculating waveform, and integrate until the White Dwarf dissipates completely"
     """Calculates in km the orbital separation for the white dwarf to overflow its Roche Lobe and begin mass transfer"""
