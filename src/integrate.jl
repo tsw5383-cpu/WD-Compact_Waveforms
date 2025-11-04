@@ -72,7 +72,7 @@ module Integrate
             while phase<2*π*orbit_limit && i<step_limit && theta[2]>mass_limit
                 #integrate until time or step limit are elapsed or WD completely dissipates
                 
-                dt,theta=one_step!(theta; dt_period=dt_period,uneven=uneven )
+                dt,theta=one_step!(theta; dt_period=dt_period,uneven )
                 ddI=Math.ddI_from_theta(theta)
                 i+=1
                 t+=dt

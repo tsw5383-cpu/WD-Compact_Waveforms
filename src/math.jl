@@ -652,40 +652,4 @@ end
         return(( a * G * M_WD ^ 2 * M_NS ^ 2 / (M_WD + M_NS))^(1/2))
     end
     
-    """Given a luminosity distance `DL` in units of Mpc and an orientation parameterized by an inclination `i` and azimuthal angle `φ`, returns a function which calculates the instantaneous gravitational strain waveform based on the quadrupole formula."""
-    function gravitational_waveform_ftn(i::Float64, φ::Float64, DL::Float64; mode::String="Debug")::Function
-        #fixes a function to return gravitational wave given orientation and distance
-        #DL is in Mpc
-        if mode=="Debug"
-            @assert 0<=i<=π
-            @assert 0<=φ<2π
-            @assert DL<10000 #Ensure correct units for DL
-        end
-        cosi = cos(i)
-        cosφ = cos(φ)
-        sini = sin(i)
-        sinφ = sin(φ)
-        e1=[cosi*cosφ, sini*sinφ, cosi]
-        e2=[-sinφ,  cosφ,  0]
-        es=[e1,e2]
-    
-        matrices=zeros(4,2,2)
-        for i in 1:2
-            for j in 1:2
-                @inbounds matrices[2*(i-1)+j ,:,:] = es[i] * es[j] #OUTER PRODUCT OF VECTORS
-            end
-        end
-    
-        #given fixed outer products, calculate gravitational wave strain tensor
-        function ftn(ddI::Vector{Float64})::Matrix{Float64}
-            prod=zeros(2,2) #will end up being in transverse gauge
-            for i in 1:2
-                for j in 1:2
-                    @inbounds prod[i,j] = sum(matrices[i,j]) #OUTER PRODUCT OF VECTORS    
-                end
-            end
-            prod_TT = prod .- (prod[1,1]+prod[2,2]) .* [1 0; 0 1] #traceless
-            return((Mpc_to_km_factor/DL).*prod_TT)
-        end
-    end
 end
