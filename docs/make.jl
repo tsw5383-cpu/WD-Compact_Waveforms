@@ -1,9 +1,9 @@
-using Documenter, Math, Integrate, Save
+using Documenter, Integrate
 
-makedocs(modules = [Math, Integrate, Save], sitename = "WD_NS_Interaction.jl",
-         format = Documenter.HTML())
+makedocs(modules = [Integrate], sitename = "WD_NS_Interaction.jl",
+         format = Documenter.HTML(), checkdocs = :exports)
 
-deploydocs(repo = "github.com/PsuAstro528/project-template.git", target = "build",
+deploydocs(repo = "github.com/PsuAstro528/project-wd_ns_interaction.git", target = "build",
     deps   = nothing,
     make   = nothing,
     push_preview = true,

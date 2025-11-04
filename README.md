@@ -14,13 +14,6 @@ GitHub Actions : [![Build Status](https://github.com/PsuAstro528/project-templat
 - Completed code, documentation, tests, packaging (optional) & reflection (due Dec 3)
 - Class presentations (Dec 3 - Dec 12, [detailed schedule](https://github.com/PsuAstro528/PresentationsSchedule2025) )
 
-# Installation
-```
-git clone https://github.com/PsuAstro528/project-wd_ns_interaction.git
-cd project-wd_ns_interaction
-julia install.jl
-```
-
 # Code Description
 Our code provides a semi-analytic model of mass transfer in a close white dwarf-neutron star binary (henceforth WD-NS, respectively) to determine an time series gravitational waveform. In principal, assuming typical neutron star mass $M_{\rm NS}=1.35\, M_\odot$, the user should be able to run the code with only four parameters: the initial white dwarf mass ($M_{\rm WD}$) and parameters specifying the binary orientation (inclination $i$ and initial phase angle $\varphi$) and luminosity distance ($D_L$ in Mpc). In the current version of the code, the second derivative of the quadrupole moment ($\ddot I^{ij}$) is calculated as a time series from initial $M_{\rm WD}$, and a separate method is given to calculate waveform $h^{ij}$ given $\ddot I^{ij}$ and $i,\,\varphi,\,D_L$. (In practice, the expensive and delicate part of the calculation is calculating $\ddot I^{ij}$ and it is fairly straightforward to then calculate gravitational waveforms for a variety of geometries afterward. To use our code for analysis, we would likely direct the user to output timeseries $\ddot{I}^{ij}$ as permanent files, and then from these template $\ddot{I}^{ij}$ to calculate $h^{ij}$ as temporary objects on which to perform analysis.)
 
@@ -43,6 +36,18 @@ The units for everything are in solar masses, km, and seconds. Notably, the simu
 - R_WD, radius of the white dwarf in km
 - J, total angular momentum in solar mass * km^2 / s
 - $\theta$, phase
+
+# Installation and Using Package
+To install, you must have Julia installed on your system first. Afterwards, type in the following three terminal commands:
+```
+git clone https://github.com/PsuAstro528/project-wd_ns_interaction.git
+cd project-wd_ns_interaction
+julia install.jl
+```
+
+To run the code, import Integrate... (type in rest of description).
+The output is in ...
+Parallelizing gives us...
 
 <!--
 The following section documents the mathematical treatment of the 2.5-PN RR and MT forces used to calculate a gravitational waveform in a close WD-NS binary. 

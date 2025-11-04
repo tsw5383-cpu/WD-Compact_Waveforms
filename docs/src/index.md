@@ -1,7 +1,7 @@
-# MyProject
+# WD_NS_Interaction
+A Julia package to simulate a white dwarf - neutron star merger.
 
-Example Julia package repo.
-
+## Table of Contents
 ```@autodocs
-Modules = [MyProject]
+Modules = [Math, Integrate, Save]
 ```
