@@ -11,7 +11,7 @@ module Integrate
         M_NS = mass of the neutron star.
         R_WD = radius of the white dwarf.
         J = total angular momentum of the binary.
-        θ = ???
+        θ = angular parameter
         ```julia
         initial_circular_orbit(M_WD::Float64;M_NS::Float64=1.35,mu_e::Float64=2.)
         ```
