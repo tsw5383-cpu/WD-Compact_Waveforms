@@ -498,6 +498,55 @@ module Math
         return(dtheta, ddtheta, theta_ddtheta, t_ddI)
     end
 
+
+    """The first derivative is much costlier than the following derivatives (about as costly as all the others put together), so this function parallelizes using only two workers by having the first worker calculate the first derivative while the second worker calculates the second through sixth derivatives."""
+    function uneven_parallelization_helper(theta::AbstractVector{T}, derivatives)::Vector{T} where {T}
+        dtheta = zeros(6)
+
+        # Task 1: expensive separation derivative (separation--many chain rules) 
+        task_1 = Threads.@spawn begin
+            dtheta[1] = derivatives[1](theta)
+        end
+    
+        # Task 2: lighter subsequent derivatives
+        task_2 = Threads.@spawn begin
+            @inbounds for j in 2:6
+                dtheta[j] = derivatives[j](theta)
+            end
+        end
+    
+        # Wait for completion
+        fetch(task_1)
+        fetch(task_2)
+    
+        return dtheta
+end
+        
+
+    """Same as above function, but attempting to parallelize by dedicating one worker to more intensive calculation of derivatives of separation (a) and one worker to calculating all other derivatives """
+    function ddI_helper_uneven(theta::AbstractVector{T})::Tuple{Vector{T},Vector{T},Vector{T},Array{T, 2}} where {T}
+        #calulates a list of values which will be helpful in the next two functions
+        dtheta=uneven_parallelization_helper(theta, first_derivatives)
+        #calculating first time derivatives due to MT only
+    
+    
+        theta_dtheta=vcat(theta,dtheta)
+        ddtheta=uneven_parallelization_helper(theta_dtheta, second_derivatives)
+        #calculating second time derivatives due to MT only
+        
+    
+        theta_ddtheta=vcat(theta_dtheta,ddtheta)
+    
+        #using orbital elements and first and second time derivatives 
+        #to calculate second derivative of quadrupole moment
+        #(for use in calculating RR acceleration)
+        t_ddI=tensor_plus_cross(ddI_xx_vector(theta_ddtheta),
+            ddI_xy_vector(theta_ddtheta)
+        )
+        return(dtheta, ddtheta, theta_ddtheta, t_ddI)
+    end
+
+
     """Returns the second derivative of the quadrupole moment as calculated in `ddI_Helper`. """
     function ddI_from_theta(theta::Vector{Float64})::Array{Float64,2}
         return(ddI_helper(theta)[end])
@@ -517,7 +566,7 @@ module Math
         #calculating second time derivatives due to MT only
         Threads.@threads for i in 1:6
             @inbounds dddtheta[i]=third_derivatives[i](theta_ddtheta)
-        end
+        endtheta, second_derivatives)
     
         theta_dddtheta=vcat(theta_ddtheta,dddtheta)
     
@@ -526,6 +575,29 @@ module Math
         )
         return(dtheta,t_ddI,t_dddI)
     end
+
+
+"""Uneven parallelization to calculate third derivatives """
+    function ddI_dddI_from_theta_uneven(theta::Vector{Float64};ddI_only::Bool=false)::Tuple{Vector{Float64},Array{Float64,2},Array{Float64,2}}
+        #returns time derivatives of theta and second and third derivatives of 
+        #the quadrupole moment due to MT effects
+        
+        dtheta, ddtheta, theta_ddtheta, t_ddI = ddI_helper_uneven(theta)
+        #using orbital elements and first through third time derivatives  
+        #to calculate third derivative of quadrupole moment 
+        #(for use in calculating RR acceleration)
+        
+        dddtheta=uneven_parallelization_helper(theta_ddtheta, third_derivatives)
+        #calculating second time derivatives due to MT only
+    
+        theta_dddtheta=vcat(theta_ddtheta,dddtheta)
+    
+        t_dddI=tensor_plus_cross(dddI_xx_vector(theta_dddtheta),
+            dddI_xy_vector(theta_dddtheta)
+        )
+        return(dtheta,t_ddI,t_dddI)
+    end
+
     
     """ An "in place" implementation of the full time derivative of theta including effects from both mass transfer and radiation reaction.""" 
     function acceleration!(du::Vector{Float64}, theta::Vector{Float64},p::Vector{Any},t::Float64)
