@@ -13,7 +13,7 @@ using LinearAlgebra
 
 @testset "Running tests" begin
     
-    include("../victor.jl")
+    include("../src/math.jl")
 	    	
 	# Type tests
 	@testset "Type tests" begin 
