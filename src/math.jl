@@ -274,7 +274,7 @@ module Math
     end
     
     """ 
-        Returns rate of change of orbital phase of the white dwarf.???
+        Returns rate of change of orbital phase of the white dwarf.
     """
     @memoize function dphase(J::T,a::T,M_WD::T, M_NS::T; mode::String="Debug")::T where T<:Real
         if mode=="Debug"
@@ -419,7 +419,7 @@ module Math
                    a_ring_frac=a_ring_frac, mode=mode))
     end
     
-    """Wrapper function for time derivative of ???."""
+    """Wrapper function for time derivative of orbital phase of white dwarf."""
     function dphase_vector(theta::AbstractVector{T})::T where {T<:Real} 
         a, M_WD, M_NS, R_WD, J, phase=theta
         return(dphase(J,a,M_WD, M_NS))
@@ -437,7 +437,7 @@ module Math
         return(I_xy(M_WD, M_NS, a, phase))
     end
     
-    #"The below block of code uses the vectorized derivatives above to output functions which take higher time derivatives of $\vec{\theta}$ and $I_{ij}$ as a function of $\theta$. "
+    #"The below block of code uses the vectorized derivatives above to output functions which take higher time derivatives of $\vec{\theta}$ and $I_{ij}$ as a function of phase. "
     dda_vector=next_derivative(da_vector)
     ddM_WD_vector=next_derivative(dM_WD_vector)
     ddM_NS_vector=next_derivative(dM_NS_vector)

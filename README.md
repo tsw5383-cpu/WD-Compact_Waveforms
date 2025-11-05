@@ -35,7 +35,7 @@ The units for everything are in solar masses, km, and seconds. Notably, the simu
 - M_NS, mass of the neutron star in solar mass
 - R_WD, radius of the white dwarf in km
 - J, total angular momentum in solar mass * km^2 / s
-- $\theta$, phase
+- $\theta$, orbital phase
 
 # Installation and Using Package
 To install, you must have Julia installed on your system first. Afterwards, type in the following three terminal commands:
