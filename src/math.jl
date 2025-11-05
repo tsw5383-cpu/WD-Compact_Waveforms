@@ -474,20 +474,32 @@ module Math
     #"The below block of code is central to the interface between the mass transfer and radiation reaction effects. It also sits in the innermost loop of our integrator. This is a good place to peer review."
     #=Central Engine of the integrator=#
     """Calculates the second derivative of the quadrupole moment `t_ddI` due to kinematics of keplerian motion and mass transfer `dtheta`. Also returns higher derivatives of theta useful for calculating the third derivative of the quadrupole moment."""
-    function ddI_helper(theta::AbstractVector{T})::Tuple{Vector{T},Vector{T},Vector{T},Array{T, 2}} where {T}
+    function ddI_helper(theta::AbstractVector{T}; parallel::Bool=true)::Tuple{Vector{T},Vector{T},Vector{T},Array{T, 2}} where {T}
         #calulates a list of values which will be helpful in the next two functions
         dtheta=zeros(6)
         #calculating first time derivatives due to MT only
-        
-        Threads.@threads for i in 1:6
-           @inbounds dtheta[i]=first_derivatives[i](theta)
+
+        if parallel
+            Threads.@threads for i in 1:6
+               @inbounds dtheta[i]=first_derivatives[i](theta)
+            end
+        else
+            for i in 1:6
+               @inbounds dtheta[i]=first_derivatives[i](theta)
+            end
         end
     
         theta_dtheta=vcat(theta,dtheta)
         ddtheta=zeros(6)
         #calculating second time derivatives due to MT only
-        Threads.@threads for i in 1:6
-            @inbounds ddtheta[i]=second_derivatives[i](theta_dtheta)
+        if parallel
+            Threads.@threads for i in 1:6
+                @inbounds ddtheta[i]=second_derivatives[i](theta_dtheta)
+            end
+        else
+            for i in 1:6
+                @inbounds ddtheta[i]=second_derivatives[i](theta_dtheta)
+            end
         end
     
         theta_ddtheta=vcat(theta_dtheta,ddtheta)
@@ -551,24 +563,30 @@ end
 
 
     """Returns the second derivative of the quadrupole moment as calculated in `ddI_Helper`. """
-    function ddI_from_theta(theta::Vector{Float64})::Array{Float64,2}
-        return(ddI_helper(theta)[end])
+    function ddI_from_theta(theta::Vector{Float64}; parallel::Bool=true)::Array{Float64,2}
+        return(ddI_helper(theta, parallel=parallel)[end])
     end
     	    
     """Calculates the third derivative of the quadrupole moment and returns it along with the time derivative of theta and the second derivative of the quadrupole moment as calculated in `ddI_Helper`."""
-    function ddI_dddI_from_theta(theta::Vector{Float64};ddI_only::Bool=false)::Tuple{Vector{Float64},Array{Float64,2},Array{Float64,2}}
+    function ddI_dddI_from_theta(theta::Vector{Float64}; ddI_only::Bool=false, parallel::Bool=true)::Tuple{Vector{Float64},Array{Float64,2},Array{Float64,2}}
         #returns time derivatives of theta and second and third derivatives of 
         #the quadrupole moment due to MT effects
         
-        dtheta, ddtheta, theta_ddtheta, t_ddI = ddI_helper(theta)
+        dtheta, ddtheta, theta_ddtheta, t_ddI = ddI_helper(theta, parallel=parallel)
         #using orbital elements and first through third time derivatives  
         #to calculate third derivative of quadrupole moment 
         #(for use in calculating RR acceleration)
         
         dddtheta=zeros(6)
         #calculating second time derivatives due to MT only
-        Threads.@threads for i in 1:6
-            @inbounds dddtheta[i]=third_derivatives[i](theta_ddtheta)
+        if parallel
+            Threads.@threads for i in 1:6
+                @inbounds dddtheta[i]=third_derivatives[i](theta_ddtheta)
+            end
+        else
+            for i in 1:6
+                @inbounds dddtheta[i]=third_derivatives[i](theta_ddtheta)
+            end
         end
     
         theta_dddtheta=vcat(theta_ddtheta,dddtheta)
@@ -603,13 +621,13 @@ end
 
     
     """ An "in place" implementation of the full time derivative of theta including effects from both mass transfer and radiation reaction.""" 
-    function acceleration!(du::Vector{Float64}, theta::Vector{Float64},p::Vector{Any},t::Float64; uneven::Bool=false)
-        if uneven 
+    function acceleration!(du::Vector{Float64}, theta::Vector{Float64},p::Vector{Any},t::Float64; parallel::Bool=true, uneven::Bool=false)
+        if parallel && uneven
             #keyword argument dictates the style of parallelization to be used 
             #(mostly for benchmarking purposes)
             dtheta,t_ddI,t_dddI=ddI_dddI_from_theta_uneven(theta)
         else
-            dtheta,t_ddI,t_dddI=ddI_dddI_from_theta(theta)
+            dtheta,t_ddI,t_dddI=ddI_dddI_from_theta(theta, parallel=parallel)
         end
     
         #forces due to RR
@@ -638,7 +656,10 @@ end
         acceleration!(du, theta, p, t, uneven=true)
     end
         
-
+    """ Serial implementation of in-place acceleration! function"""
+    function acceleration_serial!(du::Vector{Float64}, theta::Vector{Float64},p::Vector{Any},t::Float64)
+        acceleration!(du, theta, p, t, parallel=false)
+    end
     
     #"The next several blocks define functions intended to initiate the orbit beginning at mass transfer for initial masses, take an integration step forward calculating waveform, and integrate until the White Dwarf dissipates completely"
     """Calculates in km the orbital separation for the white dwarf to overflow its Roche Lobe and begin mass transfer"""

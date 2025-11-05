@@ -1,6 +1,6 @@
 # Astro 528 [Class Project](https://psuastro528.github.io/Fall2025/project/)
 
-[![](https://img.shields.io/badge/docs-stable-blue.svg)](https://PsuAstro528.github.io/project-template/stable)
+Click here for full documentation: [![](https://img.shields.io/badge/docs-stable-blue.svg)](https://PsuAstro528.github.io/project-wd_ns_interaction)
 
 GitHub Actions : [![Build Status](https://github.com/PsuAstro528/project-template/workflows/CI/badge.svg)](https://github.com/PsuAstro528/project-template/actions?query=workflow%3ACI+branch%3Amain)
 
@@ -21,7 +21,7 @@ Our code can broadly be divided into two parts. The first implements the mathema
 
 The second part of the code involves uniting the effects of mass transfer and '2.5 Post-Newtonian order' gravitational wave backreaction (also referred to as 'radiation reaction' or 'RR' in our documentation; see Chapter 12 of [Poisson & Will](https://www.cambridge.org/core/books/gravity/1F0CF38A59B1E51A63C7C3138268BE5D)) through autodifferentiation of the $\vec{\theta}$ parameters; integration of the system taking both MT and RR effects into account; calculation of timeseries $\ddot I^{ij}$; and conversion to $h^{ij}$. \textbf{This part of the code is significantly more complicated and time intensive than the previous section with serialized runtimes likely on the order of hours, and it is thus crucial to optimize. This is where peer review could be especially beneficial.} `tristan.jl` contains most of this part.
 
-The key producable of our code is a time-series waveform given an initial mass WD orbiting a 1.35 $M_\odot$ NS. The gravitational waveform is calculated with `integrate(M_WD)` in `tristan.jl`. 
+The key producable of our code is a time-series waveform given an initial mass WD orbiting a 1.35 $M_\odot$ NS. The gravitational waveform is calculated in `src/GW.jl`. 
 
 # Mathematical Basis
 Please see [this note](https://www.overleaf.com/read/zzzprcdvzkzz#d5f227) which serves as the mathematical basis for our project and especially for `src/math.jl`. (I was unable to get these notes in `README.md` in a nice format.)
@@ -38,16 +38,25 @@ The units for everything are in solar masses, km, and seconds. Notably, the simu
 - $\theta$, orbital phase
 
 # Installation and Using Package
-To install, you must have Julia installed on your system first. Afterwards, type in the following three terminal commands:
+To install, you must have Julia installed on your system first. Afterwards, type in the following three terminal commands:  
 ```
-git clone https://github.com/PsuAstro528/project-wd_ns_interaction.git
+git clone git@github.com:PsuAstro528/project-wd_ns_interaction.git
 cd project-wd_ns_interaction
 julia install.jl
 ```
 
-To run the code, import Integrate... (type in rest of description).
-The output is in ...
-Parallelizing gives us...
+# For Reviewers
+The code is located in the `src/` folder. The `integrate` function in `Integrate.jl` contains the code that the user should interact with directly: it takes in the mass of a white dwarf and neutron star in solar masses (and optional parameters), and then outputs a .csv file in the `Outputs/` folder that contains output of the simulation run at each time step. See the section "Mathematical Basis" in this README for physical quantities and units of the output file.
+
+Our tests are in `test/runtestsjl`
+
+We use multithreading and Base.Threads for our shared memory parallelization technique. Specifically, in `ddI_helper` and `ddI_dddI_from_theta` in `math.jl`, we have to calculate the first, second, and third time derivatives of six physical parameters of the WD-NS binary (which we vectorize into the variable `theta`). Each parameter's time derivative is independent of the other parameters' time derivatives, so we use Threads.@threads for spreading out the derivative calculations over separate threads.
+
+The speedup by parallelizing is ~1.2x - 2x compared to serial (not 6x since the distribution of the work needed to calculate each parameters' time derivatives is uneven). For reference, here is an example run with 4 cores:
+- The number of threads being used in parallel version is 4.
+- M_WD: 1.0, step_limit: 100
+- The time for integrate() in the parallel version is 0.128640385 sec.
+- The time for integrate() in the serial version is 0.186621555 sec.
 
 <!--
 The following section documents the mathematical treatment of the 2.5-PN RR and MT forces used to calculate a gravitational waveform in a close WD-NS binary. 
