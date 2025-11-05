@@ -45,10 +45,19 @@ module Integrate
                 dt=dt_period*Math.period(a, M_WD + M_NS)
             end
         end
-        if uneven
-            prob = ODEProblem(Math.acceleration_uneven!,theta,(0.,dt),[])
-        else
-            prob = ODEProblem(Math.acceleration_even!,theta,(0.,dt),[])
+
+        prob = nothing
+        # There's a warning from SciMLBase here:
+        #   Warning: Using arrays or dicts to store parameters of different types can hurt performance.
+        #   Consider using tuples instead.
+        #   @ SciMLBase ~/.julia/packages/SciMLBase/MzuF2/src/performance_warnings.jl:33
+        # but we can't use tuples because ForwardDiff uses only arrays. So we suppress all warnings temporarily here.
+        redirect_stderr(devnull) do 
+            if uneven
+                prob = ODEProblem(Math.acceleration_uneven!,theta,(0.,dt),[])
+            else
+                prob = ODEProblem(Math.acceleration_even!,theta,(0.,dt),[])
+            end
         end
         theta .= solve(prob, alg=Vern9()).u[end]
         dt,theta
@@ -56,8 +65,8 @@ module Integrate
     
     """Given an initial set of masses, `integrate` solves for the equations of motion from initial Roche Lobe overflow until the eventual complete dissipation of the white dwarf or the integration finishes according to user defined cutoff (either a limit on the number of orbits completed or on the integration steps taken). `integrate` stores and returns the second derivative of the quadrupole moment as a function of time for the orbit. The function also saves the run to a file named by the date and initial conditions if `write_file`. """
     function integrate(M_WD::Float64; M_NS::Float64=1.35,mu_e::Float64=2., 
-            orbit_limit::Float64=1e5, step_limit::Int=10^7, mass_limit::Float64=1e-3
-                   write_file::Bool=true, filename::Union{String,Int}=-1,uneven::Bool=false, dt_period=1e-3)::AbstractMatrix{<:Real}
+            orbit_limit::Float64=1e5, step_limit::Int=10^7, mass_limit::Float64=1e-3, dt_period=1e-3,
+            uneven::Bool=false, write_file::Bool=true, filename::Union{String,Int}=-1)::AbstractMatrix{<:Real}
         #returns time series second derivatives of the quadrupole moment
         t=0.
         theta=initial_circular_orbit(M_WD,M_NS=M_NS,mu_e=mu_e)
@@ -69,7 +78,7 @@ module Integrate
         @inbounds begin
             phase = theta[6]
             M_WD = theta[2]
-            while phase<2*π*orbit_limit && i<step_limit && theta[2]>mass_limit
+            while phase<2*π*orbit_limit && i<step_limit && M_WD>mass_limit
                 #integrate until time or step limit are elapsed or WD completely dissipates
                 
                 dt,theta=one_step!(theta; dt_period=dt_period,uneven )

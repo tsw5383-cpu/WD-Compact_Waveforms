@@ -9,7 +9,7 @@ module Math
     const G::Float64 = 1.327e11   # km^3 / M⊙ / s^2
     const period_factor::Float64 = sqrt(4.0 * π^2 / G)
     const dJ_rr_factor::Float64 = -2.0 * G / (5.0 * c^5)
-    const Mpc_to_km_factor = 2*G*3.2e-20/c^4 #for conversion from Mpc to km
+    const Mpc_to_km_factor = 2.0*G*3.2e-20/c^4. #for conversion from Mpc to km
     const M_ch=1.44 #Chandresekhar mass in M⊙
     
     """
@@ -29,9 +29,9 @@ module Math
         y=M_WD/0.00057
         #see Even (2009; https://arxiv.org/pdf/0908.2116) for summary
         if equation==1 #Nauenberg equation
-        	return(15584/mu_e * x^(-1/3) * (1-x^(4/3))^(1/2))
+        	return(15584.0/mu_e * x^(-1.0/3.0) * (1-x^(4.0/3.0))^(1.0/2.0))
         else #Eggleton equation
-            return(7931*(x^(-2/3)-x^(2/3))^(1/2) * (1+3.5*y^(-2/3)+y^(-1))^(-2/3)) 
+            return(7931.0*(x^(-2.0/3.0)-x^(2.0/3.0))^(1.0/2.0) * (1.0+3.5*y^(-2.0/3.0)+y^(-1.0))^(-2.0/3.0)) 
         end
     end
     
@@ -48,7 +48,7 @@ module Math
     	#@assert R_WD > 0 # In production ready code, consider commenting out assertion
     	#returns dynamical timescale for perturbed white dwarf
     	#with radius R and mass M
-    	return((R_WD^3/(G*M_WD))^(1/2))
+    	return((R_WD^3.0/(G*M_WD))^(1.0/2.0))
     end
     
     """
@@ -66,8 +66,8 @@ module Math
     	#returns Roche limit of M_WD for companion of mass M_NS 
     	#at a separation of distance r 
     	q=M_WD/M_NS
-        q_2_3rds = q^(2/3)
-    	return(a * 0.49*q_2_3rds/(0.6*q_2_3rds+log(1+q^(1/3))))
+        q_2_3rds = q^(2.0/3.0)
+    	return(a * 0.49*q_2_3rds/(0.6*q_2_3rds+log(1.0+q^(1.0/3.0))))
     end
     
     
@@ -83,7 +83,7 @@ module Math
         @assert a > 0 # In production ready code, consider commenting out assertion
     	@assert M_tot > 0 # In production ready code, consider commenting out assertion
         #return sqrt(4.0 * π^2 * a^3 / (G * Mtot))
-        return period_factor * sqrt(a^3 / M_tot)
+        return period_factor * sqrt(a^3.0 / M_tot)
     end
     
     
@@ -106,7 +106,7 @@ module Math
         if RL > R_WD
             return 0.0
         end
-        return -A * M_WD / period(a, M_WD + M_NS) * ((R_WD - RL) / R_WD)^3
+        return -A * M_WD / period(a, M_WD + M_NS) * ((R_WD - RL) / R_WD)^3.0
     end
     
     """
@@ -134,7 +134,7 @@ module Math
         elseif first_char == 'i'
             return M_WD / M_NS
         elseif first_char == 'c'
-            return (M_WD + M_NS)^2 / (M_WD * M_NS) * sqrt(a_ring_frac)
+            return (M_WD + M_NS)^2.0 / (M_WD * M_NS) * sqrt(a_ring_frac)
         else
             error("$mode not defined. Use 'Jeans Mode', 'Isotropic Re-emission', or 'Circumbinary Ring'")
         end
@@ -197,7 +197,7 @@ module Math
         b = beta(a, R_WD, M_WD, M_NS; A=A, eta_acc=eta_acc)
         @assert b <= 1.0 # In production-ready code, consider commenting this out
         M_WD_dot = decretion_rate(a, R_WD, M_WD, M_NS; A=A)
-        one_minus_b = 1 - b
+        one_minus_b = 1.0 - b
         return -2.0 * a * M_WD_dot / M_WD * (one_minus_b * M_WD / M_NS - one_minus_b * (g + 0.5) * M_WD / (M_WD + M_NS))
     end
     
@@ -282,7 +282,7 @@ module Math
             @assert M_NS > 0 # In production-ready code, consider commenting this out
             @assert a > 0 # In production-ready code, consider commenting this out
         end
-        return(J/(a^2*mu(M_WD,M_NS)))
+        return(J/(a^2.0*mu(M_WD,M_NS)))
     end   
     
     
@@ -298,7 +298,7 @@ module Math
             @assert M_NS > 0 # In production-ready code, consider commenting this out
             @assert r > 0 # In production-ready code, consider commenting this out
         end
-        return (mu(M_WD, M_NS) * (x(r,phase))^2)
+        return (mu(M_WD, M_NS) * (x(r,phase))^2.0)
     end           
     
     """Given polar orbital parameters, calculates I_{xy}, where I is the quadrupole moment tensor."""
@@ -329,12 +329,15 @@ module Math
             @assert mod(length(ind_vars_and_derivatives),6)==0
         end
     
-    	ind_vars=ind_vars_and_derivatives[1:end-6]
-    	derivatives=ind_vars_and_derivatives[7:length(ind_vars_and_derivatives)]
+    	ind_vars=@view ind_vars_and_derivatives[1:end-6]
+    	derivatives=@view ind_vars_and_derivatives[7:length(ind_vars_and_derivatives)]
     
-    	grad=ForwardDiff.gradient(ftn,ind_vars)
-        
-        return(sum(grad .* derivatives))#chain rule
+    	# ftn_at_ind_vars is the function evaluated at the parameters in ind_vars
+        ftn_at_ind_vars = DiffResults.GradientResult(ind_vars)
+    	ForwardDiff.gradient!(ftn_at_ind_vars,ftn,ind_vars)
+
+        # DiffResults.grad(ftn_at_ind_vars) gives the gradient of the function, evaluated at the parameters in ind_vars
+        return(sum(DiffResults.gradient(ftn_at_ind_vars) .* derivatives))#chain rule
     end
     
     """Given a function, defines its next derivative based on the function's parameters and their time derivatives. `n` determines how many time derivatives of \vec{phase} (i.e., the parameters to be integrated) are parameters of the function itself. """
@@ -566,7 +569,7 @@ end
         #calculating second time derivatives due to MT only
         Threads.@threads for i in 1:6
             @inbounds dddtheta[i]=third_derivatives[i](theta_ddtheta)
-        endtheta, second_derivatives)
+        end
     
         theta_dddtheta=vcat(theta_ddtheta,dddtheta)
     
@@ -607,6 +610,7 @@ end
             dtheta,t_ddI,t_dddI=ddI_dddI_from_theta_uneven(theta)
         else
             dtheta,t_ddI,t_dddI=ddI_dddI_from_theta(theta)
+        end
     
         #forces due to RR
         t_dJ_rr=dJ_rr(t_ddI,t_dddI)
@@ -649,7 +653,6 @@ end
     """Calculates the angular momentum of the system at initial Roche Lobe overflow """	
     function circular_J(a::Float64,M_WD::Float64,M_NS::Float64)::Float64
         #returns angular momentum for a circular orbit
-        return(( a * G * M_WD ^ 2 * M_NS ^ 2 / (M_WD + M_NS))^(1/2))
+        return(( a * G * M_WD ^ 2.0 * M_NS ^ 2.0 / (M_WD + M_NS))^(1.0/2.0))
     end
-    
 end

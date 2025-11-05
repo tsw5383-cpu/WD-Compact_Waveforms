@@ -22,8 +22,8 @@ include("src/integrate.jl")
 println(Threads.nthreads())
 M_WD::Float64 = 1.0
 step_limit::Int=100
-#Integrate.integrate(M_WD, step_limit=step_limit,write_file=true)
-@btime Integrate.integrate(M_WD, step_limit=step_limit,write_file=false)
+Integrate.integrate(M_WD, step_limit=step_limit,write_file=true)
+@btime Integrate.integrate(M_WD, step_limit=step_limit,write_file=false,uneven=false)
 
 
 #@profile Integrate.integrate(1.0,step_limit=100,write_file=false)
