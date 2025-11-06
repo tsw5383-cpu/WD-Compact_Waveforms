@@ -1,3 +1,6 @@
+using Pkg
+Pkg.add("BenchmarkTools")
+Pkg.add("PlutoTest")
 using Test
 using BenchmarkTools
 
@@ -11,6 +14,7 @@ using BenchmarkTools
 	    	
 	# Type tests
 	@testset "Type tests" begin 
+        println("Beginning type tests")
 	    M_WD::Float64 = 1.0
 	    M_NS::Float64 = 1.7
 	    M_tot::Float64 = M_WD + M_NS
@@ -41,10 +45,12 @@ using BenchmarkTools
 		y_test = Math.y(r, theta)
 	    @test isa(x_test, Float64)
 	    @test isa(y_test, Float64)
+        println("Passed all type tests")
 	end;
 	
 	# Reasonable input -> output mapping tests
 	@testset "Expected output tests" begin
+        println("Beginning expected output tests")
 	   @test Math.R0_WD(1e-10) > 0
 	   @test Math.dynamical_timescale(1e-10, 1e-10) > 0
 	   @test Math.Roche_Limit(1e-10, 1e-10, 1e-10) > 0
@@ -57,15 +63,17 @@ using BenchmarkTools
 	   @test Math.beta(1e-10, 1e-20, 1e-10, 1e-10) == 1.0 # Here, Roche limit is bigger than R_WD, so M_dot = 0.0, so beta = 1.0
 	   @test 0.0 < Math.beta(1e-10, 1e-10, 1e-10, 1e-10) < 1.0 # Here, Roche limit is not than R_WD, so M_dot > 0
 	   @test Math.mu(1e-10, 1e-10) > 0
+        println("Passed all expected output tests")
 	end;
 
-    # Comparing serial and parallel versions of code
-    @testset "Serial/parallel tests" begin
+    # Comparing serial and parallel versions of code, which also serves as an integration test because testset would fail if integrate() didn't work
+    @testset "Serial/parallel test for integrate()" begin
         using BenchmarkTools
         nthreads::Int = Threads.nthreads()
         if nthreads < 2
             throw(error("ERROR: Currently you are running this test with $(Threads.nthreads()) threads. This test requires at least 2 threads. Request more cores before proceeding."))
         end
+        println("Beginning serial/parallel + integration test for integrate()")
         println("The number of threads being used in parallel version is $(Threads.nthreads()).")
         M_WD::Float64 = 1.0
         step_limit::Int=100
@@ -77,8 +85,24 @@ using BenchmarkTools
         @test parallel_time < serial_time
         @test parallel_time < 0.4
         @test serial_time < 0.4 # I got speeds of ~200 ms for serial
+        println("Passed serial/parallel + integration test for integrate()")
     end
 
+    @testset "Serial/parallel test for many_integrate()" begin
+        sim_conditions = (M_WD_lower=0.5, M_WD_upper=0.8, M_WD_step=0.1, 
+                          M_NS_lower=1.2, M_NS_upper=1.4, M_NS_step=0.1)
+        step_limit::Int=100
+        println("Beginning serial/parallel + integration test for many_integrate()")
+        println("The number of threads being used in the parallel version is $(Threads.nthreads()).")
+        println("The range of M_WDs: (lower=$(sim_conditions.M_WD_lower),upper=$(sim_conditions.M_WD_upper),step=$(sim_conditions.M_WD_step)). The range of M_NSs: (lower=$(sim_conditions.M_NS_lower),upper=$(sim_conditions.M_NS_upper),step=$(sim_conditions.M_NS_step)). step_limit: $(step_limit)")
+        parallel_time_many = @belapsed Integrate.many_integrate($sim_conditions, step_limit=$step_limit,write_file=false,uneven=false)
+        serial_time_many = @belapsed Integrate.many_integrate($sim_conditions, step_limit=$step_limit,write_file=false,parallel=false)
+        
+        println("The time for many_integrate() in the parallel version is $(parallel_time_many) sec.")
+        println("The time for many_integrate() in the serial version is $(serial_time_many) sec.")
+        @test parallel_time < serial_time
+        println("Passed serial/parallel + integration test for many_integrate()")
+    end
 end;
 
 # julia-actions/julia-runtest

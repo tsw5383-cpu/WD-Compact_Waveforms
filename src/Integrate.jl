@@ -1,5 +1,6 @@
 module Integrate
     using OrdinaryDiffEq
+    using FLoops
     include("math.jl")
     include("save.jl")
     
@@ -70,6 +71,15 @@ module Integrate
             orbit_limit::Float64=1e5, step_limit::Int=10^7, mass_limit::Float64=1e-3, dt_period=1e-3,
             parallel::Bool=true, uneven::Bool=false, write_file::Bool=true, filename::Union{String,Int}=-1)::AbstractMatrix{<:Real}
         #returns time series second derivatives of the quadrupole moment
+        @assert M_WD > mass_limit
+        @assert M_WD < Math.M_ch # Chandrasekhar mass
+        @assert M_NS > M_WD
+        @assert M_NS > 1.1 # very low lower limit, slightly below mass of the secondary neutron star in PSR J0453+1559
+        @assert M_NS < 2.9 # TOV limit (a generous estimate)
+        @assert orbit_limit > 0
+        @assert step_limit > 1
+        @assert mass_limit > 0
+        @assert dt_period > 0
         t=0.
         theta=initial_circular_orbit(M_WD,M_NS=M_NS,mu_e=mu_e)
         ddI=Math.ddI_from_theta(theta)
@@ -99,5 +109,45 @@ module Integrate
         end
         
         return(datumses)
+    end
+
+    """Performs many WD-NS merger simulations at once, with user specified initial white dwarf and neutron star masses. (This is another place where we take advantage of parallelization). Takes in sim_conditions (NamedTuple), which has:
+    - M_WD_lower (lower limit for white dwarf mass)
+    - M_WD_upper (upper limit for white dwarf mass)
+    - M_WD_step (step size for white dwarf mass)
+    - M_NS_lower (lower limit for neutron star mass)
+    - M_NS_upper (upper limit for neutron star mass)
+    - M_NS_step (step size for neutron star mass)
+    The ranges of M_WD and M_NS must be physical. Some of the checks we have are:
+    @assert M_WD < Math.M_ch # Chandrasekhar mass
+    @assert M_NS > M_WD
+    @assert M_NS > 1.1 # very low lower limit, slightly below mass of the secondary neutron star in PSR J0453+1559
+    @assert M_NS < 2.9 # TOV limit (a generous estimate)"""
+    function many_integrate(sim_conditions::NamedTuple; mu_e::Float64=2., 
+            orbit_limit::Float64=1e5, step_limit::Int=10^7, mass_limit::Float64=1e-3, dt_period=1e-3,
+            parallel::Bool=true, uneven::Bool=false, write_file::Bool=true, filename::Union{String,Int}=-1)
+        @assert sim_conditions.M_WD_lower < sim_conditions.M_WD_upper
+        @assert sim_conditions.M_NS_lower < sim_conditions.M_NS_upper
+        @assert sim_conditions.M_WD_step <= sim_conditions.M_WD_upper - sim_conditions.M_WD_lower
+        @assert sim_conditions.M_NS_step <= sim_conditions.M_NS_upper - sim_conditions.M_NS_lower
+        M_WDs::StepRangeLen = range(sim_conditions.M_WD_lower, stop=sim_conditions.M_WD_upper, step=sim_conditions.M_WD_step)
+        M_NSs::StepRangeLen = range(sim_conditions.M_NS_lower, stop=sim_conditions.M_NS_upper, step=sim_conditions.M_NS_step)
+        if parallel
+            @floop ThreadedEx(basesize = 8) for M_WD in M_WDs, M_NS in M_NSs
+                if M_WD < M_NS
+                    integrate(M_WD; M_NS, mu_e, 
+                        orbit_limit, step_limit, mass_limit, dt_period,
+                        parallel, uneven, write_file, filename)
+                end
+            end
+        else
+            for M_WD in M_WDs, M_NS in M_NSs
+                if M_WD < M_NS
+                    integrate(M_WD; M_NS, mu_e, 
+                        orbit_limit, step_limit, mass_limit, dt_period,
+                        parallel, uneven, write_file, filename)
+                end
+            end
+        end
     end
 end
