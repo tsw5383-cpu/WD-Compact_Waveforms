@@ -42,7 +42,7 @@ To install, you must have Julia installed on your system first. Afterwards, type
 ```
 git clone git@github.com:PsuAstro528/project-wd_ns_interaction.git
 cd project-wd_ns_interaction
-julia install.jl
+julia src/install.jl
 ```
 
 # For Reviewers
