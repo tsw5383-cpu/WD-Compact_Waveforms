@@ -276,14 +276,19 @@ module Math
     """ 
         Returns rate of change of orbital phase of the white dwarf.
     """
-    @memoize function dphase(J::T,a::T,M_WD::T, M_NS::T; mode::String="Debug")::T where T<:Real
+    @memoize function dphase(J::T,a::T,M_WD::T, M_NS::T;
+        mode::String="Debug", period_calc=true )::T where T<:Real
         if mode=="Debug"
             @assert M_WD > 0 # In production-ready code, consider commenting this out
             @assert M_NS > 0 # In production-ready code, consider commenting this out
             @assert a > 0 # In production-ready code, consider commenting this out
         end
+        if period_calc #Calculates change in period under the adiabatic approximation
+            return (2.0*π/period(a, M_WD+M_NS))
+        end
         return(J/(a^2.0*mu(M_WD,M_NS)))
-    end   
+        
+    end  
     
     
     """
