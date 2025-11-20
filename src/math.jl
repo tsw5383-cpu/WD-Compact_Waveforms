@@ -729,10 +729,10 @@ module Math
     
     #"The next several blocks define functions intended to initiate the orbit beginning at mass transfer for initial masses, take an integration step forward calculating waveform, and integrate until the White Dwarf dissipates completely"
     """Calculates in km the orbital separation for the white dwarf to overflow its Roche Lobe and begin mass transfer"""
-    function RL_contact(M_WD::Float64,M_NS::Float64;mu_e::Float64=2.)::Float64
+    function RL_contact(M_WD::Float64,M_NS::Float64; optional=optional_default)::Float64
         #returns separation at which a donor WD overflows its
         #Roche Lobe
-        R_WD=R0_WD(M_WD,mu_e=mu_e)
+        R_WD=R0_WD(M_WD;optional=optional_default)
         RL_a1=Roche_Limit(1.,M_WD,M_NS) #roche limit at separation of 1 km
         return(R_WD / RL_a1)#initial separation in km
     end
