@@ -20,13 +20,30 @@ module Integrate
         ```
         mu_e = mean molecular mass per electron (default 2 for white dwarfs of all but the most exotic chemical compositions (e.g., ONeMG)).
     """
-    function initial_circular_orbit(M_WD::Float64;M_NS::Float64=1.35,mu_e::Float64=2., mode::String="Debug")::Vector{Float64}
+
+
+    const M_ch=1.44 #Chandresekhar mass in M⊙
+    optional_default=[2.0,1,10.0,true,1.0,"Isotropic Re-emission",0.1,true]
+    #`optional` contains optional parameters. In order, these optional parameters are:
+    #mu_e=2.0:                     the chemical composition of the white dwarf (for CO/ONeMg, mu_e=2.0/2.35, respectively)
+    #equation=1:                   choice of empirical equation for white dwarf mass vs. radius relation (1=Nauenberg/2=Eggleton
+    #A=10.0:                       the rate at which mass flows off the WD surface (characteristic number of orbits for mass to leave)
+    #poly_shell=true:              if true/false, uses polytropic/uniform density distribution to model mass in process of being stripped from WD
+    #a_ring_frac=1.0:              radius of circumbinary ring formed by matter decreted by WD
+    #mode="Isotropic Re-emission": mode of mass loss assumed in calculating angular momentum loss
+    #eta_acc=0.1:                  accretion efficiency of the NS
+    #period_calc=true:             if true/false, calculates angular velocity as a function of radius/angular momentum
+
+    #Of these, I expect A, poly_shell, mode, and period_calc to have considerable effect on the evolution of the system
+
+    function initial_circular_orbit(M_WD::Float64; M_NS::Float64=1.35, optional=optional_default, mode::String="Debug")::Vector{Float64}
+    
         #returns keplerian orbital parameters, theta, at initial Roche Lobe overflow
         #M_NS=1.35 M_\odot is typical NS mass
         if mode=="Debug"
-            @assert M_WD<1.4 #Chandrasekar mass, beyond which we cannot calculate R_WD(see initial function)
+            @assert M_WD<M_ch #Chandrasekar mass, beyond which we cannot calculate R_WD(see initial function)
         end
-        a=Math.RL_contact(M_WD,M_WD,mu_e=mu_e)
+        a=Math.RL_contact(M_WD,M_WD;optional=optional)
         J=Math.circular_J(a,M_WD,M_WD)
         R_WD=Math.R0_WD(M_WD)
         return([a, M_WD, M_NS, R_WD, J, 0.])
@@ -34,7 +51,7 @@ module Integrate
     
     #"Below is the heart of the integration process"
     """Integrates theta forward one step with time interval either given explicitly (dt!=-1) or as a fraction of the orbital period determined by dt_period. Returns the absolute time step taken and the updated theta parameters."""
-    function one_step!(theta::Vector{Float64}; dt_period::Float64=1e-2, dt::Float64=-1., mode::String="Debug", parallel::Bool=true, uneven::Bool=false)::Tuple{Float64, Vector{Float64}}
+    function one_step!(theta::Vector{Float64}; optional=optional_default, dt_period::Float64=1e-2, dt::Float64=-1., mode::String="Debug", parallel::Bool=true, uneven::Bool=false)::Tuple{Float64, Vector{Float64}}
         if mode=="Debug"
             @assert length(theta)==6
         end
@@ -58,10 +75,16 @@ module Integrate
         redirect_stderr(devnull) do 
             if uneven
                 prob = ODEProblem(Math.acceleration_uneven!,theta,(0.,dt),[])
-            elseif parallel
-                prob = ODEProblem(Math.acceleration_even!,theta,(0.,dt),[])
+            elseif parallel #define a function with fixed optional parameters
+                function t_acceleration!(du::Vector{Float64}, theta::Vector{Float64},p::Vector{Any},t::Float64)
+                    Math.acceleration_even!(du, theta, p, t; optional=optional)
+                end
+                prob = ODEProblem(t_acceleration!,theta,(0.,dt),[])
             else
-                prob = ODEProblem(Math.acceleration_serial!,theta,(0.,dt),[])
+                function t_acceleration!(du::Vector{Float64}, theta::Vector{Float64},p::Vector{Any},t::Float64)
+                    Math.acceleration_serial!(du, theta, p, t; optional=optional)
+                end
+                prob = ODEProblem(t_acceleration!,theta,(0.,dt),[])
             end
         end
         theta .= solve(prob, alg=Vern9()).u[end]
@@ -71,7 +94,8 @@ module Integrate
     """Given an initial set of masses, `integrate` solves for the equations of motion from initial Roche Lobe overflow until the eventual complete dissipation of the white dwarf or the integration finishes according to user defined cutoff (either a limit on the number of orbits completed or on the integration steps taken). `integrate` stores and returns the second derivative of the quadrupole moment as a function of time for the orbit. The function also saves the run to a file named by the date and initial conditions if `write_file`. """
     function integrate(M_WD::Float64; M_NS::Float64=1.35,mu_e::Float64=2., 
             orbit_limit::Float64=1e5, step_limit::Int=10^7, mass_limit::Float64=1e-3, dt_period=1e-3,
-            parallel::Bool=true, uneven::Bool=false, write_file::Bool=true, filename::Union{String,Int}=-1)::AbstractMatrix{<:Real}
+            parallel::Bool=true, uneven::Bool=false, write_file::Bool=true, filename::Union{String,Int}=-1,
+        optional=optional_default)::AbstractMatrix{<:Real}
         #returns time series second derivatives of the quadrupole moment
         @assert M_WD > mass_limit
         @assert M_WD < Math.M_ch # Chandrasekhar mass
@@ -83,8 +107,8 @@ module Integrate
         @assert mass_limit > 0
         @assert dt_period > 0
         t=0.
-        theta=initial_circular_orbit(M_WD,M_NS=M_NS,mu_e=mu_e)
-        ddI=Math.ddI_from_theta(theta)
+        theta=initial_circular_orbit(M_WD,M_NS=M_NS,optional=optional)
+        ddI=Math.ddI_from_theta(theta,optional=optional)
         datumses=zeros(step_limit+1,9)
         datumses[1,:].=[t, ddI[1,1], ddI[1,2], theta... ]
         i=1
@@ -95,8 +119,8 @@ module Integrate
             while phase<2*π*orbit_limit && i<step_limit && M_WD>mass_limit
                 #integrate until time or step limit are elapsed or WD completely dissipates
                 
-                dt,theta=one_step!(theta; dt_period=dt_period, parallel=parallel, uneven=uneven)
-                ddI=Math.ddI_from_theta(theta)
+                dt,theta=one_step!(theta; dt_period=dt_period, parallel=parallel, uneven=uneven, optional=optional)
+                ddI=Math.ddI_from_theta(theta; optional=optional)
                 i+=1
                 t+=dt
             
