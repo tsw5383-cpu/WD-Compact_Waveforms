@@ -2,11 +2,13 @@ module polytrope
     using DifferentialEquations
     using QuadGK
     using Interpolations
+    using CSV, DataFrames
+    using Memoization
     
     
     """ Returns a function f(xi, theta) where theta = [θ, θ′]
     #Computes Lane–Emden 2nd-order equation in first-order form."""
-    function polytrope_a(n)
+    @memoize function polytrope_a(n)
         function f!(dθ, θ, xi)
             # θ = [theta, dtheta/dxi]
             # dθ = [d theta/dxi, d² theta/dxi²]
@@ -22,7 +24,7 @@ module polytrope
     # lane_emden_int(xi, sol)
     # ----------------------------
     """continuous approximation for dimensionless polytrope density"""
-    function lane_emden_int(xi, sol)
+    @memoize function lane_emden_int(xi, sol)
         if xi > sol.t[end]
             return 0.0
         end
@@ -64,14 +66,28 @@ module polytrope
         return scaled_polytrope
     end
 
+    """Reads polytrope solutions from a pre-calculated table so that they do not 
+    need to be recalculated each time or writes such a file if it has not yet been 
+    written. """
+    @memoize function load_polytrope_table(n;rounding=2)
+        n=round(n,rounding)
+        filename = "Polytrope_Tables_n=$(n).csv"
+        try
+            return Matrix(CSV.read(filename, DataFrame))
+        catch
+            tab = scaled_polytrope_table(n)
+            CSV.write(filename, DataFrame(tab))
+            return tab
+        end
+    end
 
-    scaled_poly_15=scaled_polytrope_table(1.5)
-    scaled_poly_30=scaled_polytrope_table(3.0)
-
+    scaled_poly_15=load_polytrope_table(1.5)
+    scaled_poly_30=load_polytrope_table(3.0)
+    
 
     """ For a white dwarf with radius R_WD, mass M_WD, and polytropic index 
     n, returns the mass outside of a given radius, R_RL"""
-    function mass_outside_radius(R_WD,R_RL,M_WD,n)
+    @memoize function mass_outside_radius(R_WD,R_RL,M_WD,n)
 
         if R_RL>R_WD
             return 0
@@ -82,7 +98,7 @@ module polytrope
         elseif n==3.0
             tab=scaled_poly_30
         else
-            tab=scaled_polytrope_table(n)
+            tab=load_polytrope_table(n)
         end
 
         r=R_RL/R_WD
