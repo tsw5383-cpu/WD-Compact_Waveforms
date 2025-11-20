@@ -45,9 +45,15 @@ module polytrope
     
         f! = polytrope_a(n)
     
-        # Solve Lane-Emden from xi = 0.001 to 5
+        # Solve Lane-Emden from xi = 0.001 to 4 if n<=1.5
+        #or up to xi=10 elsewise
+    
         θ0 = [1.0, 0.0]
-        tspan = (0.001, 5.0)
+        if n<=1.5
+            tspan = (0.001, 4.0)
+        else
+            tspan = (0.001, 10.0)
+        end
         prob = ODEProblem(f!, θ0, tspan)
         sol = solve(prob; reltol=1e-9, abstol=1e-9, maxstep=1e-3)  # RK45 default
     
