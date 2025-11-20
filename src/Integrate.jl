@@ -151,44 +151,97 @@ module Integrate
     @assert M_NS < 2.9 # TOV limit (a generous estimate)"""
     function many_integrate(sim_conditions::NamedTuple; mu_e::Float64=2., 
             orbit_limit::Float64=1e5, step_limit::Int=10^7, mass_limit::Float64=1e-3, dt_period=1e-3,
-            parallel::Bool=true, distributed::Bool=true, uneven::Bool=false, write_file::Bool=true, filename::Union{String,Int}=-1)
-        @assert sim_conditions.M_WD_lower < sim_conditions.M_WD_upper
-        @assert sim_conditions.M_NS_lower < sim_conditions.M_NS_upper
-        @assert sim_conditions.M_WD_step <= sim_conditions.M_WD_upper - sim_conditions.M_WD_lower
-        @assert sim_conditions.M_NS_step <= sim_conditions.M_NS_upper - sim_conditions.M_NS_lower
-        M_WDs = collect(range(sim_conditions.M_WD_lower, stop=sim_conditions.M_WD_upper, step=sim_conditions.M_WD_step))
-        M_NSs = collect(range(sim_conditions.M_NS_lower, stop=sim_conditions.M_NS_upper, step=sim_conditions.M_NS_step))
+            parallel::Bool=true, distributed::Bool=true, uneven::Bool=false, write_file::Bool=true, filename::Union{String,Int}=-1, optional_conditions::NamedTuple=NamedTuple())
+        pairs = initialize_pairs(sim_conditions.M_WDs, sim_conditions.M_NSs, mu_es, equations, As, poly_shells, a_ring_fracs, modes, eta_accs, period_calcs)
         if parallel
             if distributed
-                pairs = [(M_WD, M_NS) for M_WD in M_WDs for M_NS in M_NSs if M_WD < M_NS]
                 pairs_distr = distribute(pairs)
                 @distributed for pair in pairs_distr
-                    M_WD, M_NS = pair
+                    M_WD, M_NS, mu_e, equation, A, poly_shell, a_ring_frac, mode, eta_acc, period_calc = pair
+                    optional = [mu_e, equation, A, poly_shell, a_ring_frac, mode, eta_acc, period_calc]
                     integrate(M_WD; M_NS, mu_e, 
                         orbit_limit, step_limit, mass_limit, dt_period,
-                        parallel, uneven, write_file, filename)
+                        parallel, uneven, write_file, filename, optional)
                     GC.gc() # Free up memory
                 end    
                 # Need to be careful here because apparently having each process read and write to disk can worsen performance if not done carefully
             else
-                @floop ThreadedEx(basesize = 8) for M_WD in M_WDs, M_NS in M_NSs
-                    if M_WD < M_NS
-                        integrate(M_WD; M_NS, mu_e, 
-                            orbit_limit, step_limit, mass_limit, dt_period,
-                            parallel, uneven, write_file, filename)
-                    end
+                @floop ThreadedEx(basesize = 8) for pair in pairs
+                    M_WD, M_NS, mu_e, equation, A, poly_shell, a_ring_frac, mode, eta_acc, period_calc = pair
+                    optional = [mu_e, equation, A, poly_shell, a_ring_frac, mode, eta_acc, period_calc]
+                    integrate(M_WD; M_NS, mu_e, 
+                        orbit_limit, step_limit, mass_limit, dt_period,
+                        parallel, uneven, write_file, filename, optional)
                     GC.gc() # Free up memory
                 end
             end
         else
-            for M_WD in M_WDs, M_NS in M_NSs
-                if M_WD < M_NS
-                    integrate(M_WD; M_NS, mu_e, 
-                        orbit_limit, step_limit, mass_limit, dt_period,
-                        parallel, uneven, write_file, filename)
-                end
+            for pair in pairs
+                integrate(M_WD; M_NS, mu_e, 
+                    orbit_limit, step_limit, mass_limit, dt_period,
+                    parallel, uneven, write_file, filename, optional)
                 GC.gc() # Free up memory
             end
         end
+    end
+
+    """
+        Helper function for distributed memory parallelization mode. Makes distributed pairs for all inputted parameter arguments specified by the user, including if the user specified to iterate over the optional parameter arguments.
+    """
+    function initialize_pairs(M_WDs, M_NSs, optional_conditions)
+        if hasproperty(optional_conditions, :mu_es)
+            mu_es = optional_conditions.mu_es
+        else
+            mu_es = (optional_default[1])
+        end
+
+        if hasproperty(optional_conditions, :multiple_WD_mass_radius_equations) && optional_conditions.multiple_WD_mass_radius_equations
+            equations = (1,2) # Currently only two WD equations specified in R0_WD function in math.jl
+        else
+            equations = (optional_default[2])
+        end
+
+        if hasproperty(optional_conditions, :As)
+            As = optional_conditions.As
+        else
+            As = (optional_default[3])
+        end
+
+        if hasproperty(optional_conditions, :multiple_WD_density_distributions) && optional_conditions.multiple_WD_density_distributions
+            poly_shells = (true,false) # Currently only two distributions specified in math.jl
+        else
+            poly_shells = (optional_default[4])
+        end
+
+        if hasproperty(optional_conditions, :a_ring_fracs)
+            a_ring_fracs = optional_conditions.a_ring_fracs
+        else
+            a_ring_fracs = (optional_default[5])
+        end
+
+        if hasproperty(optional_conditions, :mass_loss_modes)
+            for mass_loss_mode in optional_conditions.mass_loss_modes
+                first_char = lowercase(first(mass_loss_mode))
+                @assert first_char == "j" || first_char == "i" || first_char == "c"
+            end
+            modes = optional_conditions.mass_loss_modes
+        else
+            modes = (optional_default[6])
+        end
+
+        if hasproperty(optional_conditions, :eta_accs)
+            eta_accs = optional_conditions.eta_accs
+        else
+            eta_accs = (optional_default[7])
+        end
+
+        if hasproperty(optional_conditions, :multiple_period_calcs) && optional_conditions.multiple_period_calcs
+            period_calcs = (true,false) # Currently only two distributions specified in math.jl
+        else
+            period_calcs = (optional_default[8])
+        end
+
+        # Apologies for the syntax below, it isn't elegant but it makes the code run
+        pairs = [(M_WD, M_NS, mu_e, equation, A, poly_shell, a_ring_frac, mode, eta_acc, period_calc) for M_WD in M_WDs for M_NS in M_NSs for mu_e in mu_es for equation in equations for A in As for poly_shell in poly_shells for a_ring_frac in a_ring_fracs for mode in modes for eta_acc in eta_accs for period_calc in period_calcs if M_WD < M_NS]
     end
 end
