@@ -1,6 +1,8 @@
 module Integrate
+    using Distributed
     using OrdinaryDiffEq
     using FLoops
+    using DistributedArrays
     include("math.jl")
     include("save.jl")
     
@@ -125,19 +127,33 @@ module Integrate
     @assert M_NS < 2.9 # TOV limit (a generous estimate)"""
     function many_integrate(sim_conditions::NamedTuple; mu_e::Float64=2., 
             orbit_limit::Float64=1e5, step_limit::Int=10^7, mass_limit::Float64=1e-3, dt_period=1e-3,
-            parallel::Bool=true, uneven::Bool=false, write_file::Bool=true, filename::Union{String,Int}=-1)
+            parallel::Bool=true, distributed::Bool=true, uneven::Bool=false, write_file::Bool=true, filename::Union{String,Int}=-1)
         @assert sim_conditions.M_WD_lower < sim_conditions.M_WD_upper
         @assert sim_conditions.M_NS_lower < sim_conditions.M_NS_upper
         @assert sim_conditions.M_WD_step <= sim_conditions.M_WD_upper - sim_conditions.M_WD_lower
         @assert sim_conditions.M_NS_step <= sim_conditions.M_NS_upper - sim_conditions.M_NS_lower
-        M_WDs::StepRangeLen = range(sim_conditions.M_WD_lower, stop=sim_conditions.M_WD_upper, step=sim_conditions.M_WD_step)
-        M_NSs::StepRangeLen = range(sim_conditions.M_NS_lower, stop=sim_conditions.M_NS_upper, step=sim_conditions.M_NS_step)
+        M_WDs = collect(range(sim_conditions.M_WD_lower, stop=sim_conditions.M_WD_upper, step=sim_conditions.M_WD_step))
+        M_NSs = collect(range(sim_conditions.M_NS_lower, stop=sim_conditions.M_NS_upper, step=sim_conditions.M_NS_step))
         if parallel
-            @floop ThreadedEx(basesize = 8) for M_WD in M_WDs, M_NS in M_NSs
-                if M_WD < M_NS
+            if distributed
+                pairs = [(M_WD, M_NS) for M_WD in M_WDs for M_NS in M_NSs if M_WD < M_NS]
+                pairs_distr = distribute(pairs)
+                @distributed for pair in pairs_distr
+                    M_WD, M_NS = pair
                     integrate(M_WD; M_NS, mu_e, 
                         orbit_limit, step_limit, mass_limit, dt_period,
                         parallel, uneven, write_file, filename)
+                    GC.gc() # Free up memory
+                end    
+                # Need to be careful here because apparently having each process read and write to disk can worsen performance if not done carefully
+            else
+                @floop ThreadedEx(basesize = 8) for M_WD in M_WDs, M_NS in M_NSs
+                    if M_WD < M_NS
+                        integrate(M_WD; M_NS, mu_e, 
+                            orbit_limit, step_limit, mass_limit, dt_period,
+                            parallel, uneven, write_file, filename)
+                    end
+                    GC.gc() # Free up memory
                 end
             end
         else
@@ -147,6 +163,7 @@ module Integrate
                         orbit_limit, step_limit, mass_limit, dt_period,
                         parallel, uneven, write_file, filename)
                 end
+                GC.gc() # Free up memory
             end
         end
     end

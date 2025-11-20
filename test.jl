@@ -1,25 +1,9 @@
 using BenchmarkTools
-using Profile, ProfileCanvas 
+using Profile 
 using Test
-using Base.Threads
+using Distributed
+@everywhere include("src/Integrate.jl")
 
-using Pkg
-function ensure_package_installed(pkg_name::String)
-    # Check if the package is installed
-    installed_packages = Pkg.dependencies()
-    if !any(p -> p.name == pkg_name, values(installed_packages))
-        println("Package '$package_name' not found. Installing...")
-        Pkg.add(package_name)
-        println("Package '$package_name' installed successfully.")
-    end
-end
-Pkg.activate(".")
-ensure_package_installed("OrdinaryDiffEq")
-ensure_package_installed("ForwardDiff")
-ensure_package_installed("CSV")
-ensure_package_installed("Dates")
-
-include("src/Integrate.jl")
 println(Threads.nthreads())
 #M_WD::Float64 = 1.0
 #step_limit::Int=100
@@ -38,7 +22,7 @@ serial_time_many = @belapsed Integrate.many_integrate($sim_conditions, step_limi
 
 println("The time for many_integrate() in the parallel version is $(parallel_time_many) sec.")
 println("The time for many_integrate() in the serial version is $(serial_time_many) sec.")
-#@test parallel_time < serial_time
+@test parallel_time_many < serial_time_many
 println("Passed serial/parallel + integration test for many_integrate()")
 
 #@profile Integrate.integrate(1.0,step_limit=100,write_file=false)
