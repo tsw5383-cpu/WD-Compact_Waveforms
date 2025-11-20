@@ -133,6 +133,7 @@ module Math
             shell_mass=mass_outside_radius(R_WD,RL,M_WD,1.5)
         else #simplification of a uniform density white dwarf
             shell_mass=M_WD * ((R_WD - RL) / R_WD)^3.0
+        end
             
         return -A * shell_mass / period(a, M_WD + M_NS) * ((R_WD - RL) / R_WD)^3.0
     end
@@ -359,7 +360,7 @@ module Math
     		return(ftn(gen_theta,higher_derivatives))
     	end
     	return ftn 
-    end;
+    end
     
     """Given a function, its vectorized parameters, and the time derivatives of those parameters, returns the time derivative of the function as calculated via the chain rule."""
     function time_derivative(ftn::Function, ind_vars_and_derivatives::AbstractVector{T}; mode::String="Debug", optional=optional_default) where {T<:Real}
@@ -597,7 +598,7 @@ module Math
         fetch(task_2)
     
         return dtheta
-end
+    end
         
 
     """Same as above function, but attempting to parallelize by dedicating one worker to more intensive calculation of derivatives of separation (a) and one worker to calculating all other derivatives """

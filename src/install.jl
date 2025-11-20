@@ -14,6 +14,9 @@ end
 
 Pkg.activate(".")
 
+ensure_package_installed("ClusterManagers")
+ensure_package_installed("QuadGK")
+ensure_package_installed("Interpolations")
 ensure_package_installed("Memoization")
 ensure_package_installed("LinearAlgebra")
 ensure_package_installed("Distributed")
@@ -25,7 +28,9 @@ ensure_package_installed("CSV")
 ensure_package_installed("Dates")
 ensure_package_installed("NFFT")
 ensure_package_installed("FFTW")
+ensure_package_installed("DataFrames")
+ensure_package_installed("DifferentialEquations")
 
 #Pkg.resolve()
 #Pkg.instantiate()
-Pkg.precompile()
+Pkg.precompile() # This is useful if running in an interactive environment, e.g. not via batch job submitted to ROAR
