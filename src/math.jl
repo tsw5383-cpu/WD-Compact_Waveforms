@@ -403,7 +403,7 @@ module Math
                 @assert length(gen_theta_and_derivatives)==6*(n+1) 
             end
     		
-            return(time_derivative(in_ftn, gen_theta_and_derivatives))
+            return(time_derivative(in_ftn, gen_theta_and_derivatives; optional=optional))
         end
         return ftn
     end
