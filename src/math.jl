@@ -11,7 +11,22 @@ module Math
     const dJ_rr_factor::Float64 = -2.0 * G / (5.0 * c^5)
     const Mpc_to_km_factor = 2.0*G*3.2e-20/c^4. #for conversion from Mpc to km
     const M_ch=1.44 #Chandresekhar mass in M⊙
-    
+
+    include("polytrope.jl")
+
+    #`optional` contains optional parameters. In order, these optional parameters are:
+    #mu_e=2.0:                     the chemical composition of the white dwarf (for CO/ONeMg, mu_e=2.0/2.35, respectively)
+    #equation=1:                   choice of empirical equation for white dwarf mass vs. radius relation (1=Nauenberg/2=Eggleton
+    #A=10.0:                       the rate at which mass flows off the WD surface (characteristic number of orbits for mass to leave)
+    #poly_shell=true:              if true/false, uses polytropic/uniform density distribution to model mass in process of being stripped from WD
+    #a_ring_frac=1.0:              radius of circumbinary ring formed by matter decreted by WD
+    #mode="Isotropic Re-emission": mode of mass loss assumed in calculating angular momentum loss
+    #eta_acc=0.1:                  accretion efficiency of the NS
+    #period_calc=true:             if true/false, calculates angular velocity as a function of radius/angular momentum
+
+    #Of these, I expect A, poly_shell, mode, and period_calc to have considerable effect on the evolution of the system
+
+    optional_default=[2.0,1,10.0,true,1.0,"Isotropic Re-emission",0.1,true]
     """
         Returns the natural radius of a white dwarf.
         ```julia
@@ -19,8 +34,12 @@ module Math
         ```
         M_WD = mass of the white dwarf.
         mu_e = mean molecular mass per electron (default 2 for white dwarfs of all but the most exotic chemical compositions (e.g., ONeMG)).
+        equation = choice of the Naurenberg (1) or Eggleton (2) equation for WD mass-radius relation 
     """
-    @memoize function R0_WD(M_WD;mu_e=2.0,equation=1) 
+    @memoize function R0_WD(M_WD;optional=optional_default) 
+
+        (mu_e,equation, A, poly_shell, a_ring_frac, mode, eta_acc, period_calc)=optional 
+    
     	#@assert M_WD > 0 # In production ready code, consider commenting out assertion
     	#@assert mu_e > 0 # In production ready code, consider commenting out assertion
     	#white dwarf radius in km as ftn of mass in M_odot and mean molecular weight/electron=2
@@ -100,7 +119,9 @@ module Math
         If Roche lobe is greater than radius of white dwarf, returns 0.
     """
     @memoize function decretion_rate(a, R_WD,
-                            M_WD, M_NS; A=10.0, poly_shell=false )
+                            M_WD, M_NS;optional=optional_default) 
+
+        (mu_e,equation, A, poly_shell, a_ring_frac, mode, eta_acc, period_calc)=optional
     	#@assert R_WD > 0 # In production ready code, consider commenting out assertion
         RL = Roche_Limit(a, M_WD, M_NS)
         if RL > R_WD
@@ -130,8 +151,9 @@ module Math
         Isotropic re-emission - material first accretes onto the neutron star, then is ejected isotropically, carrying the accretor’s angular momentum.
         Circumbinary ring - material forms a ring around both stars at some radius a_ring = a x a_ring_frac, where a is the total binary separation.
     """
-    @memoize function gamma(M_WD, M_NS; 
-                   a_ring_frac=1.0, mode::String="Isotropic Re-emission") 
+    @memoize function gamma(M_WD, M_NS;optional=optional_default) 
+
+        (mu_e,equation, A, poly_shell, a_ring_frac, mode, eta_acc, period_calc)=optional 
     	#@assert M_WD > 0 # In production ready code, consider commenting out assertion
     	@assert M_NS > 0 # In production ready code, consider commenting out assertion
     	@assert a_ring_frac > 0 # In production ready code, consider commenting out assertion
@@ -157,7 +179,9 @@ module Math
         eta_acc = accretion rate efficiency (default 0.1).
         Default values apply to Eddington accretion onto the neutron star from the white dwarf.
     """
-    @memoize function eddington_rate(M; eta_acc=0.1)
+    @memoize function eddington_rate(M;optional=optional_default) 
+
+        (mu_e,equation, A, poly_shell, a_ring_frac, mode, eta_acc, period_calc)=optional
         @assert M > 0 # In production ready code, consider commenting out assertion
     	@assert 0 < eta_acc <= 1 # In production ready code, consider commenting out assertion
         # 4πG*m_p / (σ_T * eta_acc * c) * M
@@ -169,10 +193,12 @@ module Math
     """
         Returns the (fraction of) mass accreted onto the neutron star over the mass lost from the white dwarf per unit time.
     """
-    @memoize function beta(a, R_WD, M_WD, M_NS; 
-                  A=10.0, eta_acc=0.1)
-        M_WD_dot = -decretion_rate(a, R_WD, M_WD, M_NS; A=A)
-        lam_edd = eddington_rate(M_NS; eta_acc=eta_acc)
+    @memoize function beta(a, R_WD, M_WD, M_NS;optional=optional_default) 
+
+        (mu_e,equation, A, poly_shell, a_ring_frac, mode, eta_acc, period_calc)=optional
+        
+        M_WD_dot = -decretion_rate(a, R_WD, M_WD, M_NS; optional=optional)
+        lam_edd = eddington_rate(M_NS; optional=optional)
         if M_WD_dot < lam_edd
             return 1.0
         end
@@ -183,27 +209,29 @@ module Math
     """
         Returns the rate of total angular momentum loss of the binary due to non-conservative mass transfer.
     """
-    @memoize function J_dot(J, a, R_WD, M_WD, M_NS; 
-                   A=10.0, eta_acc=0.1, 
-                   a_ring_frac=1.0, mode::String="Isotropic Re-emission")
-        g = gamma(M_WD, M_NS; a_ring_frac=a_ring_frac, mode=mode)
-        b = beta(a, R_WD, M_WD, M_NS; A=A, eta_acc=eta_acc)
+    @memoize function J_dot(J, a, R_WD, M_WD, M_NS;optional=optional_default) 
+
+        (mu_e,equation, A, poly_shell, a_ring_frac, mode, eta_acc, period_calc)=optional
+        
+        g = gamma(M_WD, M_NS; optional=optional)
+        b = beta(a, R_WD, M_WD, M_NS; optional=optional)
     	@assert b <= 1.0 # In production-ready code, consider commenting this out
-        M_WD_dot = decretion_rate(a, R_WD, M_WD, M_NS; A=A)
+        M_WD_dot = decretion_rate(a, R_WD, M_WD, M_NS; optional=optional)
         return J * g * (1.0 - b) * M_WD_dot / (M_WD + M_NS)
     end
 
     """
         Returns the rate of change for total orbital separation.
     """
-    @memoize function a_dot(a, R_WD, M_WD, M_NS; 
-                   A=10.0, eta_acc=0.1, 
-                   a_ring_frac=1.0, mode::String="Isotropic") 
+    @memoize function a_dot(a, R_WD, M_WD, M_NS;optional=optional_default) 
+
+        (mu_e,equation, A, poly_shell, a_ring_frac, mode, eta_acc, period_calc)=optional 
         # Promote keyword values to T so arithmetic mixes consistently
-        g = gamma(M_WD, M_NS; a_ring_frac=a_ring_frac, mode=mode)
-        b = beta(a, R_WD, M_WD, M_NS; A=A, eta_acc=eta_acc)
+        
+        g = gamma(M_WD, M_NS; optional=optional)
+        b = beta(a, R_WD, M_WD, M_NS; optional=optional)
         @assert b <= 1.0 # In production-ready code, consider commenting this out
-        M_WD_dot = decretion_rate(a, R_WD, M_WD, M_NS; A=A)
+        M_WD_dot = decretion_rate(a, R_WD, M_WD, M_NS; optional=optional)
         one_minus_b = 1.0 - b
         return -2.0 * a * M_WD_dot / M_WD * (one_minus_b * M_WD / M_NS - one_minus_b * (g + 0.5) * M_WD / (M_WD + M_NS))
     end
@@ -217,8 +245,11 @@ module Math
         M_WD = mass of white dwarf.
         R_WD = radius of white dwarf.
     """
-    @memoize function dot_R_WD(M_WD, R_WD; mu_e=2.0)
-        natural_R = R0_WD(M_WD, mu_e=mu_e)
+    @memoize function dot_R_WD(M_WD, R_WD; optional=optional_default) 
+
+        (mu_e,equation, A, poly_shell, a_ring_frac, mode, eta_acc, period_calc)=optional
+        
+        natural_R = R0_WD(M_WD; optional=optional)
         tau = dynamical_timescale(M_WD, R_WD)
         return (natural_R - R_WD) / tau
     end
@@ -272,24 +303,23 @@ module Math
     """ 
         Returns rate of change of neutron star mass.
     """
-    @memoize function dM_NS(a::T, R_WD::T, M_WD::T, M_NS::T;
-            A=10., eta_acc=0.1)::T where T<:Real
-        t_dM_WD=decretion_rate(a,R_WD,M_WD,M_NS,A=A)
+    @memoize function dM_NS(a, R_WD, M_WD, M_NS ;optional=optional_default) 
+
+        (mu_e,equation, A, poly_shell, a_ring_frac, mode, eta_acc, period_calc)=optional
         
-        t_edd=eddington_rate(M_NS, eta_acc=eta_acc)
+        t_dM_WD=decretion_rate(a,R_WD,M_WD,M_NS; optional=optional)
+        
+        t_edd=eddington_rate(M_NS; optional=optional)
         return(min(-t_dM_WD,t_edd))
     end
     
     """ 
         Returns rate of change of orbital phase of the white dwarf.
     """
-    @memoize function dphase(J::T,a::T,M_WD::T, M_NS::T;
-        mode::String="Debug", period_calc=true )::T where T<:Real
-        if mode=="Debug"
-            @assert M_WD > 0 # In production-ready code, consider commenting this out
-            @assert M_NS > 0 # In production-ready code, consider commenting this out
-            @assert a > 0 # In production-ready code, consider commenting this out
-        end
+    @memoize function dphase(J,a,M_WD, M_NS;optional=optional_default) 
+
+        (mu_e,equation, A, poly_shell, a_ring_frac, mode, eta_acc, period_calc)=optional
+        
         if period_calc #Calculates change in period under the adiabatic approximation
             return (2.0*π/period(a, M_WD+M_NS))
         end
@@ -332,7 +362,7 @@ module Math
     end;
     
     """Given a function, its vectorized parameters, and the time derivatives of those parameters, returns the time derivative of the function as calculated via the chain rule."""
-    function time_derivative(ftn::Function, ind_vars_and_derivatives::AbstractVector{T}; mode::String="Debug") where {T<:Real}
+    function time_derivative(ftn::Function, ind_vars_and_derivatives::AbstractVector{T}; mode::String="Debug", optional=optional_default) where {T<:Real}
         #ftn is the function to be taken a time derivative of
         #ind_vars is an array with the values of the arguments of ftn
         #derivatives is an array with the known time derivatives of ind_vars
@@ -341,12 +371,20 @@ module Math
             @assert mod(length(ind_vars_and_derivatives),6)==0
         end
     
-    	ind_vars=@view ind_vars_and_derivatives[1:end-6]
+    	ind_vars=@view ind_vars_and_derivatives[1:end-6] 
+        #There may be some issues with using view here due to the way that ForwardDiff uses vectors,
+        #so I think it is better to use a full vector in this case
+        ind_vars= ind_vars_and_derivatives[1:end-6]
     	derivatives=@view ind_vars_and_derivatives[7:length(ind_vars_and_derivatives)]
+
+        #defining t_ftn to be the function with optional parameters fixed to input optional
+        function t_ftn(vars)
+            return(ftn(vars; optional=optional))
+        end
     
     	# ftn_at_ind_vars is the function evaluated at the parameters in ind_vars
         ftn_at_ind_vars = DiffResults.GradientResult(ind_vars)
-    	ForwardDiff.gradient!(ftn_at_ind_vars,ftn,ind_vars)
+    	ForwardDiff.gradient!(ftn_at_ind_vars,t_ftn,ind_vars)
 
         # DiffResults.grad(ftn_at_ind_vars) gives the gradient of the function, evaluated at the parameters in ind_vars
         return(sum(DiffResults.gradient(ftn_at_ind_vars) .* derivatives))#chain rule
@@ -359,7 +397,7 @@ module Math
         if mode=="Debug"
         	@assert n>0
         end
-        function ftn(gen_theta_and_derivatives::AbstractVector{T}) where {T<:Real}
+        function ftn(gen_theta_and_derivatives::AbstractVector{T}; optional=optional_default) where {T<:Real}
             if mode=="Debug"
                 @assert length(gen_theta_and_derivatives)==6*(n+1) 
             end
@@ -371,70 +409,82 @@ module Math
     
     #The following functions wrap the original derivatives in vectors to make life easier when taking derivatives due to mass transfer only. In particular, `theta` is of the form `[a, M_WD, M_NS, R_WD, J, phase]`.
     """Wrapper function for time derivative of total orbital separation."""
-    function da_vector(theta::AbstractVector{T}; 
-            A=10.0, eta_acc=0.1, 
-            a_ring_frac=1.0, mode::String="Isotropic")::T where {T<:Real}
+    function da_vector(theta::AbstractVector{T}; optional=optional_default)::T where {T<:Real}
+
+        (mu_e,equation, A, poly_shell, a_ring_frac, mode, eta_acc, period_calc)=optional
     
         # promote the numeric keyword args to match the type of the inputs
         A = T(A)
         eta_acc = T(eta_acc)
         a_ring_frac = T(a_ring_frac)
+
+        optional=[mu_e,equation, A, poly_shell, a_ring_frac, mode, eta_acc, period_calc]
     
         #unpacking theta
         a, M_WD, M_NS, R_WD, J, phase=theta
     
         
-        return(a_dot(a,R_WD, M_WD, M_NS;
-                A=A,eta_acc=eta_acc,
-                a_ring_frac=a_ring_frac,mode=mode))
+        return(a_dot(a,R_WD, M_WD, M_NS; optional = optional))
     end
     
     """Wrapper function for time derivative of white dwarf mass."""
-    function dM_WD_vector(theta::AbstractVector{T}; A=10.)::T where {T<:Real}
+    function dM_WD_vector(theta::AbstractVector{T}; optional=optional_default)::T where {T<:Real}
+        (mu_e,equation, A, poly_shell, a_ring_frac, mode, eta_acc, period_calc)=optional
+        
         A = T(A)
+
+        optional=[mu_e,equation, A, poly_shell, a_ring_frac, mode, eta_acc, period_calc]
         
         a, M_WD, M_NS, R_WD, J, phase=theta
-        return(decretion_rate(a, R_WD, M_WD, M_NS; A=A))
+        return(decretion_rate(a, R_WD, M_WD, M_NS; optional=optional))
     end
     
     """Wrapper function for time derivative of neutron star mass."""
-    function dM_NS_vector(theta::AbstractVector{T};
-            A=10, eta_acc=0.1)::T where {T<:Real}
+    function dM_NS_vectortheta(theta::AbstractVector{T}; optional=optional_default)::T where {T<:Real}
+
+        (mu_e,equation, A, poly_shell, a_ring_frac, mode, eta_acc, period_calc)=optional
     
         A = T(A)
         eta_acc = T(eta_acc)
+
+        optional=[mu_e,equation, A, poly_shell, a_ring_frac, mode, eta_acc, period_calc]
         
         a, M_WD, M_NS, R_WD, J, phase=theta
-        return(dM_NS(a, R_WD, M_WD, M_NS;
-            A=a, eta_acc=eta_acc))
+        return(dM_NS(a, R_WD, M_WD, M_NS; optional=optional))
     end
     
     """Wrapper function for time derivative of white dwarf radius."""
-    function dR_WD_vector(theta::AbstractVector{T}; mu_e=2.)::T where {T<:Real} 
+    function dR_WD_vector(theta::AbstractVector{T}; optional=optional_default)::T where {T<:Real}
+
+        (mu_e,equation, A, poly_shell, a_ring_frac, mode, eta_acc, period_calc)=optional
+        
         mu_e = T(mu_e)
+
+        optional=[mu_e,equation, A, poly_shell, a_ring_frac, mode, eta_acc, period_calc]
         
         a, M_WD, M_NS, R_WD, J, phase=theta
-        return( dot_R_WD(M_WD, R_WD, mu_e=mu_e))
+        return( dot_R_WD(M_WD, R_WD; optional=optional))
     end
     
     """Wrapper function for time derivative of total orbital momentum of the binary."""
-    function dJ_vector(theta::AbstractVector{T}; 
-                   A=10.0, eta_acc=0.1, 
-                   a_ring_frac=1.0, mode::String="Isotropic")::T where {T<:Real}
+    function dJ_vector(theta::AbstractVector{T}; optional=optional_default)::T where {T<:Real}
+
+        (mu_e,equation, A, poly_shell, a_ring_frac, mode, eta_acc, period_calc)=optional
+        
         A = T(A)
         eta_acc = T(eta_acc)
         a_ring_frac = T(a_ring_frac)
+
+        optional=[mu_e,equation, A, poly_shell, a_ring_frac, mode, eta_acc, period_calc]
         
         a, M_WD, M_NS, R_WD, J, phase=theta
-        return(J_dot(J, a, R_WD, M_WD, M_NS, 
-                   A=A, eta_acc=eta_acc, 
-                   a_ring_frac=a_ring_frac, mode=mode))
+        return(J_dot(J, a, R_WD, M_WD, M_NS; optional=optional))
     end
     
     """Wrapper function for time derivative of orbital phase of white dwarf."""
-    function dphase_vector(theta::AbstractVector{T})::T where {T<:Real} 
+    function dphase_vector(theta::AbstractVector{T}; optional=optional_default)::T where {T<:Real} 
         a, M_WD, M_NS, R_WD, J, phase=theta
-        return(dphase(J,a,M_WD, M_NS))
+        return(dphase(J,a,M_WD, M_NS; optional=optional))
     end
     
     """Wrapper function for quadrupole moment tensor's xx component."""
