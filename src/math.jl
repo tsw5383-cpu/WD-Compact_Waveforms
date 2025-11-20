@@ -100,13 +100,20 @@ module Math
         If Roche lobe is greater than radius of white dwarf, returns 0.
     """
     @memoize function decretion_rate(a, R_WD,
-                            M_WD, M_NS; A=10.0)
+                            M_WD, M_NS; A=10.0, poly_shell=false )
     	#@assert R_WD > 0 # In production ready code, consider commenting out assertion
         RL = Roche_Limit(a, M_WD, M_NS)
         if RL > R_WD
             return 0.0
         end
-        return -A * M_WD / period(a, M_WD + M_NS) * ((R_WD - RL) / R_WD)^3.0
+    
+        if poly_shell 
+        #use the mass in a shell assuming polytropic equation of state n=1.5
+            shell_mass=mass_outside_radius(R_WD,RL,M_WD,1.5)
+        else #simplification of a uniform density white dwarf
+            shell_mass=M_WD * ((R_WD - RL) / R_WD)^3.0
+            
+        return -A * shell_mass / period(a, M_WD + M_NS) * ((R_WD - RL) / R_WD)^3.0
     end
     
     """
