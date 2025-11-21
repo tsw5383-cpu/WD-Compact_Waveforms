@@ -32,7 +32,7 @@ To run the code in the simplest case with default parameters and a WD mass of $1
 include("src/Integrate.jl")
 integrate(1.0) 
 ````
-To run the code over an array of values and optional parameters, see `test.jl`.
+To run the code over an array of values and optional parameters, see `distributed_memory_test.jl` (note that the `many_integrate` function works in serial, shared memory parallel mode, and distributed memory parallel mode, but we just put the `many_integrate` sample code in `distributed_memory_test.jl`).
 
 
 Our code can broadly be divided into two parts. The first implements the mathematics behind mass transfer (also referred to as 'MT' in our documentation) to evolve a set of orbital elements $\vec{\theta}:=\[a, M_{\rm WD}, M_{\rm NS}, R_{\rm WD}, J, \theta\]$: orbital separation, white dwarf mass, neutron star mass, white dwarf radius, total angular momentum, and system phase, respectively. (\textit{Note: Throughout we will use $\vector{\theta}$ to refer to the set of parameters while we use $\theta$ to refer to the single angular parameter.} In principal, this may seem to add an unnecessary notational challenge, but in practice we refer to parameter set $\vec\theta$ often, while  angular $\theta$ only appears in calculating $\ddot I^{ij}$.) We largely follow [the lecture notes of Onno Pols](https://www.astro.ru.nl/~onnop/education/binaries_utrecht_notes/Binaries_ch6-8.pdf). The mathematical underpinnings of this code can be found in the next section. `src/math.jl` contains most of this part, including a suite of unit tests for our functions.
@@ -68,13 +68,17 @@ The code is located in the `src/` folder. The `integrate` function in `Integrate
 
 Our tests are in `test/runtestsjl`
 
-We use multithreading and Base.Threads for our shared memory parallelization technique. Specifically, in `ddI_helper` and `ddI_dddI_from_theta` in `math.jl`, we have to calculate the first, second, and third time derivatives of six physical parameters of the WD-NS binary (which we vectorize into the variable `theta`). Each parameter's time derivative is independent of the other parameters' time derivatives, so we use Threads.@threads for spreading out the derivative calculations over separate threads.
+We use multithreading and Base.Threads for our shared memory parallelization technique. Specifically, in `ddI_helper` and `ddI_dddI_from_theta` in `math.jl`, we have to calculate the first, second, and third time derivatives of six physical parameters of the WD-NS binary (which we vectorize into the variable `theta`). Each parameter's time derivative is independent of the other parameters' time derivatives, so we use Threads.@threads for spreading out the derivative calculations over separate threads. This helps with strong scaling.
 
 The speedup by parallelizing is ~1.2x - 2x compared to serial (not 6x since the distribution of the work needed to calculate each parameters' time derivatives is uneven). For reference, here is an example run with 4 cores:
 - The number of threads being used in parallel version is 4.
 - M_WD: 1.0, step_limit: 100
 - The time for integrate() in the parallel version is 0.128640385 sec.
 - The time for integrate() in the serial version is 0.186621555 sec.
+
+We use multithreading and FLoops for running multiple simulation runs at once, specifically in `many_integrate` in `Integrate.jl`. This helps with weak scaling for our shared memory parallelization. 
+
+For our distributed memory parallelization, we use DistributedArrays, also in `many_integrate` in `Integrate.jl`, with a keyword `distributed` that sets whether to run the many simulations in distributed memory mode or shared memory mode. To run in distributed memory mode, one needs to submit a slurm job. A sample script is in `distributed_memory_job.slurm`, and one just needs to replace `distributed_memory_test.jl` in this script with one's own Julia script that takes advantage of the distributed mode in `many_integrate`.
 
 <!--
 The following section documents the mathematical treatment of the 2.5-PN RR and MT forces used to calculate a gravitational waveform in a close WD-NS binary. 

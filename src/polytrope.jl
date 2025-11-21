@@ -87,8 +87,8 @@ module Polytrope
         end
     end
 
-    scaled_poly_15=load_polytrope_table(1.5)
-    scaled_poly_30=load_polytrope_table(3.0)
+    #scaled_poly_15=load_polytrope_table(1.5)
+    #scaled_poly_30=load_polytrope_table(3.0)
     
 
     """ For a white dwarf with radius R_WD, mass M_WD, and polytropic index 

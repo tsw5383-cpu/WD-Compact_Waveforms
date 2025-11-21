@@ -68,6 +68,8 @@ module Integrate
 
         prob = nothing
 
+        t_acceleration! = nothing
+    
         # There's a warning from SciMLBase here:
         #   Warning: Using arrays or dicts to store parameters of different types can hurt performance.
         #   Consider using tuples instead.
@@ -76,16 +78,11 @@ module Integrate
         redirect_stderr(devnull) do 
             if uneven
                 prob = ODEProblem(Math.acceleration_uneven!,theta,(0.,dt),[])
-            elseif parallel #define a function with fixed optional parameters
-                function t_acceleration!(du::Vector{Float64}, theta::Vector{Float64},p::Vector{Any},t::Float64)
-                    Math.acceleration_even!(du, theta, p, t; optional=optional)
-                end
-                prob = ODEProblem(t_acceleration!,theta,(0.,dt),[])
             else
-                function t_acceleration!(du::Vector{Float64}, theta::Vector{Float64},p::Vector{Any},t::Float64)
-                    Math.acceleration_serial!(du, theta, p, t; optional=optional)
-                end
-                prob = ODEProblem(t_acceleration!,theta,(0.,dt),[])
+                t_acceleration! = parallel ? 
+                    (du, θ, p, t) -> Math.acceleration_even!(du, θ, p, t; optional=optional) :
+                    (du, θ, p, t) -> Math.acceleration_serial!(du, θ, p, t; optional=optional)
+                prob = ODEProblem(t_acceleration!, theta, (0., dt), [])
             end
         end
         theta .= solve(prob, alg=Vern9()).u[end]
@@ -100,7 +97,6 @@ module Integrate
         #returns time series second derivatives of the quadrupole moment
         @assert M_WD > mass_limit
         @assert M_WD < Math.M_ch # Chandrasekhar mass
-        @assert M_NS > M_WD #This is not necessarily the case (e.g., typical M_NS=1.35, near-chandresekhar M_WD=1.40)
         @assert M_NS > 1.1 # very low lower limit, slightly below mass of the secondary neutron star in PSR J0453+1559
         @assert M_NS < 2.9 # TOV limit (a generous estimate)
         @assert orbit_limit > 0
@@ -192,6 +188,8 @@ module Integrate
             end
         else
             for pair in pairs
+                M_WD, M_NS, mu_e, equation, A, poly_shell, a_ring_frac, mode, eta_acc, period_calc = pair
+                optional = [mu_e, equation, A, poly_shell, a_ring_frac, mode, eta_acc, period_calc]
                 integrate(M_WD; M_NS, mu_e, 
                     orbit_limit, step_limit, mass_limit, dt_period,
                     parallel, uneven, write_file, filename, optional)
@@ -215,11 +213,11 @@ module Integrate
 
         for mass_loss_mode in modes
             first_char = lowercase(first(mass_loss_mode))
-            @assert first_char == "j" || first_char == "i" || first_char == "c"
+            @assert first_char ∈ ('j','i','c')
         end
 
         # Apologies for the syntax below, it isn't elegant but it makes the code run
-        pairs = [(M_WD, M_NS, mu_e, equation, A, poly_shell, a_ring_frac, mode, eta_acc, period_calc) for M_WD in M_WDs for M_NS in M_NSs for mu_e in mu_es for equation in equations for A in As for poly_shell in poly_shells for a_ring_frac in a_ring_fracs for mode in modes for eta_acc in eta_accs for period_calc in period_calcs if M_WD < M_NS]
+        pairs = [(M_WD, M_NS, mu_e, equation, A, poly_shell, a_ring_frac, mode, eta_acc, period_calc) for M_WD in M_WDs for M_NS in M_NSs for mu_e in mu_es for equation in equations for A in As for poly_shell in poly_shells for a_ring_frac in a_ring_fracs for mode in modes for eta_acc in eta_accs for period_calc in period_calcs]
         return pairs
     end
 end

@@ -35,11 +35,11 @@ println(Threads.nthreads())
 #    Profile.print(IOContext(stdout, :displaysize => (24, 120)), format=:flat, sortedby=:count)
 #end
 
-M__WDs=collect(range(0.5,0.8,0.1))
-M__NSs=collect(range(1.2,1.4,0.1))
+M__WDs=collect(0.5:0.1:0.8)
+M__NSs=collect(1.2:0.1:1.4)
 sim_conditions = (M_WDs = M__WDs, M_NSs = M__NSs)
 step_limit::Int=10
 optional_conditions = (use_polytropic_density=(true))
-initialize_pairs(M_WDs, M_NSs, optional_conditions)
+Integrate.initialize_pairs(M_WDs, M_NSs, optional_conditions)
 shared_parallel_time_many = @time Integrate.many_integrate(sim_conditions, step_limit=step_limit,write_file=false,distributed=false,uneven=false)
 println(shared_parallel_time_many)

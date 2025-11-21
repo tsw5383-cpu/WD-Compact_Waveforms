@@ -489,13 +489,13 @@ module Math
     end
     
     """Wrapper function for quadrupole moment tensor's xx component."""
-    function Ixx_vector(theta::AbstractVector{T})::T where {T<:Real} 
+    function Ixx_vector(theta::AbstractVector{T}; optional=optional_default)::T where {T<:Real} 
         a, M_WD, M_NS, R_WD, J, phase=theta
         return(I_xx(M_WD, M_NS, a, phase))
     end
     
     """Wrapper function for quadrupole moment tensor's xy component."""
-    function Ixy_vector(theta::AbstractVector{T})::T  where {T<:Real} 
+    function Ixy_vector(theta::AbstractVector{T}; optional=optional_default)::T  where {T<:Real} 
         a, M_WD, M_NS, R_WD, J, phase=theta
         return(I_xy(M_WD, M_NS, a, phase))
     end
@@ -577,8 +577,7 @@ module Math
     end
 
 
-    """The first derivative is much costlier than the following derivatives (about as costly as all the others put together), so this function parallelizes using only two workers by having the first worker calculate the first derivative while the second worker calculates the second through sixth derivatives."""
-"""EDIT: It turns out that this parallelization is not great, so I am not updating it with the optional keyword."""
+    """The first derivative is much costlier than the following derivatives (about as costly as all the others put together), so this function parallelizes using only two workers by having the first worker calculate the first derivative while the second worker calculates the second through sixth derivatives. EDIT: It turns out that this parallelization is not great, so I am not updating it with the optional keyword."""
     function uneven_parallelization_helper(theta::AbstractVector{T}, derivatives)::Vector{T} where {T}
         dtheta = zeros(6)
 
@@ -602,8 +601,7 @@ module Math
     end
         
 
-    """Same as above function, but attempting to parallelize by dedicating one worker to more intensive calculation of derivatives of separation (a) and one worker to calculating all other derivatives """
-"""EDIT: It turns out that this parallelization is not great, so I am not updating it with the optional keyword."""
+    """Same as above function, but attempting to parallelize by dedicating one worker to more intensive calculation of derivatives of separation (a) and one worker to calculating all other derivatives. EDIT: It turns out that this parallelization is not great, so I am not updating it with the optional keyword. """
     function ddI_helper_uneven(theta::AbstractVector{T})::Tuple{Vector{T},Vector{T},Vector{T},Array{T, 2}} where {T}
         #calulates a list of values which will be helpful in the next two functions
         dtheta=uneven_parallelization_helper(theta, first_derivatives)
@@ -663,8 +661,7 @@ module Math
     end
 
 
-"""Uneven parallelization to calculate third derivatives """
-"""EDIT: It turns out that this parallelization is not great, so I am not updating it with the optional keyword."""
+"""Uneven parallelization to calculate third derivatives. EDIT: It turns out that this parallelization is not great, so I am not updating it with the optional keyword. """
     function ddI_dddI_from_theta_uneven(theta::Vector{Float64};ddI_only::Bool=false)::Tuple{Vector{Float64},Array{Float64,2},Array{Float64,2}}
         #returns time derivatives of theta and second and third derivatives of 
         #the quadrupole moment due to MT effects
