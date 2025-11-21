@@ -52,11 +52,11 @@ srun -l /usr/bin/hostname | sort | awk '{print $2}' > machinefile.$SLURM_JOB_ID
 
 date
 #echo "About to start Julia, using machine file to ssh to each of $SLURM_NNODES nodes, starting $SLURM_NTASKS_PER_NODE threads on each."
-#julia --project=. --machine-file machinefile.$SLURM_JOB_ID   test.jl
-#julia --project=. -t $SLURM_NTASKS_PER_NODE --machine-file machinefile.$SLURM_JOB_ID   test.jl
-echo "About to start Julia, using Slurm Cluster Manager to connect to $SLURM_NTASKS_PER_NODE worker procesess on each of $SLURM_NNODES nodes."
-julia --project=. -e 'using Distributed, ClusterManagers; addprocs(SlurmManager(parse(Int,ENV["SLURM_NNODES"])*parse(Int,ENV["SLURM_NTASKS_PER_NODE"])), exeflags=["--project=.",], );   include("test.jl") '  
-#julia --project=. -e 'using Distributed, SlurmClusterManager; addprocs(SlurmManager(), exeflags=["--project=.",], ); include("test.jl")'
-#julia --project=. -e 'include("setup_slurm_manager.jl"); include("test.jl") '  
+#julia --project=. --machine-file machinefile.$SLURM_JOB_ID   distributed_memory_test.jl
+#julia --project=. -t $SLURM_NTASKS_PER_NODE --machine-file machinefile.$SLURM_JOB_ID   distributed_memory_test.jl
+echo "About to start Julia, using Slurm Cluster Manager to connect to $SLURM_NTASKS_PER_NODE worker processes on each of $SLURM_NNODES nodes."
+julia --project=. -e 'using Distributed, ClusterManagers; addprocs(SlurmManager(parse(Int,ENV["SLURM_NNODES"])*parse(Int,ENV["SLURM_NTASKS_PER_NODE"])), exeflags=["--project=.",], );   include("distributed_memory_test.jl") '  
+#julia --project=. -e 'using Distributed, SlurmClusterManager; addprocs(SlurmManager(), exeflags=["--project=.",], ); include("distributed_memory_test.jl")'
+#julia --project=. -e 'include("setup_slurm_manager.jl"); include("distributed_memory_test.jl") '  
 echo "Julia exited"
 date

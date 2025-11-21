@@ -29,7 +29,6 @@ ensure_package_installed("Dates")
 ensure_package_installed("NFFT")
 ensure_package_installed("FFTW")
 ensure_package_installed("DataFrames")
-ensure_package_installed("DifferentialEquations")
 
 #Pkg.resolve()
 #Pkg.instantiate()

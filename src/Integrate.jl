@@ -23,7 +23,7 @@ module Integrate
 
 
     const M_ch=1.44 #Chandresekhar mass in M⊙
-    optional_default=[2.0,1,10.0,true,1.0,"Isotropic Re-emission",0.1,true]
+    optional_default=[2.0,1,10.0,false,1.0,"Isotropic Re-emission",0.1,true]
     #`optional` contains optional parameters. In order, these optional parameters are:
     #mu_e=2.0:                     the chemical composition of the white dwarf (for CO/ONeMg, mu_e=2.0/2.35, respectively)
     #equation=1:                   choice of empirical equation for white dwarf mass vs. radius relation (1=Nauenberg/2=Eggleton
@@ -67,6 +67,7 @@ module Integrate
         end
 
         prob = nothing
+
         # There's a warning from SciMLBase here:
         #   Warning: Using arrays or dicts to store parameters of different types can hurt performance.
         #   Consider using tuples instead.
@@ -137,13 +138,27 @@ module Integrate
         return(datumses)
     end
 
-    """Performs many WD-NS merger simulations at once, with user specified initial white dwarf and neutron star masses. (This is another place where we take advantage of parallelization). Takes in sim_conditions (NamedTuple), which has:
-    - M_WD_lower (lower limit for white dwarf mass)
-    - M_WD_upper (upper limit for white dwarf mass)
-    - M_WD_step (step size for white dwarf mass)
-    - M_NS_lower (lower limit for neutron star mass)
-    - M_NS_upper (upper limit for neutron star mass)
-    - M_NS_step (step size for neutron star mass)
+    """Performs many WD-NS merger simulations at once. (This is another place where we take advantage of parallelization). Takes in sim_conditions (NamedTuple), which has:
+    - M_WDs (array/tuple of white dwarf mass(es))
+    - M_NSs (array/tuple of neutron star mass(es))
+    and optional_conditions (NamedTuple), which has:
+    - mu_es (array/tuple of mu_e(s), the mean molecular mass per electron)
+    - WD_mass_radius_equations ((1), (2), or (1,2); specifies whether to use the Nauenberg WD mass-radius relation (1), Eggleton relation (2), or both (1,2))
+    - As (array/tuple of A value(s), a constant related to mass loss of the white dwarf)
+    - use_polytropic_density ((true), (false), or (true,false); specifies whether to use the polytropic density distribution to model mass in process of being stripped from WD (true), the uniform density distribution (false), or both (true,false))
+    - a_ring_fracs (array/tuple of a_ring_frac(s), the radius of circumbinary ring formed by matter decreted by WD. Only relevant if 'modes' includes "Circumbinary Ring")
+    - mass_loss_modes (array/tuple of mass loss mode specifications for calculating angular momentum loss; possible values include 'j', 'i', and 'c'. 'j' = Jeans mode, 'i' = isotropic re-emission, 'c' = circumbinary ring)
+    - eta_accs (array/tuple of eta_acc(s), the accretion efficiency of the neutron star)
+    - use_period_calc ((true), (false), or (true,false); specifies whether to calculate the angular velocity of white dwarf as a function of the period (true), the angular momentum (false), or both (true,false))
+    many_integrate then iterates through all possible combinations of these user-specified parameters, with one integrate run dedicated to each combination. Any parameters not specified in optional_conditions will fall back to the default values, which are:
+    - mu_es = (2.0)
+    - WD_mass_radius_equations = (1)
+    - As = (10.0)
+    - use_polytropic_density = (true)
+    - a_ring_fracs = (1.0)
+    - mass_loss_modes = ("Isotropic Re-emission")
+    - eta_accs = (0.1)
+    - use_period_calc = (true)
     The ranges of M_WD and M_NS must be physical. Some of the checks we have are:
     @assert M_WD < Math.M_ch # Chandrasekhar mass
     @assert M_NS > M_WD
@@ -152,7 +167,7 @@ module Integrate
     function many_integrate(sim_conditions::NamedTuple; mu_e::Float64=2., 
             orbit_limit::Float64=1e5, step_limit::Int=10^7, mass_limit::Float64=1e-3, dt_period=1e-3,
             parallel::Bool=true, distributed::Bool=true, uneven::Bool=false, write_file::Bool=true, filename::Union{String,Int}=-1, optional_conditions::NamedTuple=NamedTuple())
-        pairs = initialize_pairs(sim_conditions.M_WDs, sim_conditions.M_NSs, mu_es, equations, As, poly_shells, a_ring_fracs, modes, eta_accs, period_calcs)
+        pairs = initialize_pairs(sim_conditions.M_WDs, sim_conditions.M_NSs, optional_conditions)
         if parallel
             if distributed
                 pairs_distr = distribute(pairs)
@@ -189,59 +204,22 @@ module Integrate
         Helper function for distributed memory parallelization mode. Makes distributed pairs for all inputted parameter arguments specified by the user, including if the user specified to iterate over the optional parameter arguments.
     """
     function initialize_pairs(M_WDs, M_NSs, optional_conditions)
-        if hasproperty(optional_conditions, :mu_es)
-            mu_es = optional_conditions.mu_es
-        else
-            mu_es = (optional_default[1])
-        end
+        mu_es = hasproperty(optional_conditions, :mu_es) ? optional_conditions.mu_es : (optional_default[1],)
+        equations = hasproperty(optional_conditions, :WD_mass_radius_equations) ? optional_conditions.WD_mass_radius_equations : (optional_default[2],)
+        As = hasproperty(optional_conditions, :As) ? optional_conditions.As : (optional_default[3],)
+        poly_shells = hasproperty(optional_conditions, :use_polytropic_density) ? optional_conditions.use_polytropic_density : (optional_default[4],)
+        a_ring_fracs = hasproperty(optional_conditions, :a_ring_fracs) ? optional_conditions.a_ring_fracs : (optional_default[5],)
+        modes = hasproperty(optional_conditions, :mass_loss_modes) ? optional_conditions.mass_loss_modes : (optional_default[6],)
+        eta_accs = hasproperty(optional_conditions, :eta_accs) ? optional_conditions.eta_accs : (optional_default[7],)
+        period_calcs = hasproperty(optional_conditions, :use_period_calc) ? optional_conditions.use_period_calc : (optional_default[8],)
 
-        if hasproperty(optional_conditions, :multiple_WD_mass_radius_equations) && optional_conditions.multiple_WD_mass_radius_equations
-            equations = (1,2) # Currently only two WD equations specified in R0_WD function in math.jl
-        else
-            equations = (optional_default[2])
-        end
-
-        if hasproperty(optional_conditions, :As)
-            As = optional_conditions.As
-        else
-            As = (optional_default[3])
-        end
-
-        if hasproperty(optional_conditions, :multiple_WD_density_distributions) && optional_conditions.multiple_WD_density_distributions
-            poly_shells = (true,false) # Currently only two distributions specified in math.jl
-        else
-            poly_shells = (optional_default[4])
-        end
-
-        if hasproperty(optional_conditions, :a_ring_fracs)
-            a_ring_fracs = optional_conditions.a_ring_fracs
-        else
-            a_ring_fracs = (optional_default[5])
-        end
-
-        if hasproperty(optional_conditions, :mass_loss_modes)
-            for mass_loss_mode in optional_conditions.mass_loss_modes
-                first_char = lowercase(first(mass_loss_mode))
-                @assert first_char == "j" || first_char == "i" || first_char == "c"
-            end
-            modes = optional_conditions.mass_loss_modes
-        else
-            modes = (optional_default[6])
-        end
-
-        if hasproperty(optional_conditions, :eta_accs)
-            eta_accs = optional_conditions.eta_accs
-        else
-            eta_accs = (optional_default[7])
-        end
-
-        if hasproperty(optional_conditions, :multiple_period_calcs) && optional_conditions.multiple_period_calcs
-            period_calcs = (true,false) # Currently only two distributions specified in math.jl
-        else
-            period_calcs = (optional_default[8])
+        for mass_loss_mode in modes
+            first_char = lowercase(first(mass_loss_mode))
+            @assert first_char == "j" || first_char == "i" || first_char == "c"
         end
 
         # Apologies for the syntax below, it isn't elegant but it makes the code run
         pairs = [(M_WD, M_NS, mu_e, equation, A, poly_shell, a_ring_frac, mode, eta_acc, period_calc) for M_WD in M_WDs for M_NS in M_NSs for mu_e in mu_es for equation in equations for A in As for poly_shell in poly_shells for a_ring_frac in a_ring_fracs for mode in modes for eta_acc in eta_accs for period_calc in period_calcs if M_WD < M_NS]
+        return pairs
     end
 end

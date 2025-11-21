@@ -1,6 +1,5 @@
 using Pkg
-Pkg.add("BenchmarkTools")
-Pkg.add("PlutoTest")
+Pkg.activate(".")
 using Test
 using BenchmarkTools
 
@@ -86,22 +85,28 @@ using BenchmarkTools
         @test parallel_time < 0.4
         @test serial_time < 0.4 # I got speeds of ~200 ms for serial
         println("Passed serial/parallel + integration test for integrate()")
+        optional_arguments = [2.3, 2, 3, false, 0.8, 'c', 0.2, false] # Changes all params from their default values to test whether Integrate.integrate will run with non-default optional arguments
+        Integrate.integrate(M_WD, step_limit=1, write_file=false, parallel=false, optional=optional_arguments) # test run
+        println("Passed test for running optional arguments for integrate()")
     end
 
     @testset "Serial/parallel test for many_integrate()" begin
-        sim_conditions = (M_WD_lower=0.5, M_WD_upper=0.8, M_WD_step=0.1, 
-                          M_NS_lower=1.2, M_NS_upper=1.4, M_NS_step=0.1)
+        sim_conditions = (M_WDs=range(0.5, 0.8, 0.1), M_NSs=range(1.2,1.4,0.1))
         step_limit::Int=100
         println("Beginning serial/parallel + integration test for many_integrate()")
         println("The number of threads being used in the parallel version is $(Threads.nthreads()).")
-        println("The range of M_WDs: (lower=$(sim_conditions.M_WD_lower),upper=$(sim_conditions.M_WD_upper),step=$(sim_conditions.M_WD_step)). The range of M_NSs: (lower=$(sim_conditions.M_NS_lower),upper=$(sim_conditions.M_NS_upper),step=$(sim_conditions.M_NS_step)). step_limit: $(step_limit)")
+        println("Inputted M_WDs: $(M_WDs). Inputted M_NSs: $(M_NSs).")
         parallel_time_many = @belapsed Integrate.many_integrate($sim_conditions, step_limit=$step_limit,write_file=false,uneven=false)
         serial_time_many = @belapsed Integrate.many_integrate($sim_conditions, step_limit=$step_limit,write_file=false,parallel=false)
-        
         println("The time for many_integrate() in the parallel version is $(parallel_time_many) sec.")
         println("The time for many_integrate() in the serial version is $(serial_time_many) sec.")
         @test parallel_time < serial_time
         println("Passed serial/parallel + integration test for many_integrate()")
+        optional_conditions = (mu_es=(2.0,2.35), WD_mass_radius_equations=(1,2), As=(3,10,30),
+            use_polytropic_density=(true,false), a_ring_fracs=(0.9,1.0), 
+            mass_loss_modes=('j','i','c'), eta_accs=(0.1,0.2), use_period_calc=(true,false))
+        Integrate.many_integrate(sim_conditions, step_limit=1, write_file=false, optional_conditions=optional_conditions) # Testing whether many_integrate can iterate through all possible parameter combinations
+        println("Passed test for running optional conditions for many_integrate()")
     end
 end;
 

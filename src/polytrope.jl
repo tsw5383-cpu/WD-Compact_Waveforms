@@ -1,5 +1,5 @@
-module polytrope
-    using DifferentialEquations
+module Polytrope
+    using OrdinaryDiffEq
     using QuadGK
     using Interpolations
     using CSV, DataFrames
@@ -9,7 +9,7 @@ module polytrope
     """ Returns a function f(xi, theta) where theta = [θ, θ′]
     #Computes Lane–Emden 2nd-order equation in first-order form."""
     @memoize function polytrope_a(n)
-        function f!(dθ, θ, xi)
+        function f!(dθ, θ, p, xi)
             # θ = [theta, dtheta/dxi]
             # dθ = [d theta/dxi, d² theta/dxi²]
             # Lane-Emden: (1/xi^2) d/dxi(xi^2 θ′) = -θ^n
@@ -54,9 +54,9 @@ module polytrope
         else
             tspan = (0.001, 10.0)
         end
-        prob = ODEProblem(f!, θ0, tspan)
-        sol = solve(prob; reltol=1e-9, abstol=1e-9, maxstep=1e-3)  # RK45 default
-    
+        prob = ODEProblem(f!, θ0, tspan, nothing)
+        sol = solve(prob; reltol=1e-9, abstol=1e-9, dtmax=1e-3)  # RK45 default
+
         # Compute enclosed mass at 101 radii
         xis = range(0, sol.t[end], length=101)
     
@@ -76,7 +76,7 @@ module polytrope
     need to be recalculated each time or writes such a file if it has not yet been 
     written. """
     @memoize function load_polytrope_table(n;rounding=2)
-        n=round(n,rounding)
+        n=round(n;digits=rounding)
         filename = "Polytrope_Tables_n=$(n).csv"
         try
             return Matrix(CSV.read(filename, DataFrame))
@@ -111,10 +111,4 @@ module polytrope
 
         return (M_WD*(1-linear_interpolation(tab[:,1], tab[:,2])(r)))
     end
-
-        
-        
-
-
-
 end
