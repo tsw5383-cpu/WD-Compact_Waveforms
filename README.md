@@ -21,20 +21,21 @@ Our code provides a semi-analytic model of mass transfer in a close white dwarf-
 - `mu_e=2.0`:                     The chemical composition of the white dwarf (for CO/ONeMg, mu_e=2.0/2.35, respectively). This parameter is used to calculate the radius of the white dwarf using the Nauenberg equation (see next entry).   
 - `equation=1`:                   Choice of analytical equation for white dwarf mass vs. radius relation (if 1, uses [Nauenberg 1971](https://adsabs.harvard.edu/full/1972ApJ...175..417N)/if 2, uses [Verbunt & Rappaport 1988](https://ui.adsabs.harvard.edu/abs/1988ApJ...332..193V/abstract))
 - `A=10.0`:                       The rate at which mass flows off the WD surface in units of 1/period (i.e., mass outside of the Roche Lobe is modeled as decreting at a characteristic timescale period/`A`). This number is calculated by fluid simulations and is 'of order 10.0' accordint to [the lecture notes of Onno Pols](https://www.astro.ru.nl/~onnop/education/binaries_utrecht_notes/Binaries_ch6-8.pdf).   
-- `poly_shell=true`:              This parameter determines how the mass outside of the Roche Lobe is calculated. If `true`, then a polytropic equation of state with index $n=1.5$ is used (see `polytrope.jl`--currently under construction). If `false`, then the WD is modeled as a sphere of uniform density. The former is more accurate while the latter is less expensive. *`Polytrope.jl` is currently under construction; for now it is recommended to use `poly_shell=false`.* 
+- `poly_shell=false`:              This parameter determines how the mass outside of the Roche Lobe is calculated. If `true`, then a polytropic equation of state with index $n=1.5$ is used (see `polytrope.jl`--currently under construction). If `false`, then the WD is modeled as a sphere of uniform density. The former is more accurate while the latter is less expensive. 
 - `a_ring_frac=1.0`:              If the mode of mass loss is that of a circumbinary ring (see next entry), then this is the radius of the ring in terms of the binary separation.
 - `mode="Isotropic Re-emission"`: Mode of mass loss assumed in calculating angular momentum loss. Choices include "Isotropic Re-emission" in which all mass falls onto the NS and is then emitted; "Jeans Mode" in which mass is lost from the WD directly via winds; and "Circumbinary Ring" in which mass is not ejected completely, but instead forms a ring around the binary. 
 - `eta_acc=0.1`:                  Accretion efficiency of the NS. This is used to calculate the accretion rate of the NS. (In practice, we take $\dot M_{\rm NS}=\dot M_{\rm NS,\,Edd.}$ as $-\dot M_{\rm WD}\gg \dot M_{\rm NS,\,Edd.}$.)
-- `period_calc=true`:             If `true`, then the adiabatic assumption is made, and we calculate $\dot\theta$ in terms of the binary's keplerian period. If `false`, then we calculate $\dot\theta$ in terms of angular momentum. 
+- `period_calc=true`:             If `true`, then the adiabatic assumption is made, and we calculate $\dot\theta$ in terms of the binary's keplerian period. If `false`, then we calculate $\dot\the
+
+Note that our polytropic density code is buggy, so setting `poly_shell=true` will fail. For sake of the reviewers/users of this code, don't set `poly_shell=true`
 
 To run the code in the simplest case with default parameters and a WD mass of $1.0\,M_\odot$, it suffices to call:
 ```
 include("src/Integrate.jl")
 integrate(1.0) 
 ````
-This code will save the second derivative of the quadrupole moment $\ddot I_{ij}$ to `Outputs\YYYYMMDD_M_WD=*M_WD*_M_NS=*M_NS*.csv` (see `save.jl`) from which the user can calculate the gravitational wave with specified distance and line-of-sight angle (see `src\GW.jl`). 
-
 To run the code over an array of values and optional parameters, see `distributed_memory_test.jl` (note that the `many_integrate` function works in serial, shared memory parallel mode, and distributed memory parallel mode, but we just put the `many_integrate` sample code in `distributed_memory_test.jl`).
+
 
 Our code can broadly be divided into two parts. The first implements the mathematics behind mass transfer (also referred to as 'MT' in our documentation) to evolve a set of orbital elements $\vec{\theta}:=\[a, M_{\rm WD}, M_{\rm NS}, R_{\rm WD}, J, \theta\]$: orbital separation, white dwarf mass, neutron star mass, white dwarf radius, total angular momentum, and system phase, respectively. (\textit{Note: Throughout we will use $\vector{\theta}$ to refer to the set of parameters while we use $\theta$ to refer to the single angular parameter.} In principal, this may seem to add an unnecessary notational challenge, but in practice we refer to parameter set $\vec\theta$ often, while  angular $\theta$ only appears in calculating $\ddot I^{ij}$.) We largely follow [the lecture notes of Onno Pols](https://www.astro.ru.nl/~onnop/education/binaries_utrecht_notes/Binaries_ch6-8.pdf). The mathematical underpinnings of this code can be found in the next section. `src/math.jl` contains most of this part, including a suite of unit tests for our functions.
 
@@ -67,19 +68,27 @@ julia src/install.jl
 # For Reviewers
 The code is located in the `src/` folder. The `integrate` function in `Integrate.jl` contains the code that the user should interact with directly: it takes in the mass of a white dwarf and neutron star in solar masses (and optional parameters), and then outputs a .csv file in the `Outputs/` folder that contains output of the simulation run at each time step. See the section "Mathematical Basis" in this README for physical quantities and units of the output file.
 
-Our tests are in `test/runtestsjl`
+Our tests are in `test/runtests.jl`
+
+Note that our polytropic density code is buggy, so setting `poly_shell=true` will fail. For sake of the reviewers/users of this code, don't set `poly_shell=true`
 
 We use multithreading and Base.Threads for our shared memory parallelization technique. Specifically, in `ddI_helper` and `ddI_dddI_from_theta` in `math.jl`, we have to calculate the first, second, and third time derivatives of six physical parameters of the WD-NS binary (which we vectorize into the variable `theta`). Each parameter's time derivative is independent of the other parameters' time derivatives, so we use Threads.@threads for spreading out the derivative calculations over separate threads. This helps with strong scaling.
 
-The speedup by parallelizing is ~1.2x - 2x compared to serial (not 6x since the distribution of the work needed to calculate each parameters' time derivatives is uneven). For reference, here is an example run with 4 cores:
-- The number of threads being used in parallel version is 4.
-- M_WD: 1.0, step_limit: 100
-- The time for integrate() in the parallel version is 0.128640385 sec.
-- The time for integrate() in the serial version is 0.186621555 sec.
+The speedup by parallelizing is ~2.5x - 3x compared to serial (not 6x since the distribution of the work needed to calculate each parameters' time derivatives is uneven). For reference, here is an example run with 8 cores:
+The number of threads being used in parallel version is 8.
+M_WD: 1.0, step_limit: 100
+The time for integrate() in the shared memory parallel version is 0.277880802 sec.
+The time for integrate() in the serial version is 0.759095986 sec.
 
-We use multithreading and FLoops for running multiple simulation runs at once, specifically in `many_integrate` in `Integrate.jl`. This helps with weak scaling for our shared memory parallelization. 
+We use multiprocessing and DistributedArrays for running multiple simulation runs at once, specifically in `many_integrate` in `Integrate.jl`. This helps with weak scaling for our parallelization and checks off the box for distributed memory parallelization. To run in distributed memory mode, one needs to submit a slurm job. A sample script is in `distributed_memory_job.slurm`, and one just needs to replace `distributed_memory_test.jl` in this script with one's own Julia script that takes advantage of the distributed mode in `many_integrate`.
 
-For our distributed memory parallelization, we use DistributedArrays, also in `many_integrate` in `Integrate.jl`, with a keyword `distributed` that sets whether to run the many simulations in distributed memory mode or shared memory mode. To run in distributed memory mode, one needs to submit a slurm job. A sample script is in `distributed_memory_job.slurm`, and one just needs to replace `distributed_memory_test.jl` in this script with one's own Julia script that takes advantage of the distributed mode in `many_integrate`.
+With distributed memory, we get ~3x speedup.
+Here is a distributed memory example run with 4 worker processes on each of 4 nodes (16 processes total):
+Inputted M_WDs: 0.5:0.1:0.8. Inputted M_NSs: 1.2:0.1:1.4.
+The time for many_integrate() in the distributed memory parallel version is 10.585146855 sec.
+The time for many_integrate() in the serial version is 32.71303462 sec.
+The speedup factor is: 3.090465826135201
+Passed serial/parallel + integration test for many_integrate(): true.
 
 <!--
 The following section documents the mathematical treatment of the 2.5-PN RR and MT forces used to calculate a gravitational waveform in a close WD-NS binary. 
