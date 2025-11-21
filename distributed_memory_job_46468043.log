@@ -1,0 +1,125 @@
+Starting job distributed_memory_job
+Job id: 46468043
+Fri Nov 21 12:22:53 EST 2025
+This job was assigned the following nodes
+p-gc-[3109-3112]
+About to change into /storage/ehome/vql5180/project-wd_ns_interaction
+Fri Nov 21 12:22:54 EST 2025
+About to start Julia, using Slurm Cluster Manager to connect to 4 worker processes on each of 4 nodes.
+┌ Warning: The Slurm functionality in the `ClusterManagers.jl` package is deprecated (including `ClusterManagers.addprocs_slurm` and `ClusterManagers.SlurmManager`). It will be removed from ClusterManagers.jl in a future release. We recommend migrating to the [https://github.com/JuliaParallel/SlurmClusterManager.jl](https://github.com/JuliaParallel/SlurmClusterManager.jl) package instead.
+│   caller = ip:0x0
+└ @ Core :-1
+[ Info: Starting SLURM job julia-985073: `srun -J julia-985073 -n 16 -D /storage/ehome/vql5180/project-wd_ns_interaction -o /storage/ehome/vql5180/project-wd_ns_interaction/./julia-985073-17637457781-%4t.out /storage/icds/RISE/sw8/julia/julia-1.11.2/bin/julia --project=. --worker=0ocWgxkgJzJYyV7f`
+[ Info: Worker 0 (after 0 s): No output file "/storage/ehome/vql5180/project-wd_ns_interaction/./julia-985073-17637457781-0000.out" yet
+[ Info: Worker 0 (after 1 s): Output file found, but no connection details yet
+[ Info: Worker 0 ready after 3 s on host 10.6.4.119, port 9122
+[ Info: Worker 1 ready after 3 s on host 10.6.4.119, port 9123
+[ Info: Worker 2 ready after 3 s on host 10.6.4.119, port 9124
+[ Info: Worker 3 ready after 3 s on host 10.6.4.119, port 9125
+[ Info: Worker 4 (after 3 s): Output file found, but no connection details yet
+[ Info: Worker 4 (after 6 s): Output file found, but no connection details yet
+[ Info: Worker 4 ready after 8 s on host 10.6.4.120, port 9415
+[ Info: Worker 5 ready after 8 s on host 10.6.4.120, port 9416
+[ Info: Worker 6 ready after 8 s on host 10.6.4.120, port 9417
+[ Info: Worker 7 ready after 8 s on host 10.6.4.120, port 9418
+[ Info: Worker 8 ready after 8 s on host 10.6.4.121, port 9642
+[ Info: Worker 9 ready after 8 s on host 10.6.4.121, port 9643
+[ Info: Worker 10 ready after 8 s on host 10.6.4.121, port 9644
+[ Info: Worker 11 ready after 8 s on host 10.6.4.121, port 9645
+[ Info: Worker 12 ready after 8 s on host 10.6.4.122, port 9877
+[ Info: Worker 13 ready after 8 s on host 10.6.4.122, port 9878
+[ Info: Worker 14 ready after 8 s on host 10.6.4.122, port 9879
+[ Info: Worker 15 ready after 8 s on host 10.6.4.122, port 9880
+Precompiling OrdinaryDiffEq...
+    DifferentiationInterfaceChainRulesCoreExt Being precompiled by another process (pid: 985122, pidfile: /storage/ehome/vql5180/.julia/compiled/v1.11/DifferentiationInterfaceChainRulesCoreExt/HcPk8_zsYT8.ji.pidfile)
+  20584.2 ms  ✓ DifferentiationInterface → DifferentiationInterfaceChainRulesCoreExt
+   2174.0 ms  ✓ StaticArrayInterface
+   1680.5 ms  ✓ SciMLBase → SciMLBaseChainRulesCoreExt
+   8329.7 ms  ✓ NonlinearSolveBase
+   1004.2 ms  ✓ StaticArrayInterface → StaticArrayInterfaceStaticArraysExt
+    748.8 ms  ✓ CloseOpenIntervals
+    892.0 ms  ✓ LayoutPointers
+    LinearSolve Being precompiled by another process (pid: 985457, pidfile: /storage/ehome/vql5180/.julia/compiled/v1.11/LinearSolve/WR6RC_zsYT8.ji.pidfile)
+  79187.1 ms  ✓ LinearSolve
+   2020.8 ms  ✓ NonlinearSolveBase → NonlinearSolveBaseSparseMatrixColoringsExt
+   2084.6 ms  ✓ NonlinearSolveBase → NonlinearSolveBaseForwardDiffExt
+   2025.9 ms  ✓ NonlinearSolveBase → NonlinearSolveBaseSparseArraysExt
+   1736.1 ms  ✓ NonlinearSolveBase → NonlinearSolveBaseLineSearchExt
+   1719.0 ms  ✓ NonlinearSolveBase → NonlinearSolveBaseChainRulesCoreExt
+   5937.4 ms  ✓ BracketingNonlinearSolve
+   1307.7 ms  ✓ StrideArraysCore
+    LinearSolveEnzymeExt Being precompiled by another process (pid: 985125, pidfile: /storage/ehome/vql5180/.julia/compiled/v1.11/LinearSolveEnzymeExt/SATZE_zsYT8.ji.pidfile)
+  31517.7 ms  ✓ LinearSolve → LinearSolveEnzymeExt
+   7543.4 ms  ✓ LinearSolve → LinearSolveSparseArraysExt
+  11717.9 ms  ✓ NonlinearSolveSpectralMethods
+   2459.6 ms  ✓ BracketingNonlinearSolve → BracketingNonlinearSolveForwardDiffExt
+    Polyester Being precompiled by another machine (hostname: p-gc-3112, pid: 2825853, pidfile: /storage/ehome/vql5180/.julia/compiled/v1.11/Polyester/V16F5_zsYT8.ji.pidfile)
+  10459.4 ms  ✓ Polyester
+    NonlinearSolveQuasiNewton Being precompiled by another machine (hostname: p-gc-3111, pid: 2828645, pidfile: /storage/ehome/vql5180/.julia/compiled/v1.11/NonlinearSolveQuasiNewton/U7BzS_zsYT8.ji.pidfile)
+  20953.8 ms  ✓ NonlinearSolveQuasiNewton
+    NonlinearSolveFirstOrder Being precompiled by another process (pid: 0, pidfile: /storage/ehome/vql5180/.julia/compiled/v1.11/NonlinearSolveFirstOrder/aftvH_zsYT8.ji.pidfile)
+ 302731.4 ms  ✓ NonlinearSolveFirstOrder
+   2235.3 ms  ✓ NonlinearSolveSpectralMethods → NonlinearSolveSpectralMethodsForwardDiffExt
+   1864.9 ms  ✓ BracketingNonlinearSolve → BracketingNonlinearSolveChainRulesCoreExt
+  12916.1 ms  ✓ SimpleNonlinearSolve
+   1824.7 ms  ✓ DiffEqBase → DiffEqBaseChainRulesCoreExt
+   2185.1 ms  ✓ DiffEqBase → DiffEqBaseForwardDiffExt
+   1935.0 ms  ✓ DiffEqBase → DiffEqBaseSparseArraysExt
+   4591.9 ms  ✓ OrdinaryDiffEqCore
+   2308.9 ms  ✓ SimpleNonlinearSolve → SimpleNonlinearSolveChainRulesCoreExt
+   1928.9 ms  ✓ OrdinaryDiffEqCore → OrdinaryDiffEqCoreEnzymeCoreExt
+    NonlinearSolve Being precompiled by another machine (hostname: p-gc-3111, pid: 2828645, pidfile: /storage/ehome/vql5180/.julia/compiled/v1.11/NonlinearSolve/8YWaI_zsYT8.ji.pidfile)
+  52104.8 ms  ✓ NonlinearSolve
+   3553.7 ms  ✓ OrdinaryDiffEqExplicitRK
+   3746.4 ms  ✓ OrdinaryDiffEqHighOrderRK
+   4251.6 ms  ✓ OrdinaryDiffEqStabilizedRK
+   3595.9 ms  ✓ OrdinaryDiffEqSymplecticRK
+   4631.3 ms  ✓ OrdinaryDiffEqSSPRK
+   5549.8 ms  ✓ OrdinaryDiffEqLowOrderRK
+   2908.0 ms  ✓ OrdinaryDiffEqFunctionMap
+   3861.5 ms  ✓ OrdinaryDiffEqLinear
+   9744.4 ms  ✓ OrdinaryDiffEqTsit5
+  45972.1 ms  ✓ OrdinaryDiffEqVerner
+   3501.1 ms  ✓ OrdinaryDiffEqPRK
+   3966.3 ms  ✓ OrdinaryDiffEqRKN
+   3418.9 ms  ✓ OrdinaryDiffEqFeagin
+   2803.5 ms  ✓ OrdinaryDiffEqQPRK
+   4538.6 ms  ✓ OrdinaryDiffEqLowStorageRK
+   6649.2 ms  ✓ OrdinaryDiffEqDifferentiation
+   3533.3 ms  ✓ OrdinaryDiffEqAdamsBashforthMoulton
+   3145.8 ms  ✓ OrdinaryDiffEqNordsieck
+   4823.5 ms  ✓ OrdinaryDiffEqDifferentiation → OrdinaryDiffEqDifferentiationSparseArraysExt
+   6472.8 ms  ✓ OrdinaryDiffEqExponentialRK
+   8237.7 ms  ✓ OrdinaryDiffEqExtrapolation
+  28320.6 ms  ✓ OrdinaryDiffEqRosenbrock
+    OrdinaryDiffEqNonlinearSolve Being precompiled by another machine (hostname: p-gc-3111, pid: 2830310, pidfile: /storage/ehome/vql5180/.julia/compiled/v1.11/OrdinaryDiffEqNonlinearSolve/jGadk_zsYT8.ji.pidfile)
+ 133134.6 ms  ✓ OrdinaryDiffEqNonlinearSolve
+    OrdinaryDiffEqStabilizedIRK Being precompiled by another machine (hostname: p-gc-3112, pid: 2824879, pidfile: /storage/ehome/vql5180/.julia/compiled/v1.11/OrdinaryDiffEqStabilizedIRK/Ioqfb_zsYT8.ji.pidfile)
+  11591.5 ms  ✓ OrdinaryDiffEqStabilizedIRK
+    OrdinaryDiffEqSDIRK Being precompiled by another process (pid: 0, pidfile: /storage/ehome/vql5180/.julia/compiled/v1.11/OrdinaryDiffEqSDIRK/gKeQT_zsYT8.ji.pidfile)
+  11571.4 ms  ✓ OrdinaryDiffEqSDIRK
+    OrdinaryDiffEqFIRK Being precompiled by another machine (hostname: p-gc-3110, pid: 2868418, pidfile: /storage/ehome/vql5180/.julia/compiled/v1.11/OrdinaryDiffEqFIRK/G4r6g_zsYT8.ji.pidfile)
+  31488.2 ms  ✓ OrdinaryDiffEqFIRK
+   7062.7 ms  ✓ OrdinaryDiffEqIMEXMultistep
+    OrdinaryDiffEqPDIRK Being precompiled by another machine (hostname: p-gc-3112, pid: 2824879, pidfile: /storage/ehome/vql5180/.julia/compiled/v1.11/OrdinaryDiffEqPDIRK/oJmXi_zsYT8.ji.pidfile)
+  21821.6 ms  ✓ OrdinaryDiffEqPDIRK
+  16952.3 ms  ✓ OrdinaryDiffEqBDF
+    OrdinaryDiffEqDefault Being precompiled by another process (pid: 985125, pidfile: /storage/ehome/vql5180/.julia/compiled/v1.11/OrdinaryDiffEqDefault/lMvuj_zsYT8.ji.pidfile)
+ 171793.7 ms  ✓ OrdinaryDiffEqDefault
+  62 dependencies successfully precompiled in 1179 seconds. 177 already precompiled.
+Precompiling DataFrames...
+    DataFrames Being precompiled by another machine (hostname: p-gc-3110, pid: 2868415, pidfile: /storage/ehome/vql5180/.julia/compiled/v1.11/DataFrames/AR9oZ_zsYT8.ji.pidfile)
+  60362.5 ms  ✓ DataFrames
+  1 dependency successfully precompiled in 61 seconds. 34 already precompiled.
+Precompiling BangBangDataFramesExt...
+    BangBangDataFramesExt Being precompiled by another machine (hostname: p-gc-3112, pid: 2824879, pidfile: /storage/ehome/vql5180/.julia/compiled/v1.11/BangBangDataFramesExt/sNKPH_zsYT8.ji.pidfile)
+  10068.2 ms  ✓ BangBang → BangBangDataFramesExt
+  1 dependency successfully precompiled in 11 seconds. 47 already precompiled.
+Beginning distributed memory parallelization test for many_integrate()
+Inputted M_WDs: 0.5:0.1:0.8. Inputted M_NSs: 1.2:0.1:1.4.
+The time for many_integrate() in the distributed memory parallel version is 10.585146855 sec.
+The time for many_integrate() in the serial version is 32.71303462 sec.
+The speedup factor is: 3.090465826135201
+Passed serial/parallel + integration test for many_integrate(): true.
+Julia exited
+Fri Nov 21 12:48:26 EST 2025
