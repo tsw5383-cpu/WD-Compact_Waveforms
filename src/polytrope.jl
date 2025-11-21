@@ -13,6 +13,7 @@ module Polytrope
             # θ = [theta, dtheta/dxi]
             # dθ = [d theta/dxi, d² theta/dxi²]
             # Lane-Emden: (1/xi^2) d/dxi(xi^2 θ′) = -θ^n
+            θ_0=max(θ[1],0) #avoid negative exponentiation
             a = -2 * θ[2] / xi - θ[1]^n
             dθ[1] = θ[2]
             dθ[2] = a
