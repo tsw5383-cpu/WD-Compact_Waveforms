@@ -26,7 +26,7 @@ module Math
 
     #Of these, I expect A, poly_shell, mode, and period_calc to have considerable effect on the evolution of the system
 
-    optional_default=[2.0,1,10.0,true,1.0,"Isotropic Re-emission",0.1,true]
+    optional_default=[2.0,1,10.0,false,1.0,"Isotropic Re-emission",0.1,true]
     """
         Returns the natural radius of a white dwarf.
         ```julia
@@ -130,7 +130,7 @@ module Math
     
         if poly_shell 
         #use the mass in a shell assuming polytropic equation of state n=1.5
-            shell_mass=mass_outside_radius(R_WD,RL,M_WD,1.5)
+            shell_mass=Polytrope.mass_outside_radius(R_WD,RL,M_WD,1.5)
         else #simplification of a uniform density white dwarf
             shell_mass=M_WD * ((R_WD - RL) / R_WD)^3.0
         end
