@@ -93,7 +93,7 @@ module Polytrope
     end
 
     """Calculates the mass of a white dwarf shell outside of its Roche Lobe """    
-    function mass_outside_radius_3(R_WD, R_RL, M_WD, n; ROUND=2)
+    function mass_outside_radius(R_WD, R_RL, M_WD, n; ROUND=2)
         if ROUND!=-1
             n=round(n,digits=ROUND) 
             #so that the expensive calculation of a polytrope solution is not needed each time
