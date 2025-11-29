@@ -129,7 +129,7 @@ module Integrate
         datumses=datumses[1:i,:]
     
         if write_file #saves datumses to a csv in directory "Output"
-            Save.save_as_csv(datumses,M_WD,M_NS,filename=filename)
+            Save.save_as_csv(datumses,M_WD,M_NS,optional[3],filename=filename)
         end
         
         return(datumses)
