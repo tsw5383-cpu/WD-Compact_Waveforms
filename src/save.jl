@@ -5,9 +5,9 @@ module Save
 		if a filename is not provided"""
 	function format_filename(M_WD::Float64,M_NS::Float64, A::Float64;filename::Union{String,Int}=-1)::String
 		#
-        M_WD=round(M_WD,3)
-        M_NS=round(M_NS,3)
-        A=round(A,3)
+        M_WD=round(M_WD,digits=3)
+        M_NS=round(M_NS,digits=3)
+        A=round(A,digits=3)
 		if filename==-1 
 		        today_str = Dates.format(Dates.now(), "yyyymmdd")
 		        base_filename = "Outputs_2/$(today_str)_M_WD=$(M_WD)_M_NS=$(M_NS)_A=$(A).csv"
