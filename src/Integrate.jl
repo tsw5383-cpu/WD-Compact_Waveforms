@@ -97,8 +97,9 @@ module Integrate
         #returns time series second derivatives of the quadrupole moment
         @assert M_WD > mass_limit
         @assert M_WD < Math.M_ch # Chandrasekhar mass
-        @assert M_NS > 1.1 # very low lower limit, slightly below mass of the secondary neutron star in PSR J0453+1559
-        @assert M_NS < 2.9 # TOV limit (a generous estimate)
+        #@assert M_NS > 1.1 # very low lower limit, slightly below mass of the secondary neutron star in PSR J0453+1559
+        #@assert M_NS < 2.9 # TOV limit (a generous estimate) 
+        #Disabling asserts so that primordial/stellar mass black holes can be tested
         @assert orbit_limit > 0
         @assert step_limit > 1
         @assert mass_limit > 0
