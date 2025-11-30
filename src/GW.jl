@@ -19,18 +19,15 @@ module GW
 
     
     """Given a luminosity distance `DL` in units of Mpc and an orientation parameterized by an inclination `i` and azimuthal angle `φ`, returns a function which calculates the instantaneous gravitational strain waveform based on the quadrupole formula."""
-    function gravitational_waveform_ftn(inc::Float64, φ::Float64, DL::Float64; mode::String="Debug")::Function
+    function gravitational_waveform_ftn(inc::Float64, φ::Float64, DL::Float64)::Function
         #fixes a function to return gravitational wave given orientation and distance
         #DL is in Mpc
-        if mode=="Debug"
-            @assert 0<=inc<=π
-            @assert 0<=φ<2π
-            @assert DL<10000 #Ensure correct units for DL
-        end
-        cosi = cos(inc)
-        cosφ = cos(φ)
-        sini = sin(inc)
-        sinφ = sin(φ)
+        @assert 0<=inc<=π
+        @assert 0<=φ<2π
+        @assert DL<10000 #Ensure correct units for DL
+        
+        sini, cosi = sincos(inc)
+        sinφ, cosφ = sincos(φ)
         e1=[cosi*cosφ, sini*sinφ]
         e2=[-sinφ,  cosφ]
         es=[e1,e2]

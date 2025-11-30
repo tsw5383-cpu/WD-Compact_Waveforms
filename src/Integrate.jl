@@ -23,26 +23,24 @@ module Integrate
 
 
     const M_ch=1.44 #Chandresekhar mass in M⊙
-    optional_default=[2.0,1,10.0,false,1.0,"Isotropic Re-emission",0.1,true]
+    optional_default=[2.0,1,10.0,false,1.0,:isotropic,0.1,true]
     #`optional` contains optional parameters. In order, these optional parameters are:
     #mu_e=2.0:                     the chemical composition of the white dwarf (for CO/ONeMg, mu_e=2.0/2.35, respectively)
     #equation=1:                   choice of empirical equation for white dwarf mass vs. radius relation (1=Nauenberg/2=Eggleton
     #A=10.0:                       the rate at which mass flows off the WD surface (characteristic number of orbits for mass to leave)
     #poly_shell=true:              if true/false, uses polytropic/uniform density distribution to model mass in process of being stripped from WD
     #a_ring_frac=1.0:              radius of circumbinary ring formed by matter decreted by WD
-    #mode="Isotropic Re-emission": mode of mass loss assumed in calculating angular momentum loss
+    #mode=:isotropic: mode of mass loss assumed in calculating angular momentum loss
     #eta_acc=0.1:                  accretion efficiency of the NS
     #period_calc=true:             if true/false, calculates angular velocity as a function of radius/angular momentum
 
     #Of these, I expect A, poly_shell, mode, and period_calc to have considerable effect on the evolution of the system
 
-    function initial_circular_orbit(M_WD::Float64; M_NS::Float64=1.35, optional=optional_default, mode::String="Debug")::Vector{Float64}
+    function initial_circular_orbit(M_WD::Float64; M_NS::Float64=1.35, optional=optional_default)::Vector{Float64}
     
         #returns keplerian orbital parameters, theta, at initial Roche Lobe overflow
         #M_NS=1.35 M_\odot is typical NS mass
-        if mode=="Debug"
-            @assert M_WD<M_ch #Chandrasekar mass, beyond which we cannot calculate R_WD(see initial function)
-        end
+        @assert M_WD<M_ch #Chandrasekar mass, beyond which we cannot calculate R_WD(see initial function)
         a=Math.RL_contact(M_WD,M_WD;optional=optional)
         J=Math.circular_J(a,M_WD,M_WD)
         R_WD=Math.R0_WD(M_WD)
@@ -51,10 +49,8 @@ module Integrate
     
     #"Below is the heart of the integration process"
     """Integrates theta forward one step with time interval either given explicitly (dt!=-1) or as a fraction of the orbital period determined by dt_period. Returns the absolute time step taken and the updated theta parameters."""
-    function one_step!(theta::Vector{Float64}; optional=optional_default, dt_period::Float64=1e-2, dt::Float64=-1., mode::String="Debug", parallel::Bool=true, uneven::Bool=false)::Tuple{Float64, Vector{Float64}}
-        if mode=="Debug"
-            @assert length(theta)==6
-        end
+    function one_step!(theta::Vector{Float64}; optional=optional_default, dt_period::Float64=1e-2, dt::Float64=-1., parallel::Bool=true, uneven::Bool=false)::Tuple{Float64, Vector{Float64}}
+        @assert length(theta)==6
         #integrates forward one step with time interval either given explicitly (dt!=-1)
         #or as a fraction of the orbital period determined by dt_period
         if dt==-1
@@ -144,7 +140,7 @@ module Integrate
     - As (array/tuple of A value(s), a constant related to mass loss of the white dwarf)
     - use_polytropic_density ((true), (false), or (true,false); specifies whether to use the polytropic density distribution to model mass in process of being stripped from WD (true), the uniform density distribution (false), or both (true,false))
     - a_ring_fracs (array/tuple of a_ring_frac(s), the radius of circumbinary ring formed by matter decreted by WD. Only relevant if 'modes' includes "Circumbinary Ring")
-    - mass_loss_modes (array/tuple of mass loss mode specifications for calculating angular momentum loss; possible values include 'j', 'i', and 'c'. 'j' = Jeans mode, 'i' = isotropic re-emission, 'c' = circumbinary ring)
+    - mass_loss_modes (array/tuple of mass loss mode specifications for calculating angular momentum loss; possible values include :jeans, :isotropic, and :circumbinary. :jeans = Jeans mode, :isotropic = isotropic re-emission, :circumbinary = circumbinary ring)
     - eta_accs (array/tuple of eta_acc(s), the accretion efficiency of the neutron star)
     - use_period_calc ((true), (false), or (true,false); specifies whether to calculate the angular velocity of white dwarf as a function of the period (true), the angular momentum (false), or both (true,false))
     many_integrate then iterates through all possible combinations of these user-specified parameters, with one integrate run dedicated to each combination. Any parameters not specified in optional_conditions will fall back to the default values, which are:
@@ -153,7 +149,7 @@ module Integrate
     - As = (10.0)
     - use_polytropic_density = (true)
     - a_ring_fracs = (1.0)
-    - mass_loss_modes = ("Isotropic Re-emission")
+    - mass_loss_modes = (:isotropic)
     - eta_accs = (0.1)
     - use_period_calc = (true)
     The ranges of M_WD and M_NS must be physical. Some of the checks we have are:

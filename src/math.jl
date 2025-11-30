@@ -20,21 +20,19 @@ module Math
     #A=10.0:                       the rate at which mass flows off the WD surface (characteristic number of orbits for mass to leave)
     #poly_shell=true:              if true/false, uses polytropic/uniform density distribution to model mass in process of being stripped from WD
     #a_ring_frac=1.0:              radius of circumbinary ring formed by matter decreted by WD
-    #mode="Isotropic Re-emission": mode of mass loss assumed in calculating angular momentum loss
+    #mode=:isotropic: mode of mass loss assumed in calculating angular momentum loss
     #eta_acc=0.1:                  accretion efficiency of the NS
     #period_calc=true:             if true/false, calculates angular velocity as a function of radius/angular momentum
 
     #Of these, I expect A, poly_shell, mode, and period_calc to have considerable effect on the evolution of the system
 
-    optional_default=[2.0,1,10.0,false,1.0,"Isotropic Re-emission",0.1,true]
+    optional_default=[2.0,1,10.0,false,1.0,:isotropic,0.1,true]
     """
         Returns the natural radius of a white dwarf.
         ```julia
-        R0_WD(M_WD,mu_e=2.0)
+        R0_WD(M_WD)
         ```
         M_WD = mass of the white dwarf.
-        mu_e = mean molecular mass per electron (default 2 for white dwarfs of all but the most exotic chemical compositions (e.g., ONeMG)).
-        equation = choice of the Naurenberg (1) or Eggleton (2) equation for WD mass-radius relation 
     """
     @memoize function R0_WD(M_WD;optional=optional_default) 
 
@@ -50,7 +48,7 @@ module Math
         if equation==1 #Nauenberg equation
         	return(15584.0/mu_e * x^(-1.0/3.0) * (1-x^(4.0/3.0))^(1.0/2.0))
         else #Eggleton equation
-            return(7931.0*(x^(-2.0/3.0)-x^(2.0/3.0))^(1.0/2.0) * (1.0+3.5*y^(-2.0/3.0)+y^(-1.0))^(-2.0/3.0)) 
+            return(7931.0*sqrt(x^(-2.0/3.0)-x^(2.0/3.0)) * (1.0+3.5*y^(-2.0/3.0)+1/y)^(-2.0/3.0)) 
         end
     end
     
@@ -86,7 +84,7 @@ module Math
     	#at a separation of distance r 
     	q=M_WD/M_NS
         q_2_3rds = q^(2.0/3.0)
-    	return(a * 0.49*q_2_3rds/(0.6*q_2_3rds+log(1.0+q^(1.0/3.0))))
+    	return(a * 0.49*q_2_3rds/(0.6*q_2_3rds+log(1.0+cbrt(q))))
     end
     
     
@@ -109,13 +107,12 @@ module Math
     """
         Returns the decretion (mass loss) rate of the white dwarf.
         ```julia
-        decretion_rate(a, R_WD, M_WD, M_NS; A=10.0)
+        decretion_rate(a, R_WD, M_WD, M_NS)
         ```
         a = total orbital separation of the binary.
         R_WD = radius of the white dwarf.
         M_WD = mass of the white dwarf.
         M_NS = mass of the neutron star.
-        A = numerical constant determined from fluid mechanics (default 10).
         If Roche lobe is greater than radius of white dwarf, returns 0.
     """
     @memoize function decretion_rate(a, R_WD,
@@ -141,12 +138,11 @@ module Math
     """
         Returns the specific angular momentum of material ejected from binary.
         ```julia
-        gamma(M_WD, M_NS; a_ring_frac=1.0, mode::String="Isotropic Re-emission") 
+        gamma(M_WD, M_NS) 
         ```
         M_WD = mass of the white dwarf.
         M_NS = mass of the neutron star.
-        a_ring_frac = fractional radius (in units of the binary’s total orbital separation) at which material is forms a circumbinary ring in the “Circumbinary Ring” mass loss mode. Default: 1.0.
-        mode = mass loss mode. One of "Jeans mode" ('j'), "Isotropic Re-emission" ('i'), or "Circumbinary Ring" ('c'). Default: "Isotropic Re-emission")
+        mode = mass loss mode. One of :jeans, :isotropic, or :circumbinary.")
     
         Jeans mode - material leaves the donor star directly, carrying that star’s specific angular momentum.
         Isotropic re-emission - material first accretes onto the neutron star, then is ejected isotropically, carrying the accretor’s angular momentum.
@@ -158,15 +154,14 @@ module Math
     	#@assert M_WD > 0 # In production ready code, consider commenting out assertion
     	@assert M_NS > 0 # In production ready code, consider commenting out assertion
     	@assert a_ring_frac > 0 # In production ready code, consider commenting out assertion
-        first_char = lowercase(first(mode))
-        if first_char == 'j'
+        if mode == :jeans
             return M_NS / M_WD
-        elseif first_char == 'i'
+        elseif mode == :isotropic
             return M_WD / M_NS
-        elseif first_char == 'c'
+        elseif mode == :circumbinary
             return (M_WD + M_NS)^2.0 / (M_WD * M_NS) * sqrt(a_ring_frac)
         else
-            error("$mode not defined. Use 'Jeans Mode', 'Isotropic Re-emission', or 'Circumbinary Ring'")
+            error("$mode not defined. Use :jeans, :isotropic, or :circumbinary")
         end
     end
     
@@ -174,10 +169,9 @@ module Math
     """
         Returns the Eddington accretion rate onto an object.
         ```julia
-        eddington_rate(M; eta_acc=0.1)
+        eddington_rate(M)
         ```
         M = mass of the accretor.
-        eta_acc = accretion rate efficiency (default 0.1).
         Default values apply to Eddington accretion onto the neutron star from the white dwarf.
     """
     @memoize function eddington_rate(M;optional=optional_default) 
@@ -332,25 +326,15 @@ module Math
     """
         Returns I_{xx}, where I is the quadrupole moment tensor.
         ```julia
-        I_xx(M_WD::T, M_NS::T, r::T, phase::T; mode::String="Debug")
+        I_xx(M_WD::T, M_NS::T, r::T, phase::T)
         ```
     """
-    @memoize function I_xx(M_WD::T, M_NS::T, r::T, phase::T; mode::String="Debug")::T where T<:Real
-        if mode=="Debug"
-            @assert M_WD > 0 # In production-ready code, consider commenting this out
-            @assert M_NS > 0 # In production-ready code, consider commenting this out
-            @assert r > 0 # In production-ready code, consider commenting this out
-        end
+    @memoize function I_xx(M_WD::T, M_NS::T, r::T, phase::T)::T where T<:Real
         return (mu(M_WD, M_NS) * (x(r,phase))^2.0)
     end           
     
     """Given polar orbital parameters, calculates I_{xy}, where I is the quadrupole moment tensor."""
-    @memoize function I_xy(M_WD::T, M_NS::T, r::T, phase::T; mode::String="Debug")::T where T<:Real
-        if mode=="Debug"
-            @assert M_WD > 0 # In production-ready code, consider commenting this out
-            @assert M_NS > 0 # In production-ready code, consider commenting this out
-            @assert r > 0 # In production-ready code, consider commenting this out
-        end
+    @memoize function I_xy(M_WD::T, M_NS::T, r::T, phase::T)::T where T<:Real
         return mu(M_WD, M_NS) * x(r,phase) * y(r,phase)
     end                
     
@@ -363,14 +347,12 @@ module Math
     end
     
     """Given a function, its vectorized parameters, and the time derivatives of those parameters, returns the time derivative of the function as calculated via the chain rule."""
-    function time_derivative(ftn::Function, ind_vars_and_derivatives::AbstractVector{T}; mode::String="Debug", optional=optional_default) where {T<:Real}
+    function time_derivative(ftn::Function, ind_vars_and_derivatives::AbstractVector{T}; optional=optional_default) where {T<:Real}
         #ftn is the function to be taken a time derivative of
         #ind_vars is an array with the values of the arguments of ftn
         #derivatives is an array with the known time derivatives of ind_vars
     	#print(length(ind_vars_and_derivatives))
-        if mode=="Debug"
-            @assert mod(length(ind_vars_and_derivatives),6)==0
-        end
+        @assert mod(length(ind_vars_and_derivatives),6)==0
     
     	ind_vars=@view ind_vars_and_derivatives[1:end-6] 
         #There may be some issues with using view here due to the way that ForwardDiff uses vectors,
@@ -392,16 +374,13 @@ module Math
     end
     
     """Given a function, defines its next derivative based on the function's parameters and their time derivatives. `n` determines how many time derivatives of \vec{phase} (i.e., the parameters to be integrated) are parameters of the function itself. """
-    function next_derivative(in_ftn::Function; n::Integer=1, mode::String="Debug")::Function
+    function next_derivative(in_ftn::Function; n::Integer=1)::Function
         #returns a function which is the next higher derivative of the in_ftn
         #n is the total derivatives past the given analytic form
-        if mode=="Debug"
-        	@assert n>0
-        end
+        @assert n>0
         function ftn(gen_theta_and_derivatives::AbstractVector{T}; optional=optional_default) where {T<:Real}
-            if mode=="Debug"
-                @assert length(gen_theta_and_derivatives)==6*(n+1) 
-            end
+            
+            @assert length(gen_theta_and_derivatives)==6*(n+1) 
     		
             return(time_derivative(in_ftn, gen_theta_and_derivatives; optional=optional))
         end
