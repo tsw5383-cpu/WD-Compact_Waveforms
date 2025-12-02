@@ -87,7 +87,7 @@ module Integrate
     
     """Given an initial set of masses, `integrate` solves for the equations of motion from initial Roche Lobe overflow until the eventual complete dissipation of the white dwarf or the integration finishes according to user defined cutoff (either a limit on the number of orbits completed or on the integration steps taken). `integrate` stores and returns the second derivative of the quadrupole moment as a function of time for the orbit. The function also saves the run to a file named by the date and initial conditions if `write_file`. """
     function integrate(M_WD::Float64; M_NS::Float64=1.35,mu_e::Float64=2., 
-            orbit_limit::Float64=1e5, step_limit::Int=10^7, mass_limit::Float64=1e-3, dt_period=1e-3,
+            orbit_limit::Float64=1e5, step_limit::Int=10^7, mass_limit::Float64=1e-3, dt_period=1e-2,
             parallel::Bool=true, uneven::Bool=false, write_file::Bool=true, filename::Union{String,Int}=-1,
         optional=optional_default)::AbstractMatrix{<:Real}
         #returns time series second derivatives of the quadrupole moment
@@ -117,8 +117,10 @@ module Integrate
                 ddI=Math.ddI_from_theta(theta; optional=optional)
                 i+=1
                 t+=dt
-            
                 datumses[i,:].=[t, ddI[1,1], ddI[1,2], theta... ]
+                if mod(i,10)==0
+                    println(i," ",  theta)
+                end
             end
         end
     
@@ -130,6 +132,65 @@ module Integrate
         
         return(datumses)
     end
+
+
+    """Same as above but with checkpoints """
+    function integrate_checkpointed(M_WD::Float64; M_NS::Float64=1.35, mu_e::Float64=2.,
+                                orbit_limit::Float64=1e5, step_limit::Int=10^7,
+                                mass_limit::Float64=1e-3, dt_period=1e-2,
+                                parallel::Bool=true, uneven::Bool=false,
+                                write_file::Bool=true, filename::Union{String,Int}=-1,
+                                optional=optional_default,
+                                checkpoint_every::Int=500)::AbstractMatrix{<:Real}
+    
+    @assert M_WD > mass_limit
+    @assert M_WD < Math.M_ch
+
+    if filename==-1
+        filename=format_filename(M_WD,M_NS,optional[3])
+    end
+    
+    t = 0.
+    theta = initial_circular_orbit(M_WD, M_NS=M_NS, optional=optional)
+    ddI = Math.ddI_from_theta(theta, optional=optional)
+
+    # buffer for checkpointing
+    buffer = zeros(checkpoint_every, 9)
+    buffer_count = 1
+    buffer[buffer_count, :] .= [t, ddI[1,1], ddI[1,2], theta...]
+    
+    i = 1
+    phase = theta[6]
+
+    while phase < 2*π*orbit_limit && i < step_limit && M_WD > mass_limit
+        dt, theta = one_step!(theta; dt_period=dt_period, parallel=parallel, uneven=uneven, optional=optional)
+        ddI = Math.ddI_from_theta(theta, optional=optional)
+        t += dt
+        i += 1
+        buffer_count += 1
+        buffer[buffer_count, :] .= [t, ddI[1,1], ddI[1,2], theta...]
+
+        if buffer_count == checkpoint_every
+            if write_file
+                Save.save_as_csv_append(buffer, M_WD, M_NS, optional[3]; filename=filename)
+            end
+            buffer_count = 0  # reset buffer
+        end
+
+        if mod(i, 10) == 0
+            println(i, " ", theta)
+        end
+
+        phase = theta[6]
+    end
+
+    # Save any leftover rows in the buffer
+    if buffer_count > 0 && write_file
+        Save.save_as_csv_append(buffer[1:buffer_count, :], M_WD, M_NS, optional[3]; filename=filename)
+    end
+
+    return nothing  # optionally could also return last buffer or collected data
+end
 
     """Performs many WD-NS merger simulations at once. (This is another place where we take advantage of parallelization). Takes in sim_conditions (NamedTuple), which has:
     - M_WDs (array/tuple of white dwarf mass(es))

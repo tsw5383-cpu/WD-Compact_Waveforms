@@ -44,4 +44,30 @@ module Save
      					θ = datumses[:,9]))
 		return nothing
 	end
+
+    function save_as_csv_append(datumses::AbstractMatrix{<:Real},
+                            M_WD::Float64, M_NS::Float64, A::Float64;
+                            filename::Union{String,Int}=-1)::Nothing
+    
+    filename = Save.format_filename(M_WD, M_NS, A; filename=filename)
+    
+    isdir("Outputs_2") || mkdir("Outputs_2")
+    
+    # Open file in append mode
+    open(filename, "a") do io
+        CSV.write(io,
+                  (t = datumses[:,1],
+                   ddI_xx = datumses[:,2],
+                   ddI_xy = datumses[:,3],
+                   a = datumses[:,4],
+                   M_WD = datumses[:,5],
+                   M_NS = datumses[:,6],
+                   R_WD = datumses[:,7],
+                   J = datumses[:,8],
+                   θ = datumses[:,9]),
+                  writeheader = !isfile(filename))  # only write header if file does not exist
+    end
+    
+    return nothing
+end
 end
