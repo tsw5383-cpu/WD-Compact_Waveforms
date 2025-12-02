@@ -49,6 +49,9 @@ module Integrate
     
     #"Below is the heart of the integration process"
     """Integrates theta forward one step with time interval either given explicitly (dt!=-1) or as a fraction of the orbital period determined by dt_period. Returns the absolute time step taken and the updated theta parameters."""
+
+    #PROBLEM: This function creates a new ODE problem and solver every time and is thus terribly memory inefficient.
+    
     function one_step!(theta::Vector{Float64}; optional=optional_default, dt_period::Float64=1e-2, dt::Float64=-1., parallel::Bool=true, uneven::Bool=false)::Tuple{Float64, Vector{Float64}}
         @assert length(theta)==6
         #integrates forward one step with time interval either given explicitly (dt!=-1)
@@ -77,13 +80,139 @@ module Integrate
             else
                 t_acceleration! = parallel ? 
                     (du, θ, p, t) -> Math.acceleration_even!(du, θ, p, t; optional=optional) :
-                    (du, θ, p, t) -> Math.acceleration_serial!(du, θ, p, t; optional=optional)
-                prob = ODEProblem(t_acceleration!, theta, (0., dt), [])
+                    (du, θ, p, t) -> Math.acceleration_serial!(du, θ, p, t; optional=optional) 
+                prob = ODEProblem(t_acceleration!, theta, (0., dt), []) #THIS IS THE PROBLEM HERE
             end
         end
         theta .= solve(prob, alg=Vern9()).u[end]
         dt,theta
     end
+
+
+    #REPLACEMENT FOR OLD one_step
+
+    #hyperparameters which will be used to define the acceleration function
+    mutable struct Hyperparams
+        optional::Vector{Any}
+        parallel::Bool
+        uneven::Bool
+    end
+
+
+    """ """
+    function t_accel!(du::Vector{Float64}, θ::Vector{Float64}, p::Hyperparams, t::Float64, u::Vector{Any})
+        if p.uneven
+            Math.acceleration_uneven!(du, θ, u, t)
+        elseif p.parallel
+            Math.acceleration_even!(du, θ, u, t; optional=p.optional)
+        else
+            Math.acceleration_serial!(du, θ, u, t; optional=p.optional)
+        end
+    end
+    #=function t_accel!(du, θ, p::Hyperparams, t)
+        if p.uneven
+            Math.acceleration_uneven!(du, θ, nothing, t)
+        elseif p.parallel
+            Math.acceleration_even!(du, θ, nothing, t; optional=p.optional)
+        else
+            Math.acceleration_serial!(du, θ, nothing, t; optional=p.optional)
+        end
+    end
+        #=else
+           t_acceleration! = p.parallel ? 
+                    (du, θ, u, t) -> Math.acceleration_even!(du, θ, u, t; optional=optional) :
+                    (du, θ, u, t) -> Math.acceleration_serial!(du, θ, u, t; optional=optional)
+            t_acceleration!
+        end
+    #end=#=#
+    
+    """
+    Creates and returns a function `step!(theta, dt)` that advances `theta` by dt and returns dt,theta.
+    This reuses an ODEIntegrator internally for speed and to avoid global captures as in our old approach.
+    """
+    #=function make_one_step(optional; parallel::Bool=true, uneven::Bool=false, alg=Vern9())
+        p = Hyperparams(optional, parallel, uneven)
+    
+        # build a template problem with a *dummy* initial condition
+        u0 = zeros(6)                
+        prob = ODEProblem(t_accel!, u0, (0.0, 1.0), p)  
+    
+        # create an integrator object that we will reuse
+        integ = init(prob, alg; save_everystep=false)
+    
+        # returned function: advance theta by dt
+        function t_step!(theta::Vector{Float64}; dt_period::Float64=1e-2, dt_in::Float64=-1.0)
+            @assert length(theta)==6
+    
+            dt = dt_in
+            if dt == -1.0
+                @inbounds begin
+                    a = theta[1]
+                    M_WD = theta[2]
+                    M_NS = theta[3]
+                    dt = dt_period * Math.period(a, M_WD + M_NS)
+                end
+            end
+    
+            # redefine initial conditions to our problem
+            integ.u .= theta
+    
+            # advances integrator by dt
+            step!(integ, dt)   
+    
+            # copy result back to theta (in-place)
+            theta .= integ.u
+    
+            return dt, theta
+        end
+    
+        return t_step!
+    end=#
+
+    function make_one_step(optional::Vector{Any};
+        parallel::Bool=true,
+        uneven::Bool=false,
+        alg=Vern9(),
+        tspan=(0.0, 1.0)
+    )
+    
+        # Build parameter container
+        p = Hyperparams(parallel, uneven, optional)
+    
+        # ODE RHS
+        f = (du, θ, t) -> t_accel!(du, θ, p, t)
+    
+        # Build a problem with dummy initial condition
+        prob = ODEProblem(f, zeros(9), tspan, p)
+    
+        # Build integrator
+        integrator = init(prob, alg; dt=1e-2)
+    
+        # Return stepping function
+        return function(theta; dt_period=1e-2, dt_in=-1)
+            dt = dt_in
+            if dt == -1.0
+                @inbounds begin
+                    a = theta[1]
+                    M_WD = theta[2]
+                    M_NS = theta[3]
+                    dt = dt_period * Math.period(a, M_WD + M_NS)
+                end
+            end
+        
+            # overwrite integrator state with user-supplied theta
+            integrator.u .= theta
+    
+            # perform one step of size dt_period
+            step!(integrator, dt)
+    
+            # return updated dt and theta
+            return dt, copy(integrator.u)
+        end
+    end
+    
+
+
     
     """Given an initial set of masses, `integrate` solves for the equations of motion from initial Roche Lobe overflow until the eventual complete dissipation of the white dwarf or the integration finishes according to user defined cutoff (either a limit on the number of orbits completed or on the integration steps taken). `integrate` stores and returns the second derivative of the quadrupole moment as a function of time for the orbit. The function also saves the run to a file named by the date and initial conditions if `write_file`. """
     function integrate(M_WD::Float64; M_NS::Float64=1.35,mu_e::Float64=2., 
@@ -100,6 +229,9 @@ module Integrate
         @assert step_limit > 1
         @assert mass_limit > 0
         @assert dt_period > 0
+
+        one_step! = make_one_step(optional; parallel=parallel, uneven=uneven, alg=Vern9()) # new
+    
         t=0.
         theta=initial_circular_orbit(M_WD,M_NS=M_NS,optional=optional)
         ddI=Math.ddI_from_theta(theta,optional=optional)
@@ -113,7 +245,9 @@ module Integrate
             while phase<2*π*orbit_limit && i<step_limit && M_WD>mass_limit
                 #integrate until time or step limit are elapsed or WD completely dissipates
                 
-                dt,theta=one_step!(theta; dt_period=dt_period, parallel=parallel, uneven=uneven, optional=optional)
+                #dt,theta=one_step!(theta; dt_period=dt_period, parallel=parallel, uneven=uneven, optional=optional) old
+                dt,theta=one_step!(theta; dt_period=dt_period) #new
+            
                 ddI=Math.ddI_from_theta(theta; optional=optional)
                 i+=1
                 t+=dt
@@ -137,17 +271,21 @@ module Integrate
     """Same as above but with checkpoints """
     function integrate_checkpointed(M_WD::Float64; M_NS::Float64=1.35, mu_e::Float64=2.,
                                 orbit_limit::Float64=1e5, step_limit::Int=10^7,
-                                mass_limit::Float64=1e-3, dt_period=1e-2,
+                                mass_limit::Float64=1e-2, dt_period=1e-2,
                                 parallel::Bool=true, uneven::Bool=false,
                                 write_file::Bool=true, filename::Union{String,Int}=-1,
                                 optional=optional_default,
-                                checkpoint_every::Int=500)::AbstractMatrix{<:Real}
-    
+                                checkpoint_every::Int=500,
+                                verbose::Bool=false)
+
+    println("I am using the new version.")
     @assert M_WD > mass_limit
     @assert M_WD < Math.M_ch
 
+    one_step! = make_one_step(optional; parallel=parallel, uneven=uneven, alg=Vern9()) # new -- defines the problem once here 
+
     if filename==-1
-        filename=format_filename(M_WD,M_NS,optional[3])
+        filename=Save.format_filename(M_WD,M_NS,optional[3])
     end
     
     t = 0.
@@ -157,31 +295,35 @@ module Integrate
     # buffer for checkpointing
     buffer = zeros(checkpoint_every, 9)
     buffer_count = 1
-    buffer[buffer_count, :] .= [t, ddI[1,1], ddI[1,2], theta...]
+    buffer[1,:] .= [t, ddI[1,1], ddI[1,2], theta...]
     
     i = 1
-    phase = theta[6]
+   
 
-    while phase < 2*π*orbit_limit && i < step_limit && M_WD > mass_limit
-        dt, theta = one_step!(theta; dt_period=dt_period, parallel=parallel, uneven=uneven, optional=optional)
+    while theta[6] < 2*π*orbit_limit && i < step_limit && theta[2] > mass_limit
+        
+        #dt, theta = one_step!(theta; dt_period=dt_period, parallel=parallel, uneven=uneven, optional=optional) #old
+        dt,theta=one_step!(theta, dt_period=dt_period) #new--calls the function defined internally
+        
         ddI = Math.ddI_from_theta(theta, optional=optional)
         t += dt
         i += 1
-        buffer_count += 1
         buffer[buffer_count, :] .= [t, ddI[1,1], ddI[1,2], theta...]
+        buffer_count += 1
 
-        if buffer_count == checkpoint_every
-            if write_file
-                Save.save_as_csv_append(buffer, M_WD, M_NS, optional[3]; filename=filename)
-            end
-            buffer_count = 0  # reset buffer
+        if buffer_count >= checkpoint_every
+            Save.save_as_csv_append(buffer, M_WD, M_NS, optional[3]; filename=filename)
+            buffer .= 0.0          # clear buffer
+            buffer_count = 1       # reset counter
+            GC.gc()                # release unused memory
+        end
+    
+        if verbose && mod(i, 10) == 0
+            rss_mb = parse(Int, read(`ps -o rss= -p $(getpid())`, String))/1024
+            println("Step $i, θ = $theta, Memory usage: $(rss_mb) MB")
         end
 
-        if mod(i, 10) == 0
-            println(i, " ", theta)
-        end
-
-        phase = theta[6]
+        
     end
 
     # Save any leftover rows in the buffer
@@ -189,7 +331,7 @@ module Integrate
         Save.save_as_csv_append(buffer[1:buffer_count, :], M_WD, M_NS, optional[3]; filename=filename)
     end
 
-    return nothing  # optionally could also return last buffer or collected data
+    return nothing  
 end
 
     """Performs many WD-NS merger simulations at once. (This is another place where we take advantage of parallelization). Takes in sim_conditions (NamedTuple), which has:

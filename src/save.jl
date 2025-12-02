@@ -47,27 +47,29 @@ module Save
 
     function save_as_csv_append(datumses::AbstractMatrix{<:Real},
                             M_WD::Float64, M_NS::Float64, A::Float64;
-                            filename::Union{String,Int}=-1)::Nothing
+                            filename::Union{String,Int} = -1)::Nothing
+
+        # Construct filename only if needed
+        if filename isa Int || filename == ""
+            filename = Save.format_filename(M_WD, M_NS, A; filename=filename)
+        end
     
-    filename = Save.format_filename(M_WD, M_NS, A; filename=filename)
+        isdir("Outputs_2") || mkdir("Outputs_2")
     
-    isdir("Outputs_2") || mkdir("Outputs_2")
+        header_needed = !isfile(filename)
     
-    # Open file in append mode
-    open(filename, "a") do io
-        CSV.write(io,
-                  (t = datumses[:,1],
-                   ddI_xx = datumses[:,2],
-                   ddI_xy = datumses[:,3],
-                   a = datumses[:,4],
-                   M_WD = datumses[:,5],
-                   M_NS = datumses[:,6],
-                   R_WD = datumses[:,7],
-                   J = datumses[:,8],
-                   θ = datumses[:,9]),
-                  writeheader = !isfile(filename))  # only write header if file does not exist
+        open(filename, "a") do io
+            # Write header manually if needed
+            if header_needed
+                println(io, "t,ddI_xx,ddI_xy,a,M_WD,M_NS,R_WD,J,theta")
+            end
+    
+            # Append each row individually
+            for k in 1:size(datumses, 1)
+                println(io, join(datumses[k, :], ","))
+            end
+        end
+    
+        return nothing
     end
-    
-    return nothing
-end
 end

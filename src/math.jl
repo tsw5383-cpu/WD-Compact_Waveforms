@@ -149,6 +149,7 @@ module Math
         Circumbinary ring - material forms a ring around both stars at some radius a_ring = a x a_ring_frac, where a is the total binary separation.
     """
     @memoize function gamma(M_WD, M_NS;optional=optional_default) 
+        #println("gamma $(M_NS)")
 
         (mu_e,equation, A, poly_shell, a_ring_frac, mode, eta_acc, period_calc)=optional 
     	#@assert M_WD > 0 # In production ready code, consider commenting out assertion
@@ -207,7 +208,7 @@ module Math
     @memoize function J_dot(J, a, R_WD, M_WD, M_NS;optional=optional_default) 
 
         (mu_e,equation, A, poly_shell, a_ring_frac, mode, eta_acc, period_calc)=optional
-        
+        #println("J_dot $(M_NS)")
         g = gamma(M_WD, M_NS; optional=optional)
         b = beta(a, R_WD, M_WD, M_NS; optional=optional)
     	@assert b <= 1.0 # In production-ready code, consider commenting this out
@@ -222,7 +223,7 @@ module Math
 
         (mu_e,equation, A, poly_shell, a_ring_frac, mode, eta_acc, period_calc)=optional 
         # Promote keyword values to T so arithmetic mixes consistently
-        
+        #println("a_dot $(M_NS)")
         g = gamma(M_WD, M_NS; optional=optional)
         b = beta(a, R_WD, M_WD, M_NS; optional=optional)
         @assert b <= 1.0 # In production-ready code, consider commenting this out
