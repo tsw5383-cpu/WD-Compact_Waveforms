@@ -339,7 +339,7 @@ module Integrate
     one_step! = make_one_step(optional; parallel=parallel, uneven=uneven) # NEW  # new -- defines the problem once here 
 
     if filename==-1
-        filename=Save.format_filename(M_WD,M_NS,optional[3])
+        filename=Save.format_filename(M_WD,M_NS,optional[3],optional[])
     end
     
     t = 0.
@@ -353,8 +353,9 @@ module Integrate
     
     i = 1
    
-
-    while theta[6] < 2*π*orbit_limit && i < step_limit && theta[2] > mass_limit
+    rss_mb=0
+    
+    while theta[6] < 2*π*orbit_limit && i < step_limit && theta[2] > mass_limit && rss_mb < 30000
         
         #dt, theta = one_step!(theta; dt_period=dt_period, parallel=parallel, uneven=uneven, optional=optional) #old
         dt,theta=one_step!(theta, dt_period=dt_period) #new--calls the function defined internally
@@ -374,9 +375,11 @@ module Integrate
             GC.gc()                # release unused memory
         end
     
-        if verbose && mod(i, 10) == 0
+        if mod(i, 100) == 0
             rss_mb = parse(Int, read(`ps -o rss= -p $(getpid())`, String))/1024
-            println("Step $i, θ = $theta, Memory usage: $(rss_mb) MB")
+            if verbose
+                println("Step $i, θ = $theta, Memory usage: $(rss_mb) MB")
+            end
         end
 
         
