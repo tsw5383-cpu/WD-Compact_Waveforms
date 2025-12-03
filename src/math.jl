@@ -79,7 +79,7 @@ module Math
     """
     @memoize function Roche_Limit(a,M_WD,M_NS)
     	#@assert M_WD < M_NS # In production ready code, consider commenting out assertion
-    	@assert a > 0 # In production ready code, consider commenting out assertion
+    	# Testing integration compatibility @assert a > 0 # In production ready code, consider commenting out assertion
     	#returns Roche limit of M_WD for companion of mass M_NS 
     	#at a separation of distance r 
     	q=M_WD/M_NS
@@ -97,8 +97,8 @@ module Math
         M_tot = total mass of the binary (white dwarf + neutron star).
     """
     @memoize function period(a, M_tot)
-        @assert a > 0 # In production ready code, consider commenting out assertion
-    	@assert M_tot > 0 # In production ready code, consider commenting out assertion
+        # Testing integration compatibility @assert a > 0 # In production ready code, consider commenting out assertion
+    	# Testing integration compatibility @assert M_tot > 0 # In production ready code, consider commenting out assertion
         #return sqrt(4.0 * π^2 * a^3 / (G * Mtot))
         return period_factor * sqrt(a^3.0 / M_tot)
     end
@@ -153,7 +153,7 @@ module Math
 
         (mu_e,equation, A, poly_shell, a_ring_frac, mode, eta_acc, period_calc)=optional 
     	#@assert M_WD > 0 # In production ready code, consider commenting out assertion
-    	@assert M_NS > 0 # In production ready code, consider commenting out assertion
+    	# Testing integration compatibility @assert M_NS > 0 # In production ready code, consider commenting out assertion
     	@assert a_ring_frac > 0 # In production ready code, consider commenting out assertion
         if mode == :jeans
             return M_NS / M_WD
@@ -178,8 +178,8 @@ module Math
     @memoize function eddington_rate(M;optional=optional_default) 
 
         (mu_e,equation, A, poly_shell, a_ring_frac, mode, eta_acc, period_calc)=optional
-        @assert M > 0 # In production ready code, consider commenting out assertion
-    	@assert 0 < eta_acc <= 1 # In production ready code, consider commenting out assertion
+        # Testing integration compatibility @assert M > 0 # In production ready code, consider commenting out assertion
+    	# Testing integration compatibility @assert 0 < eta_acc <= 1 # In production ready code, consider commenting out assertion
         # 4πG*m_p / (σ_T * eta_acc * c) * M
         # = 7.05e-16 * M * (0.1 / eta_acc)
         return 7.05e-17 * M / eta_acc  # M in solar masses
@@ -211,7 +211,7 @@ module Math
         #println("J_dot $(M_NS)")
         g = gamma(M_WD, M_NS; optional=optional)
         b = beta(a, R_WD, M_WD, M_NS; optional=optional)
-    	@assert b <= 1.0 # In production-ready code, consider commenting this out
+    	# Testing integration compatibility @assert b <= 1.0 # In production-ready code, consider commenting this out
         M_WD_dot = decretion_rate(a, R_WD, M_WD, M_NS; optional=optional)
         return J * g * (1.0 - b) * M_WD_dot / (M_WD + M_NS)
     end
@@ -226,7 +226,7 @@ module Math
         #println("a_dot $(M_NS)")
         g = gamma(M_WD, M_NS; optional=optional)
         b = beta(a, R_WD, M_WD, M_NS; optional=optional)
-        @assert b <= 1.0 # In production-ready code, consider commenting this out
+        # Testing integration compatibility @assert b <= 1.0 # In production-ready code, consider commenting this out
         M_WD_dot = decretion_rate(a, R_WD, M_WD, M_NS; optional=optional)
         one_minus_b = 1.0 - b
         return -2.0 * a * M_WD_dot / M_WD * (one_minus_b * M_WD / M_NS - one_minus_b * (g + 0.5) * M_WD / (M_WD + M_NS))
@@ -261,7 +261,7 @@ module Math
     """
     @memoize function mu(M_WD, M_NS)
     	#@assert M_WD > 0 # In production-ready code, consider commenting this out
-    	@assert M_NS > 0 # In production-ready code, consider commenting this out
+    	# Testing integration compatibility @assert M_NS > 0 # In production-ready code, consider commenting this out
         return M_WD * M_NS / (M_WD + M_NS)
     end
     
@@ -284,7 +284,7 @@ module Math
         Converts polar coordinates to Cartesian coordinates.
     """
     @memoize function x(r::T, phase::T)::T where {T<:Real}
-        @assert r > 0 # In production-ready code, consider commenting this out
+        # Testing integration compatibility @assert r > 0 # In production-ready code, consider commenting this out
         return r * cos(phase)
     end
     
@@ -292,7 +292,7 @@ module Math
         Converts polar coordinates to Cartesian coordinates.
     """
     @memoize function y(r::T, phase::T)::T where {T<:Real}
-        @assert r > 0 # In production-ready code, consider commenting this out
+        # Testing integration compatibility @assert r > 0 # In production-ready code, consider commenting this out
         return r * sin(phase)
     end
     
@@ -517,10 +517,18 @@ module Math
     #"The below block of code is central to the interface between the mass transfer and radiation reaction effects. It also sits in the innermost loop of our integrator. This is a good place to peer review."
     #=Central Engine of the integrator=#
     """Calculates the second derivative of the quadrupole moment `t_ddI` due to kinematics of keplerian motion and mass transfer `dtheta`. Also returns higher derivatives of theta useful for calculating the third derivative of the quadrupole moment."""
-    function ddI_helper(theta::AbstractVector{T}; parallel::Bool=true, optional=optional_default)::Tuple{Vector{T},Vector{T},Vector{T},Array{T, 2}} where {T}
+    function ddI_helper(theta::AbstractVector{T}; parallel::Bool=true, optional=optional_default,
+        dtheta=nothing,theta_dtheta=nothing, ddtheta=nothing, theta_ddtheta=nothing #pre-allocating memory
+        )::Tuple{Vector{T},Vector{T},Vector{T},Array{T, 2}} where {T}
         #calulates a list of values which will be helpful in the next two functions
-        dtheta=zeros(6)
-        #calculating first time derivatives due to MT only
+        # Allocate temporaries if not provided
+        dtheta = dtheta === nothing ? zeros(T,6) : dtheta
+        theta_dtheta = theta_dtheta === nothing ? zeros(T,12) : theta_dtheta
+        ddtheta = ddtheta === nothing ? zeros(T,6) : ddtheta
+        theta_ddtheta = theta_ddtheta === nothing ? zeros(T,18) : theta_ddtheta
+        
+    
+    #calculating first time derivatives due to MT only
 
         if parallel
             Threads.@threads for i in 1:6
@@ -532,8 +540,9 @@ module Math
             end
         end
     
-        theta_dtheta=vcat(theta,dtheta)
-        ddtheta=zeros(6)
+        theta_dtheta[1:6] .= theta
+        theta_dtheta[7:12] .= dtheta
+        #ddtheta=zeros(6)
         #calculating second time derivatives due to MT only
         if parallel
             Threads.@threads for i in 1:6
@@ -545,7 +554,8 @@ module Math
             end
         end
     
-        theta_ddtheta=vcat(theta_dtheta,ddtheta)
+        theta_ddtheta[1:12] .= theta_dtheta
+        theta_ddtheta[13:18] .= ddtheta
     
         #using orbital elements and first and second time derivatives 
         #to calculate second derivative of quadrupole moment
@@ -611,7 +621,9 @@ module Math
     end
     	    
     """Calculates the third derivative of the quadrupole moment and returns it along with the time derivative of theta and the second derivative of the quadrupole moment as calculated in `ddI_Helper`."""
-    function ddI_dddI_from_theta(theta::Vector{Float64}; ddI_only::Bool=false, parallel::Bool=true, optional=optional_default)::Tuple{Vector{Float64},Array{Float64,2},Array{Float64,2}}
+    function ddI_dddI_from_theta(theta::Vector{T}; ddI_only::Bool=false, parallel::Bool=true, optional=optional_default,
+        dddtheta = nothing, theta_dddtheta = nothing #preallocating
+        )::Tuple{Vector{T},Array{T,2},Array{T,2}} where {T}
         #returns time derivatives of theta and second and third derivatives of 
         #the quadrupole moment due to MT effects
         
@@ -620,7 +632,10 @@ module Math
         #to calculate third derivative of quadrupole moment 
         #(for use in calculating RR acceleration)
         
-        dddtheta=zeros(6)
+        #dddtheta=zeros(6)
+        dddtheta = dddtheta === nothing ? zeros(T,6) : dddtheta
+        theta_dddtheta = theta_dddtheta === nothing ? zeros(T,24) : theta_dddtheta
+    
         #calculating second time derivatives due to MT only
         if parallel
             Threads.@threads for i in 1:6
@@ -632,7 +647,8 @@ module Math
             end
         end
     
-        theta_dddtheta=vcat(theta_ddtheta,dddtheta)
+        theta_dddtheta[1:18] .= theta_ddtheta
+        theta_dddtheta[19:24] .= dddtheta
     
         t_dddI=tensor_plus_cross(dddI_xx_vector(theta_dddtheta),
             dddI_xy_vector(theta_dddtheta)

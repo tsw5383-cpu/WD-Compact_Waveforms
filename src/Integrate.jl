@@ -50,9 +50,10 @@ module Integrate
     #"Below is the heart of the integration process"
     """Integrates theta forward one step with time interval either given explicitly (dt!=-1) or as a fraction of the orbital period determined by dt_period. Returns the absolute time step taken and the updated theta parameters."""
 
+    #OLD CODE
     #PROBLEM: This function creates a new ODE problem and solver every time and is thus terribly memory inefficient.
     
-    function one_step!(theta::Vector{Float64}; optional=optional_default, dt_period::Float64=1e-2, dt::Float64=-1., parallel::Bool=true, uneven::Bool=false)::Tuple{Float64, Vector{Float64}}
+    #=function one_step!(theta::Vector{Float64}; optional=optional_default, dt_period::Float64=1e-2, dt::Float64=-1., parallel::Bool=true, uneven::Bool=false)::Tuple{Float64, Vector{Float64}}
         @assert length(theta)==6
         #integrates forward one step with time interval either given explicitly (dt!=-1)
         #or as a fraction of the orbital period determined by dt_period
@@ -86,12 +87,65 @@ module Integrate
         end
         theta .= solve(prob, alg=Vern9()).u[end]
         dt,theta
+    end=#
+
+
+    #NEW CODE--given optional parameters, returns an integrator which can then be reused at each new timestep
+    function make_one_step(optional=optional_default; parallel::Bool=true, uneven::Bool=false)
+        #First we set up the integration problem once which will then be used every subsequent time when the temporary function (ftn!) is called
+        prob = nothing
+
+        t_acceleration! = nothing
+    
+        # There's a warning from SciMLBase here:
+        #   Warning: Using arrays or dicts to store parameters of different types can hurt performance.
+        #   Consider using tuples instead.
+        #   @ SciMLBase ~/.julia/packages/SciMLBase/MzuF2/src/performance_warnings.jl:33
+        # but we can't use tuples because ForwardDiff uses only arrays. So we suppress all warnings temporarily here.
+        redirect_stderr(devnull) do 
+             if uneven #define the acceleration problem based on parallelization choices
+                t_acceleration! = Math.acceleration_uneven!
+            else
+                parallel ?
+                    t_acceleration! = (du, θ, p, t) -> Math.acceleration_even!(du, θ, p, t; optional=optional) :
+                    t_acceleration! = (du, θ, p, t) -> Math.acceleration_serial!(du, θ, p, t; optional=optional)
+            end
+        end
+
+        #integ = init(prob, alg=Vern9()) #We build the integrator once and will reuse it every time
+        
+        function ftn!(theta::Vector{Float64}; dt_period::Float64=1e-2, dt::Float64=-1.)::Tuple{Float64, Vector{Float64}}
+            @assert length(theta)==6
+            #integrates forward one step with time interval either given explicitly (dt!=-1)
+            #or as a fraction of the orbital period determined by dt_period
+            if dt==-1
+                @inbounds begin
+                    a = theta[1]
+                    M_WD = theta[2]
+                    M_NS = theta[3]
+                    dt=dt_period*Math.period(a, M_WD + M_NS)
+                end
+            end
+
+            #resetting initial values for prob to current values
+            # Construct a tiny problem
+            prob  = ODEProblem(t_acceleration!, theta, (0., dt), Any[])
+            integ = init(prob, Vern9(); save_everystep=false, save_start=false, save_end=false, tstops=Float64[])
+    
+            step!(integ)
+            theta .= integ.u        
+            
+            return integ.t, copy(theta)
+        end
+    
+        return ftn!
+        
     end
 
 
     #REPLACEMENT FOR OLD one_step
 
-    #hyperparameters which will be used to define the acceleration function
+    #=#hyperparameters which will be used to define the acceleration function
     mutable struct Hyperparams
         optional::Vector{Any}
         parallel::Bool
@@ -209,7 +263,7 @@ module Integrate
             # return updated dt and theta
             return dt, copy(integrator.u)
         end
-    end
+    end=#
     
 
 
@@ -230,7 +284,7 @@ module Integrate
         @assert mass_limit > 0
         @assert dt_period > 0
 
-        one_step! = make_one_step(optional; parallel=parallel, uneven=uneven, alg=Vern9()) # new
+        one_step! = make_one_step(optional; parallel=parallel, uneven=uneven) # NEW 
     
         t=0.
         theta=initial_circular_orbit(M_WD,M_NS=M_NS,optional=optional)
@@ -245,8 +299,8 @@ module Integrate
             while phase<2*π*orbit_limit && i<step_limit && M_WD>mass_limit
                 #integrate until time or step limit are elapsed or WD completely dissipates
                 
-                #dt,theta=one_step!(theta; dt_period=dt_period, parallel=parallel, uneven=uneven, optional=optional) old
-                dt,theta=one_step!(theta; dt_period=dt_period) #new
+                #dt,theta=one_step!(theta; dt_period=dt_period, parallel=parallel, uneven=uneven, optional=optional) OLD
+                dt,theta=one_step!(theta; dt_period=dt_period) #NEW
             
                 ddI=Math.ddI_from_theta(theta; optional=optional)
                 i+=1
@@ -282,7 +336,7 @@ module Integrate
     @assert M_WD > mass_limit
     @assert M_WD < Math.M_ch
 
-    one_step! = make_one_step(optional; parallel=parallel, uneven=uneven, alg=Vern9()) # new -- defines the problem once here 
+    one_step! = make_one_step(optional; parallel=parallel, uneven=uneven) # NEW  # new -- defines the problem once here 
 
     if filename==-1
         filename=Save.format_filename(M_WD,M_NS,optional[3])
@@ -308,13 +362,15 @@ module Integrate
         ddI = Math.ddI_from_theta(theta, optional=optional)
         t += dt
         i += 1
-        buffer[buffer_count, :] .= [t, ddI[1,1], ddI[1,2], theta...]
+
         buffer_count += 1
+        buffer[buffer_count, :] .= [t, ddI[1,1], ddI[1,2], theta...]
+        
 
         if buffer_count >= checkpoint_every
             Save.save_as_csv_append(buffer, M_WD, M_NS, optional[3]; filename=filename)
             buffer .= 0.0          # clear buffer
-            buffer_count = 1       # reset counter
+            buffer_count = 0       # reset counter
             GC.gc()                # release unused memory
         end
     
