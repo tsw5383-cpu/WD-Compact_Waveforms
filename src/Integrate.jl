@@ -369,7 +369,7 @@ module Integrate
         
 
         if buffer_count >= checkpoint_every
-            Save.save_as_csv_append(buffer, M_WD, M_NS, optional[3]; filename=filename)
+            Save.save_as_csv_append(buffer, M_WD, M_NS, optional[3], optional[6]; filename=filename)
             buffer .= 0.0          # clear buffer
             buffer_count = 0       # reset counter
             GC.gc()                # release unused memory
@@ -387,7 +387,7 @@ module Integrate
 
     # Save any leftover rows in the buffer
     if buffer_count > 0 && write_file
-        Save.save_as_csv_append(buffer[1:buffer_count, :], M_WD, M_NS, optional[3]; filename=filename)
+        Save.save_as_csv_append(buffer[1:buffer_count, :], M_WD, M_NS, optional[3], optional[6]; filename=filename)
     end
 
     return nothing  
