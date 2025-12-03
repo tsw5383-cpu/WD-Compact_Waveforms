@@ -339,7 +339,7 @@ module Integrate
     one_step! = make_one_step(optional; parallel=parallel, uneven=uneven) # NEW  # new -- defines the problem once here 
 
     if filename==-1
-        filename=Save.format_filename(M_WD,M_NS,optional[3],optional[])
+        filename=Save.format_filename(M_WD,M_NS,optional[3],optional[6])
     end
     
     t = 0.
