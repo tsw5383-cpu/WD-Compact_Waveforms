@@ -79,7 +79,7 @@ using BenchmarkTools
         println("The time for integrate() in the serial version is $(serial_time) sec.")
         #@test parallel_time < serial_time
         #println("Passed serial/parallel + integration test for integrate()")
-        optional_arguments = [2.3, 2, 3, false, 0.8, :circumbinary, 0.2, false] # Changes all params from their default values to test whether Integrate.integrate will run with non-default optional arguments
+        optional_arguments = (mu_e = 2.3, equation = 2, A = 3.0, poly_shell = false, a_ring_frac = 0.8, mode = :circumbinary, eta_acc = 0.2, period_calc = false) # Changes all params from their default values to test whether Integrate.integrate will run with non-default optional arguments
         Integrate.integrate(M_WD, step_limit=10, write_file=false, parallel=false, optional=optional_arguments) # test run
         println("Passed test for running optional arguments for integrate()")
     end

@@ -49,14 +49,13 @@ srun -l /usr/bin/hostname | sort | awk '{print $2}' > machinefile.$SLURM_JOB_ID
 # Don't repeat nodes if setting ntasks-per-node and using multiple threads per node
 #scontrol show hostnames | sed -e s/^/$SLURM_NTASKS_PER_NODE*/ > machinefile.$SLURM_JOB_ID   
 
-
 date
-#echo "About to start Julia, using machine file to ssh to each of $SLURM_NNODES nodes, starting $SLURM_NTASKS_PER_NODE threads on each."
-#julia --project=. --machine-file machinefile.$SLURM_JOB_ID   distributed_memory_test.jl
-#julia --project=. -t $SLURM_NTASKS_PER_NODE --machine-file machinefile.$SLURM_JOB_ID   distributed_memory_test.jl
-echo "About to start Julia, using Slurm Cluster Manager to connect to $SLURM_NTASKS_PER_NODE worker processes on each of $SLURM_NNODES nodes."
-julia --project=. -e 'using Distributed, ClusterManagers; addprocs(SlurmManager(parse(Int,ENV["SLURM_NNODES"])*parse(Int,ENV["SLURM_NTASKS_PER_NODE"])), exeflags=["--project=.",], );   include("distributed_memory_test.jl") '  
-#julia --project=. -e 'using Distributed, SlurmClusterManager; addprocs(SlurmManager(), exeflags=["--project=.",], ); include("distributed_memory_test.jl")'
-#julia --project=. -e 'include("setup_slurm_manager.jl"); include("distributed_memory_test.jl") '  
+echo "About to start Julia, using ssh to connect to each CPU core allocated by slurm as a separate process"
+
+julia --machine-file machinefile.$SLURM_JOB_ID -e 'using Distributed; using Pkg; Pkg.precompile(); @everywhere using Pkg; @everywhere Pkg.activate("."); include("distributed_memory_test.jl") ' 
+
 echo "Julia exited"
 date
+
+# Cleanup temporary file (or leave it to see what happened)
+rm machinefile.$SLURM_JOB_ID

@@ -23,7 +23,7 @@ module Integrate
 
 
     const M_ch=1.44 #Chandresekhar mass in M⊙
-    optional_default=[2.0,1,10.0,false,1.0,:isotropic,0.1,true]
+    const optional_default = (mu_e = 2.0, equation = 1, A = 10.0, poly_shell = false, a_ring_frac = 1.0, mode = :isotropic, eta_acc = 0.1, period_calc = true)
     #`optional` contains optional parameters. In order, these optional parameters are:
     #mu_e=2.0:                     the chemical composition of the white dwarf (for CO/ONeMg, mu_e=2.0/2.35, respectively)
     #equation=1:                   choice of empirical equation for white dwarf mass vs. radius relation (1=Nauenberg/2=Eggleton
@@ -166,7 +166,7 @@ module Integrate
                 pairs_distr = distribute(pairs)
                 @distributed for pair in pairs_distr
                     M_WD, M_NS, mu_e, equation, A, poly_shell, a_ring_frac, mode, eta_acc, period_calc = pair
-                    optional = [mu_e, equation, A, poly_shell, a_ring_frac, mode, eta_acc, period_calc]
+                    optional = (mu_e=mu_e, equation=equation, A=A, poly_shell=poly_shell, a_ring_frac=a_ring_frac, mode=mode, eta_acc=eta_acc, period_calc=period_calc)
                     integrate(M_WD; M_NS, mu_e, 
                         orbit_limit, step_limit, mass_limit, dt_period,
                         parallel, uneven, write_file, filename, optional)
@@ -176,17 +176,17 @@ module Integrate
             else
                 @floop ThreadedEx(basesize = 8) for pair in pairs
                     M_WD, M_NS, mu_e, equation, A, poly_shell, a_ring_frac, mode, eta_acc, period_calc = pair
-                    optional = [mu_e, equation, A, poly_shell, a_ring_frac, mode, eta_acc, period_calc]
+                    optional = (mu_e=mu_e, equation=equation, A=A, poly_shell=poly_shell, a_ring_frac=a_ring_frac, mode=mode, eta_acc=eta_acc, period_calc=period_calc)
                     integrate(M_WD; M_NS, mu_e, 
                         orbit_limit, step_limit, mass_limit, dt_period,
                         parallel, uneven, write_file, filename, optional)
-                    GC.gc() # Free up memory
+                    GC.gc()
                 end
             end
         else
             for pair in pairs
                 M_WD, M_NS, mu_e, equation, A, poly_shell, a_ring_frac, mode, eta_acc, period_calc = pair
-                optional = [mu_e, equation, A, poly_shell, a_ring_frac, mode, eta_acc, period_calc]
+                optional = (mu_e=mu_e, equation=equation, A=A, poly_shell=poly_shell, a_ring_frac=a_ring_frac, mode=mode, eta_acc=eta_acc, period_calc=period_calc)
                 integrate(M_WD; M_NS, mu_e, 
                     orbit_limit, step_limit, mass_limit, dt_period,
                     parallel, uneven, write_file, filename, optional)
@@ -207,11 +207,6 @@ module Integrate
         modes = hasproperty(optional_conditions, :mass_loss_modes) ? optional_conditions.mass_loss_modes : (optional_default[6],)
         eta_accs = hasproperty(optional_conditions, :eta_accs) ? optional_conditions.eta_accs : (optional_default[7],)
         period_calcs = hasproperty(optional_conditions, :use_period_calc) ? optional_conditions.use_period_calc : (optional_default[8],)
-
-        for mass_loss_mode in modes
-            first_char = lowercase(first(mass_loss_mode))
-            @assert first_char ∈ ('j','i','c')
-        end
 
         # Apologies for the syntax below, it isn't elegant but it makes the code run
         pairs = [(M_WD, M_NS, mu_e, equation, A, poly_shell, a_ring_frac, mode, eta_acc, period_calc) for M_WD in M_WDs for M_NS in M_NSs for mu_e in mu_es for equation in equations for A in As for poly_shell in poly_shells for a_ring_frac in a_ring_fracs for mode in modes for eta_acc in eta_accs for period_calc in period_calcs]
