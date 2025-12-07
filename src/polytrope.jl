@@ -4,6 +4,7 @@ module Polytrope
     using Interpolations
     using CSV, DataFrames
     using Memoization
+    using ChainRulesCore
     
     """ Returns a function f(xi, theta) where theta = [θ, θ′]
         #Computes Lane–Emden 2nd-order equation in first-order form."""
@@ -58,6 +59,7 @@ module Polytrope
         sol   :: Any      #Differential equation solution table
         root  :: Float64  #scale factor if the surface of the white dwarf (for normalization)
         tnorm :: Float64  #solution to the mass integral (for normalization)
+        mass  :: Any  #mass enclosed as a function of radius
     end
 
     #stores all CashedPolytrope types previously calculated
@@ -77,8 +79,13 @@ module Polytrope
     
         # normalization integral ∫ xi^2 θ^n dxi
         tnorm = quadgk(x -> dm_dxi(x, sol, n), 0, root)[1]
+
+        #calculates mass contained within a radius for a sample of r 
+        rs = range(0, 1; length=1001)
+        ms = [quadgk(x -> dm_dxi(x, sol, n), r, root)[1] for r in rs]
+        mass = interpolate((rs,), ms, Gridded(Linear()))
     
-        return CachedPolytrope(sol, root, tnorm)
+        return CachedPolytrope(sol, root, tnorm, mass)
     end
 
     """Recalls polytrope if previously calculated, otherwise calculates and cashes the polytrope before returning it"""
@@ -103,11 +110,32 @@ module Polytrope
         sol = P.sol
         root = P.root
         t_norm = P.tnorm
+        m_table = P.mass
     
         scaled_R_RL = R_RL * root / R_WD #fraction of radius within white dwarf
-    
-        return M_WD * quadgk(x -> dm_dxi(x, sol, n), scaled_R_RL, root)[1] / t_norm
+
+
+        #CHATGPT look here: commented out lines to compare to
+         #=#disables autodifferentiation locally which is incompatible with this integration technique
+        val = ChainRulesCore.ignore_derivatives() do
+            quadgk(x -> dm_dxi(x, sol, n), scaled_R_RL, root)[1]
+        end=#
+
+        #CHATGPT look here: new lines to compare to the commented out lines
         #integrates the fraction of the mass outside of the roche lobe and scales to the given mass
+        if scaled_R_RL<0
+            val=t_norm
+        elseif scaled_R_RL>root
+            val = 0
+        else
+            val = m_table(scaled_R_RL/root)
+        end
+    
+
+        return M_WD * val / t_norm
+    
+        
+        
     end
 
 

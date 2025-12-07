@@ -1,0 +1,60 @@
+Starting job distributed_memory_job
+Job id: 46885164
+Tue Dec  2 22:39:34 EST 2025
+This job was assigned the following nodes
+p-gc-[3109-3112]
+About to change into /storage/ehome/vql5180/project-wd_ns_interaction
+Tue Dec  2 22:39:34 EST 2025
+About to start Julia, using ssh to connect to each CPU core allocated by slurm as a separate process
+Precompiling project...
+   4407.9 ms  ✓ Tricks
+   2800.9 ms  ✓ HypertextLiteral
+   8329.7 ms  ✓ BoundaryValueDiffEqCore
+   3662.6 ms  ✓ NonlinearSolveBase → NonlinearSolveBaseBandedMatricesExt
+   5639.4 ms  ✓ LinearSolve → LinearSolveFastAlmostBandedMatricesExt
+   4814.7 ms  ✓ DiffEqCallbacks
+  19591.6 ms  ✓ Sundials
+   6604.8 ms  ✓ NonlinearSolve → NonlinearSolveNLsolveExt
+   4439.0 ms  ✓ LinearSolve → LinearSolveBandedMatricesExt
+   2281.5 ms  ✓ PlutoTest
+   5202.7 ms  ✓ DiffEqNoiseProcess
+   9587.7 ms  ✓ DelayDiffEq
+   8134.2 ms  ✓ BoundaryValueDiffEqAscher
+   3783.8 ms  ✓ SteadyStateDiffEq
+   4842.3 ms  ✓ JumpProcesses
+   6803.7 ms  ✓ NonlinearSolve → NonlinearSolveSundialsExt
+ 153533.6 ms  ✓ BoundaryValueDiffEqFIRK
+  11035.4 ms  ✓ BoundaryValueDiffEqShooting
+   8856.4 ms  ✓ BoundaryValueDiffEqMIRKN
+  92955.7 ms  ✓ BoundaryValueDiffEqMIRK
+  15676.6 ms  ✓ StochasticDiffEq
+  13943.5 ms  ✓ BoundaryValueDiffEq
+  17557.0 ms  ✓ DifferentialEquations
+  18512.7 ms  ✓ Integrate
+  24 dependencies successfully precompiled in 446 seconds. 379 already precompiled.
+  Activating project at `~/project-wd_ns_interaction`
+      From worker 4:	  Activating project at `~/project-wd_ns_interaction`
+      From worker 2:	  Activating project at `~/project-wd_ns_interaction`
+      From worker 3:	  Activating project at `~/project-wd_ns_interaction`
+      From worker 5:	  Activating project at `~/project-wd_ns_interaction`
+      From worker 6:	  Activating project at `~/project-wd_ns_interaction`
+      From worker 7:	  Activating project at `~/project-wd_ns_interaction`
+      From worker 8:	  Activating project at `~/project-wd_ns_interaction`
+      From worker 12:	  Activating project at `~/project-wd_ns_interaction`
+      From worker 14:	  Activating project at `~/project-wd_ns_interaction`
+      From worker 13:	  Activating project at `~/project-wd_ns_interaction`
+      From worker 16:	  Activating project at `~/project-wd_ns_interaction`
+      From worker 15:	  Activating project at `~/project-wd_ns_interaction`
+      From worker 17:	  Activating project at `~/project-wd_ns_interaction`
+      From worker 11:	  Activating project at `~/project-wd_ns_interaction`
+      From worker 9:	  Activating project at `~/project-wd_ns_interaction`
+      From worker 10:	  Activating project at `~/project-wd_ns_interaction`
+Beginning distributed memory parallelization test for many_integrate()
+Inputted M_WDs: 0.5:0.1:0.8. Inputted M_NSs: 1.2:0.1:1.4.
+The time for many_integrate() in the distributed memory parallel version is 10.461943323 sec.
+The time for many_integrate() in the serial version is 33.278773916 sec.
+The speedup factor is: 3.180936169175995
+Passed serial/parallel + integration test for many_integrate(): true.
+Julia exited
+Tue Dec  2 22:53:29 EST 2025
+About to start Julia, using Slurm Cluster Manager to connect to 4 worker processes on each of 4 nodes.
