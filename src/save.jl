@@ -31,10 +31,10 @@ module Save
 		
 	"""Writes array of format given in Integrate.integrate() to a file."""
 	function save_as_csv(datumses::AbstractMatrix{<:Real},
-					  M_WD::Float64,M_NS::Float64,A::Float64; filename::Union{String,Int}=-1)::Nothing
+					  M_WD::Float64,M_NS::Float64,A::Float64,mode; filename::Union{String,Int}=-1)::Nothing
 		
 		
-		filename=format_filename(M_WD,M_NS,A;filename=filename)
+		filename=format_filename(M_WD,M_NS,A,mode;filename=filename)
 		# Writes the file to a CSV titled filename
 
 		isdir("Outputs_2") || mkdir("Outputs_2")

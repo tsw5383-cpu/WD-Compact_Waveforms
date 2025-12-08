@@ -315,7 +315,7 @@ module Integrate
         datumses=datumses[1:i,:]
     
         if write_file #saves datumses to a csv in directory "Output"
-            Save.save_as_csv(datumses,M_WD,M_NS,optional[3],filename=filename)
+            Save.save_as_csv(datumses,M_WD,M_NS,optional.A,optional.mode,filename=filename)
         end
         
         return(datumses)
@@ -339,7 +339,7 @@ module Integrate
     one_step! = make_one_step(optional; parallel=parallel, uneven=uneven) # NEW  # new -- defines the problem once here 
 
     if filename==-1
-        filename=Save.format_filename(M_WD,M_NS,optional[3],optional[6])
+        filename=Save.format_filename(M_WD,M_NS,optional.A,optional.mode)
     end
     
     t = 0.
@@ -369,7 +369,7 @@ module Integrate
         
 
         if buffer_count >= checkpoint_every
-            Save.save_as_csv_append(buffer, M_WD, M_NS, optional[3], optional[6]; filename=filename)
+            Save.save_as_csv_append(buffer, M_WD, M_NS, optional.A, optional.mode; filename=filename)
             buffer .= 0.0          # clear buffer
             buffer_count = 0       # reset counter
             GC.gc()                # release unused memory
@@ -387,7 +387,7 @@ module Integrate
 
     # Save any leftover rows in the buffer
     if buffer_count > 0 && write_file
-        Save.save_as_csv_append(buffer[1:buffer_count, :], M_WD, M_NS, optional[3], optional[6]; filename=filename)
+        Save.save_as_csv_append(buffer[1:buffer_count, :], M_WD, M_NS, optional.A, optional.mode; filename=filename)
     end
 
     return nothing  
