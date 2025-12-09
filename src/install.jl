@@ -2,6 +2,8 @@
 
 using Pkg
 
+Pkg.activate(".")
+
 """Checks if the package is installed. If not, installs the package."""
 function ensure_package_installed(pkg_name::String)
     installed_packages = Pkg.dependencies()
@@ -11,8 +13,6 @@ function ensure_package_installed(pkg_name::String)
         println("Package '$pkg_name' installed successfully.")
     end
 end
-
-Pkg.activate(".")
 
 ensure_package_installed("ClusterManagers")
 ensure_package_installed("QuadGK")
@@ -32,4 +32,4 @@ ensure_package_installed("DataFrames")
 
 #Pkg.resolve()
 #Pkg.instantiate()
-Pkg.precompile() # This is useful if running in an interactive environment, e.g. not via batch job submitted to ROAR
+#Pkg.precompile()

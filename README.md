@@ -1,18 +1,6 @@
 # Astro 528 [Class Project](https://psuastro528.github.io/Fall2025/project/)
 
-Click here for full documentation: [![](https://img.shields.io/badge/docs-stable-blue.svg)](https://PsuAstro528.github.io/project-wd_ns_interaction)
-
-GitHub Actions : [![Build Status](https://github.com/PsuAstro528/project-template/workflows/CI/badge.svg)](https://github.com/PsuAstro528/project-template/actions?query=workflow%3ACI+branch%3Amain)
-
-
-## Class Project Schedule
-- [Project proposal](proposal.md) (due Sept 12)
-- Serial version of code (due Oct 8)
-- Peer code review (due Oct 15)
-- Parallel version of code (multi-core) (due Nov 5)
-- Second parallel version of code (distributed-memory or GPU) (due Nov 21)
-- Completed code, documentation, tests, packaging (optional) & reflection (due Dec 3)
-- Class presentations (Dec 3 - Dec 12, [detailed schedule](https://github.com/PsuAstro528/PresentationsSchedule2025) )
+GitHub Actions : [![Build Status](https://github.com/PsuAstro528/project-template/workflows/CI/badge.svg)](https://github.com/PsuAstro528/project-wd_ns_interaction/actions)
 
 # Code Description
  <!--Our code provides a semi-analytic model of mass transfer in a close white dwarf-neutron star binary (henceforth WD-NS, respectively) to determine an time series gravitational waveform. In principal, assuming typical neutron star mass $M_{\rm NS}=1.35\, M_\odot$, the user should be able to run the code with only four parameters: the initial white dwarf mass ($M_{\rm WD}$) and parameters specifying the binary orientation (inclination $i$ and initial phase angle $\varphi$) and luminosity distance ($D_L$ in Mpc). In the current version of the code, the second derivative of the quadrupole moment ($\ddot I^{ij}$) is calculated as a time series from initial $M_{\rm WD}$, and a separate method is given to calculate waveform $h^{ij}$ given $\ddot I^{ij}$ and $i,\,\varphi,\,D_L$. (In practice, the expensive and delicate part of the calculation is calculating $\ddot I^{ij}$ and it is fairly straightforward to then calculate gravitational waveforms for a variety of geometries afterward. To use our code for analysis, we would likely direct the user to output timeseries $\ddot{I}^{ij}$ as permanent files, and then from these template $\ddot{I}^{ij}$ to calculate $h^{ij}$ as temporary objects on which to perform analysis.)-->
@@ -23,7 +11,7 @@ Our code provides a semi-analytic model of mass transfer in a close white dwarf-
 - `A=10.0`:                       The rate at which mass flows off the WD surface in units of 1/period (i.e., mass outside of the Roche Lobe is modeled as decreting at a characteristic timescale period/`A`). This number is calculated by fluid simulations and is 'of order 10.0' accordint to [the lecture notes of Onno Pols](https://www.astro.ru.nl/~onnop/education/binaries_utrecht_notes/Binaries_ch6-8.pdf).   
 - `poly_shell=false`:              This parameter determines how the mass outside of the Roche Lobe is calculated. If `true`, then a polytropic equation of state with index $n=1.5$ is used (see `polytrope.jl`--currently under construction). If `false`, then the WD is modeled as a sphere of uniform density. The former is more accurate while the latter is less expensive. 
 - `a_ring_frac=1.0`:              If the mode of mass loss is that of a circumbinary ring (see next entry), then this is the radius of the ring in terms of the binary separation.
-- `mode="Isotropic Re-emission"`: Mode of mass loss assumed in calculating angular momentum loss. Choices include "Isotropic Re-emission" in which all mass falls onto the NS and is then emitted; "Jeans Mode" in which mass is lost from the WD directly via winds; and "Circumbinary Ring" in which mass is not ejected completely, but instead forms a ring around the binary. 
+- `mode=:isotropic`: Mode of mass loss assumed in calculating angular momentum loss. Choices include "Isotropic Re-emission" in which all mass falls onto the NS and is then emitted; "Jeans Mode" in which mass is lost from the WD directly via winds; and "Circumbinary Ring" in which mass is not ejected completely, but instead forms a ring around the binary. 
 - `eta_acc=0.1`:                  Accretion efficiency of the NS. This is used to calculate the accretion rate of the NS. (In practice, we take $\dot M_{\rm NS}=\dot M_{\rm NS,\,Edd.}$ as $-\dot M_{\rm WD}\gg \dot M_{\rm NS,\,Edd.}$.)
 - `period_calc=true`:             If `true`, then the adiabatic assumption is made, and we calculate $\dot\theta$ in terms of the binary's keplerian period. If `false`, then we calculate $\dot\the
 
@@ -58,7 +46,7 @@ The units for everything are in solar masses, km, and seconds. Notably, the simu
 - $\theta$, orbital phase
 
 # Installation and Using Package
-To install, you must have Julia installed on your system first. Afterwards, type in the following three terminal commands:  
+To install, you must have Julia installed on your system first. Afterwards, type in the following terminal commands:  
 ```
 git clone git@github.com:PsuAstro528/project-wd_ns_interaction.git
 cd project-wd_ns_interaction
@@ -74,21 +62,21 @@ Note that our polytropic density code is buggy, so setting `poly_shell=true` wil
 
 We use multithreading and Base.Threads for our shared memory parallelization technique. Specifically, in `ddI_helper` and `ddI_dddI_from_theta` in `math.jl`, we have to calculate the first, second, and third time derivatives of six physical parameters of the WD-NS binary (which we vectorize into the variable `theta`). Each parameter's time derivative is independent of the other parameters' time derivatives, so we use Threads.@threads for spreading out the derivative calculations over separate threads. This helps with strong scaling.
 
-The speedup by parallelizing is ~2.5x - 3x compared to serial (not 6x since the distribution of the work needed to calculate each parameters' time derivatives is uneven). For reference, here is an example run with 8 cores:
-The number of threads being used in parallel version is 8.
-M_WD: 1.0, step_limit: 100
-The time for integrate() in the shared memory parallel version is 0.277880802 sec.
-The time for integrate() in the serial version is 0.759095986 sec.
+The speedup by parallelizing the main integrate() function compared to serial is ~1.5x - 2x (not 6x since the distribution of the work needed to calculate each parameters' time derivatives is uneven). To see weak scaling and strong scaling benchmarking results, see the `benchmarking/` folder. Interestingly, we find that the maximum efficiency for parallelization is ~3 threads. In other words, no meaningful speedup occurs if using more than 3 parallel threads at once.
 
 We use multiprocessing and DistributedArrays for running multiple simulation runs at once, specifically in `many_integrate` in `Integrate.jl`. This helps with weak scaling for our parallelization and checks off the box for distributed memory parallelization. To run in distributed memory mode, one needs to submit a slurm job. A sample script is in `distributed_memory_job.slurm`, and one just needs to replace `distributed_memory_test.jl` in this script with one's own Julia script that takes advantage of the distributed mode in `many_integrate`.
 
-With distributed memory, we get ~3x speedup.
-Here is a distributed memory example run with 4 worker processes on each of 4 nodes (16 processes total):
-Inputted M_WDs: 0.5:0.1:0.8. Inputted M_NSs: 1.2:0.1:1.4.
-The time for many_integrate() in the distributed memory parallel version is 10.585146855 sec.
-The time for many_integrate() in the serial version is 32.71303462 sec.
-The speedup factor is: 3.090465826135201
-Passed serial/parallel + integration test for many_integrate(): true.
+With distributed memory parallelization (multiprocessing) combined with the multithreading in integrate(), we get ~5-6x speedup. For weak scaling and strong scaling benchmarking results, see the `benchmarking/` folder. Interestingly, we don't see a one-to-one speedup in number of nodes vs number of initial conditions. Instead, the max speedup we get occurs when using a number of nodes equal to roughly 1/3 the number of initial conditions ran in many_integrate().
+
+For lessons learned and overview of code structure, see the following presentation: [INSERT PRESENTATION LINK]
+
+Overview of our package structure:
+- `Integrate.jl` contains the main integration engine, which tracks the evolution of the white dwarf-compact object merger.
+- `math.jl` contains math and helper functions for integration.
+- `save.jl` contains functions for saving the simulation output to CSV files.
+- `GW.jl` outputs values for plotting the gravitational waveforms.
+- `polytrope.jl` contains math and helper functions for the polytropic equation of state for a white dwarf.
+- `install.jl` makes sure all necessary packages are installed and sets up the package environment.
 
 <!--
 The following section documents the mathematical treatment of the 2.5-PN RR and MT forces used to calculate a gravitational waveform in a close WD-NS binary. 
