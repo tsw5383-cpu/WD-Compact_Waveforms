@@ -6,14 +6,11 @@
 ## Time requested: 1 hours, 00 minutes, 0 seconds
 #SBATCH --time=1:00:00 
 
-## Ask for eight CPU cores on each of two nodes
+## Ask for 3 CPU cores on each of 4 nodes
 #SBATCH --nodes=4 
-#SBATCH --ntasks-per-node=4
+#SBATCH --ntasks-per-node=3
 ####SBATCH --ntasks=16   
 
-## Promise that each CPU core will use no more than 4GB of RAM
-##SBATCH --mem-per-cpu=4GB
-## OR 
 ## Promise that each node will use no more than 16GB of RAM
 #SBATCH --mem=16GB
 
@@ -45,14 +42,14 @@ cd $SLURM_SUBMIT_DIR            # Change into directory where job was submitted 
 export JULIA_PROJECT=`pwd`
 export JULIA_NUM_THREADS=$SLURM_NTASKS_PER_NODE
 # Repeat nodes if setting ntasks, since likely uneven distribution of tasks across nodes
-srun -l /usr/bin/hostname | sort | awk '{print $2}' > machinefile.$SLURM_JOB_ID   
+#srun -l /usr/bin/hostname | sort | awk '{print $2}' > machinefile.$SLURM_JOB_ID   
 # Don't repeat nodes if setting ntasks-per-node and using multiple threads per node
-#scontrol show hostnames | sed -e s/^/$SLURM_NTASKS_PER_NODE*/ > machinefile.$SLURM_JOB_ID   
+scontrol show hostnames | sed -e s/^/$SLURM_NTASKS_PER_NODE*/ > machinefile.$SLURM_JOB_ID   
 
 date
 echo "About to start Julia, using ssh to connect to each CPU core allocated by slurm as a separate process"
 
-julia --machine-file machinefile.$SLURM_JOB_ID -e 'using Distributed; using Pkg; Pkg.precompile(); @everywhere using Pkg; @everywhere Pkg.activate("."); include("distributed_memory_test.jl") ' 
+julia --machine-file machinefile.$SLURM_JOB_ID -e 'using Distributed; @everywhere using Pkg; @everywhere Pkg.activate("."); include("distributed_memory_test.jl") ' 
 
 echo "Julia exited"
 date
