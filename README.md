@@ -15,8 +15,6 @@ Our code provides a semi-analytic model of mass transfer in a close white dwarf-
 - `eta_acc=0.1`:                  Accretion efficiency of the NS. This is used to calculate the accretion rate of the NS. (In practice, we take $\dot M_{\rm NS}=\dot M_{\rm NS,\,Edd.}$ as $-\dot M_{\rm WD}\gg \dot M_{\rm NS,\,Edd.}$.)
 - `period_calc=true`:             If `true`, then the adiabatic assumption is made, and we calculate $\dot\theta$ in terms of the binary's keplerian period. If `false`, then we calculate $\dot\the
 
-Note that our polytropic density code is buggy, so setting `poly_shell=true` will fail. For sake of the reviewers/users of this code, don't set `poly_shell=true`
-
 To run the code in the simplest case with default parameters and a WD mass of $1.0\,M_\odot$, it suffices to call:
 ```
 include("src/Integrate.jl")
@@ -29,7 +27,7 @@ Our code can broadly be divided into two parts. The first implements the mathema
 
 The second part of the code involves uniting the effects of mass transfer and '2.5 Post-Newtonian order' gravitational wave backreaction (also referred to as 'radiation reaction' or 'RR' in our documentation; see Chapter 12 of [Poisson & Will](https://www.cambridge.org/core/books/gravity/1F0CF38A59B1E51A63C7C3138268BE5D)) through autodifferentiation of the $\vec{\theta}$ parameters; integration of the system taking both MT and RR effects into account; calculation of timeseries $\ddot I^{ij}$; and conversion to $h^{ij}$. \textbf{This part of the code is significantly more complicated and time intensive than the previous section with, and it is thus crucial to optimize. This is where peer review could be especially beneficial.} `src/Integrate.jl` contains most of this part.
 
-The key producable of our code is a time-series waveform given an initial mass WD orbiting a 1.35 $M_\odot$ NS. The gravitational waveform is calculated in `src/GW.jl`. 
+The key producable of our code is a time-series waveform given an initial mass WD orbiting compact object of arbitrary mass. 
 
 # Mathematical Basis
 Please see [this note](https://www.overleaf.com/read/zzzprcdvzkzz#d5f227) which serves as the mathematical basis for our project and especially for `src/math.jl`. (I was unable to get these notes in `README.md` in a nice format.)
@@ -58,8 +56,6 @@ The code is located in the `src/` folder. The `integrate` function in `Integrate
 
 Our tests are in `test/runtests.jl`
 
-Note that our polytropic density code is buggy, so setting `poly_shell=true` will fail. For sake of the reviewers/users of this code, don't set `poly_shell=true`
-
 We use multithreading and Base.Threads for our shared memory parallelization technique. Specifically, in `ddI_helper` and `ddI_dddI_from_theta` in `math.jl`, we have to calculate the first, second, and third time derivatives of six physical parameters of the WD-NS binary (which we vectorize into the variable `theta`). Each parameter's time derivative is independent of the other parameters' time derivatives, so we use Threads.@threads for spreading out the derivative calculations over separate threads. This helps with strong scaling.
 
 The speedup by parallelizing the main integrate() function compared to serial is ~1.5x - 2x (not 6x since the distribution of the work needed to calculate each parameters' time derivatives is uneven). To see weak scaling and strong scaling benchmarking results, see the `benchmarking/` folder. Interestingly, we find that the maximum efficiency for parallelization is ~3 threads. In other words, no meaningful speedup occurs if using more than 3 parallel threads at once.
@@ -68,7 +64,7 @@ We use multiprocessing and DistributedArrays for running multiple simulation run
 
 With distributed memory parallelization (multiprocessing) combined with the multithreading in integrate(), we get ~5-6x speedup. For weak scaling and strong scaling benchmarking results, see the `benchmarking/` folder. Interestingly, we don't see a one-to-one speedup in number of nodes vs number of initial conditions. Instead, the max speedup we get occurs when using a number of nodes equal to roughly 1/3 the number of initial conditions ran in many_integrate().
 
-For lessons learned and overview of code structure, see the following presentation: [INSERT PRESENTATION LINK]
+For preliminary science results, lessons learned and overview of code structure, see our [linked presentation](https://docs.google.com/presentation/d/1ko7H4s9whM5TFZpAso8kaDzjPws4WEz7nGs1wZNNVGg/edit?slide=id.g3aec06895e2_0_971#slide=id.g3aec06895e2_0_971) (slide 13/21/27 for lessons learned/code structure.
 
 Overview of our package structure:
 - `Integrate.jl` contains the main integration engine, which tracks the evolution of the white dwarf-compact object merger.
