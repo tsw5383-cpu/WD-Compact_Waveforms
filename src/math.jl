@@ -25,8 +25,11 @@ module Math
     #period_calc=true:             if true/false, calculates angular velocity as a function of radius/angular momentum
 
     #Of these, I expect A, poly_shell, mode, and period_calc to have considerable effect on the evolution of the system
+    # A and mode are physically meaningful parameters while poly_shell and period_calc are simply alternate ways to calculate the same values
+    #Default values of `true` on these latter parameters are the preferred means of calculation
 
     const optional_default = (mu_e = 2.0, equation = 1, A = 10.0, poly_shell = false, a_ring_frac = 1.0, mode = :isotropic, eta_acc = 0.1, period_calc = true)
+
     """
         Returns the natural radius of a white dwarf.
         ```julia
@@ -34,10 +37,14 @@ module Math
         ```
         M_WD = mass of the white dwarf.
     """
-    function R0_WD(M_WD;optional=optional_default)     
-    	#@assert M_WD > 0 # In production ready code, consider commenting out assertion
-    	#@assert mu_e > 0 # In production ready code, consider commenting out assertion
-    	#white dwarf radius in km as ftn of mass in M_odot and mean molecular weight/electron=2
+    function R0_WD(M_WD;optional=optional_default) 
+        #white dwarf radius in km as ftn of mass in M_odot and mean molecular weight/electron=2
+    
+        #assert comments can be uncommented for debugging, but they prove cumbersome in our integration.
+        #for now, all `@assert` statements are commented out.
+    	#@assert M_WD > 0 
+    	#@assert mu_e > 0 
+    
         
         x=M_WD/M_ch
         y=M_WD/0.00057
@@ -58,10 +65,12 @@ module Math
         R_WD = radius of the white dwarf.
     """
     function dynamical_timescale(M_WD,R_WD)
-    	#@assert M_WD > 0 # In production ready code, consider commenting out assertion
-    	#@assert R_WD > 0 # In production ready code, consider commenting out assertion
-    	#returns dynamical timescale for perturbed white dwarf
+        #returns dynamical timescale for perturbed white dwarf
     	#with radius R and mass M
+    
+    	#@assert M_WD > 0 
+    	#@assert R_WD > 0 
+    
     	return((R_WD^3.0/(G*M_WD))^(1.0/2.0))
     end
     
@@ -75,10 +84,12 @@ module Math
         M_NS = mass of the neutron star.
     """
     function Roche_Limit(a,M_WD,M_NS)
-    	#@assert M_WD < M_NS # In production ready code, consider commenting out assertion
-    	# Testing integration compatibility @assert a > 0 # In production ready code, consider commenting out assertion
-    	#returns Roche limit of M_WD for companion of mass M_NS 
-    	#at a separation of distance r 
+        #returns Roche limit of M_WD for companion of mass M_NS 
+    	#at a separation of distance a 
+        
+    	#@assert M_WD < M_NS 
+    	#@assert a > 0
+    	
     	q=M_WD/M_NS
         q_2_3rds = q^(2.0/3.0)
     	return(a * 0.49*q_2_3rds/(0.6*q_2_3rds+log(1.0+cbrt(q))))
@@ -94,9 +105,10 @@ module Math
         M_tot = total mass of the binary (white dwarf + neutron star).
     """
     function period(a, M_tot)
-        # Testing integration compatibility @assert a > 0 # In production ready code, consider commenting out assertion
-    	# Testing integration compatibility @assert M_tot > 0 # In production ready code, consider commenting out assertion
-        #return sqrt(4.0 * π^2 * a^3 / (G * Mtot))
+        #@assert a > 0 
+    	#@assert M_tot > 0 
+    
+        #equivalent to sqrt(4.0 * π^2 * a^3 / (G * Mtot))
         return period_factor * sqrt(a^3.0 / M_tot)
     end
     
@@ -114,7 +126,9 @@ module Math
     """
     function decretion_rate(a, R_WD,
                             M_WD, M_NS;optional=optional_default) 
-    	#@assert R_WD > 0 # In production ready code, consider commenting out assertion
+    
+    	#@assert R_WD > 0 
+    
         RL = Roche_Limit(a, M_WD, M_NS)
         if RL > R_WD
             return 0.0
@@ -144,9 +158,11 @@ module Math
         Circumbinary ring - material forms a ring around both stars at some radius a_ring = a x a_ring_frac, where a is the total binary separation.
     """
     function gamma(M_WD, M_NS;optional=optional_default) 
-    	#@assert M_WD > 0 # In production ready code, consider commenting out assertion
-    	#@assert M_NS > 0 # In production ready code, consider commenting out assertion
-    	#@assert optional.a_ring_frac > 0 # In production ready code, consider commenting out assertion
+    
+    	#@assert M_WD > 0
+    	#@assert M_NS > 0
+        #@assert optional.a_ring_frac > 0 
+    
         if optional.mode == :jeans
             return M_NS / M_WD
         elseif optional.mode == :isotropic
@@ -168,11 +184,13 @@ module Math
         Default values apply to Eddington accretion onto the neutron star from the white dwarf.
     """
     function eddington_rate(M;optional=optional_default) 
-        #@assert M > 0 # In production ready code, consider commenting out assertion
-    	#@assert 0 < optional.eta_acc <= 1 # In production ready code, consider commenting out assertion
-        # 4πG*m_p / (σ_T * eta_acc * c) * M
-        # = 7.05e-16 * M * (0.1 / eta_acc)
-        return 7.05e-17 * M / optional.eta_acc  # M in solar masses
+    
+        #@assert M > 0 
+    	#@assert 0 < optional.eta_acc <= 1 
+    
+        # Equivalent to 4πG*m_p / (σ_T * eta_acc * c) * M
+    
+        return 7.05e-17 * M / optional.eta_acc  # M in solar masses, 7.05e-17/s
     end
     
     
@@ -195,7 +213,9 @@ module Math
     function J_dot(J, a, R_WD, M_WD, M_NS;optional=optional_default)         
         g = gamma(M_WD, M_NS; optional=optional)
         b = beta(a, R_WD, M_WD, M_NS; optional=optional)
-    	# Testing integration compatibility @assert b <= 1.0 # In production-ready code, consider commenting this out
+    
+    	#@assert b <= 1.0 
+    
         M_WD_dot = decretion_rate(a, R_WD, M_WD, M_NS; optional=optional)
         return J * g * (1.0 - b) * M_WD_dot / (M_WD + M_NS)
     end
@@ -204,10 +224,11 @@ module Math
         Returns the rate of change for total orbital separation.
     """
     function a_dot(a, R_WD, M_WD, M_NS;optional=optional_default) 
-        # Promote keyword values to T so arithmetic mixes consistently
         g = gamma(M_WD, M_NS; optional=optional)
         b = beta(a, R_WD, M_WD, M_NS; optional=optional)
-        # Testing integration compatibility @assert b <= 1.0 # In production-ready code, consider commenting this out
+    
+        # @assert b <= 1.0
+    
         M_WD_dot = decretion_rate(a, R_WD, M_WD, M_NS; optional=optional)
         one_minus_b = 1.0 - b
         return -2.0 * a * M_WD_dot / M_WD * (one_minus_b * M_WD / M_NS - one_minus_b * (g + 0.5) * M_WD / (M_WD + M_NS))
@@ -238,8 +259,10 @@ module Math
         M_NS = mass of neutron star.
     """
     function mu(M_WD, M_NS)
-    	#@assert M_WD > 0 # In production-ready code, consider commenting this out
-    	# Testing integration compatibility @assert M_NS > 0 # In production-ready code, consider commenting this out
+    
+    	#@assert M_WD > 0 
+    	#@assert M_NS > 0 
+    
         return M_WD * M_NS / (M_WD + M_NS)
     end
     
@@ -253,8 +276,8 @@ module Math
     """
     function dJ_rr(I2::Matrix{Float64}, I3::Matrix{Float64})::Float64
         # Corresponds to: -2G/(5c^5) * (dot(I2[0],I3[1]) - dot(I2[1],I3[0]))
+    
         term::Float64 = dot(I2[:, 1], I3[:, 2]) - dot(I2[:, 2], I3[:, 1])
-        #return -2.0 * G / (5.0 * c^5) * term
         return dJ_rr_factor * term
     end
     
@@ -262,7 +285,9 @@ module Math
         Converts polar coordinates to Cartesian coordinates.
     """
     function x(r::T, phase::T)::T where {T<:Real}
-        #@assert r > 0 # In production-ready code, consider commenting this out
+    
+        #@assert r > 0 
+    
         return r * cos(phase)
     end
     
@@ -270,7 +295,9 @@ module Math
         Converts polar coordinates to Cartesian coordinates.
     """
     function y(r::T, phase::T)::T where {T<:Real}
-        #@assert r > 0 # In production-ready code, consider commenting this out
+    
+        #@assert r > 0
+    
         return r * sin(phase)
     end
     
@@ -319,18 +346,15 @@ module Math
     end
     
     """Given a function, its vectorized parameters, and the time derivatives of those parameters, returns the time derivative of the function as calculated via the chain rule."""
-    function time_derivative(ftn::Function, ind_vars_and_derivatives::AbstractVector{T}; optional=optional_default) where {T<:Real}
+    function time_derivative(ftn::Function, ind_vars_and_derivatives::AbstractVector{T}; 
+        optional=optional_default,
+        ind_vars=zeros(T,length(ind_vars_and_derivatives)-6)) where {T<:Real}
         #ftn is the function to be taken a time derivative of
         #ind_vars is an array with the values of the arguments of ftn
         #derivatives is an array with the known time derivatives of ind_vars
-    	#print(length(ind_vars_and_derivatives))
-        @assert mod(length(ind_vars_and_derivatives),6)==0
-    
-    	ind_vars=@view ind_vars_and_derivatives[1:end-6] 
-        #There may be some issues with using view here due to the way that ForwardDiff uses vectors,
-        #so I think it is better to use a full vector in this case
-        ind_vars= ind_vars_and_derivatives[1:end-6]
-    	derivatives=@view ind_vars_and_derivatives[7:length(ind_vars_and_derivatives)]
+        
+        ind_vars.= ind_vars_and_derivatives[1:end-6] #we want a real array (as opposed to a view) to pass through gradient
+        derivatives=@view ind_vars_and_derivatives[7:length(ind_vars_and_derivatives)]
 
         #defining t_ftn to be the function with optional parameters fixed to input optional
         function t_ftn(vars)
@@ -341,7 +365,6 @@ module Math
         ftn_at_ind_vars = DiffResults.GradientResult(ind_vars)
     	ForwardDiff.gradient!(ftn_at_ind_vars,t_ftn,ind_vars)
 
-        # DiffResults.grad(ftn_at_ind_vars) gives the gradient of the function, evaluated at the parameters in ind_vars
         return(sum(DiffResults.gradient(ftn_at_ind_vars) .* derivatives))#chain rule
     end
     
@@ -662,7 +685,8 @@ module Math
         acceleration!(du, theta, p, t; parallel=false, optional=optional)
     end
     
-    #"The next several blocks define functions intended to initiate the orbit beginning at mass transfer for initial masses, take an integration step forward calculating waveform, and integrate until the White Dwarf dissipates completely"
+    #The next several blocks define functions intended to initiate the orbit beginning at mass transfer for initial masses
+    #Next, in Integrate.jl, we will define functions to take an integration step forward calculating waveform and finally to integrate until the White Dwarf dissipates completely.
     """Calculates in km the orbital separation for the white dwarf to overflow its Roche Lobe and begin mass transfer"""
     function RL_contact(M_WD::Float64,M_NS::Float64; optional=optional_default)::Float64
         #returns separation at which a donor WD overflows its
