@@ -143,3 +143,171 @@ function time_derivative(ftn::Function, ind_vars_and_derivatives::AbstractVector
         # DiffResults.grad(ftn_at_ind_vars) gives the gradient of the function, evaluated at the parameters in ind_vars
         return(sum(DiffResults.gradient(ftn_at_ind_vars) .* derivatives))#chain rule
     end=#
+
+#-----------------------------------------------------------------------------------------------------------------------------
+#Integrate.jl
+
+
+
+#OLD CODE
+    #PROBLEM: This function creates a new ODE problem and solver every time and is thus terribly memory inefficient.
+    
+    #=function one_step!(theta::Vector{Float64}; optional=optional_default, dt_period::Float64=1e-2, dt::Float64=-1., parallel::Bool=true, uneven::Bool=false)::Tuple{Float64, Vector{Float64}}
+        @assert length(theta)==6
+        #integrates forward one step with time interval either given explicitly (dt!=-1)
+        #or as a fraction of the orbital period determined by dt_period
+        if dt==-1
+            @inbounds begin
+                a = theta[1]
+                M_WD = theta[2]
+                M_NS = theta[3]
+                dt=dt_period*Math.period(a, M_WD + M_NS)
+            end
+        end
+
+        prob = nothing
+
+        t_acceleration! = nothing
+    
+        # There's a warning from SciMLBase here:
+        #   Warning: Using arrays or dicts to store parameters of different types can hurt performance.
+        #   Consider using tuples instead.
+        #   @ SciMLBase ~/.julia/packages/SciMLBase/MzuF2/src/performance_warnings.jl:33
+        # but we can't use tuples because ForwardDiff uses only arrays. So we suppress all warnings temporarily here.
+        redirect_stderr(devnull) do 
+            if uneven
+                prob = ODEProblem(Math.acceleration_uneven!,theta,(0.,dt),[])
+            else
+                t_acceleration! = parallel ? 
+                    (du, θ, p, t) -> Math.acceleration_even!(du, θ, p, t; optional=optional) :
+                    (du, θ, p, t) -> Math.acceleration_serial!(du, θ, p, t; optional=optional) 
+                prob = ODEProblem(t_acceleration!, theta, (0., dt), []) #THIS IS THE PROBLEM HERE
+            end
+        end
+        theta .= solve(prob, alg=Vern9()).u[end]
+        dt,theta
+    end=#
+
+
+
+#REPLACEMENT FOR OLD one_step
+
+    #=#hyperparameters which will be used to define the acceleration function
+    mutable struct Hyperparams
+        optional::Vector{Any}
+        parallel::Bool
+        uneven::Bool
+    end
+
+
+    """ """
+    function t_accel!(du::Vector{Float64}, θ::Vector{Float64}, p::Hyperparams, t::Float64, u::Vector{Any})
+        if p.uneven
+            Math.acceleration_uneven!(du, θ, u, t)
+        elseif p.parallel
+            Math.acceleration_even!(du, θ, u, t; optional=p.optional)
+        else
+            Math.acceleration_serial!(du, θ, u, t; optional=p.optional)
+        end
+    end
+    #=function t_accel!(du, θ, p::Hyperparams, t)
+        if p.uneven
+            Math.acceleration_uneven!(du, θ, nothing, t)
+        elseif p.parallel
+            Math.acceleration_even!(du, θ, nothing, t; optional=p.optional)
+        else
+            Math.acceleration_serial!(du, θ, nothing, t; optional=p.optional)
+        end
+    end
+        #=else
+           t_acceleration! = p.parallel ? 
+                    (du, θ, u, t) -> Math.acceleration_even!(du, θ, u, t; optional=optional) :
+                    (du, θ, u, t) -> Math.acceleration_serial!(du, θ, u, t; optional=optional)
+            t_acceleration!
+        end
+    #end=#=#
+    
+    """
+    Creates and returns a function `step!(theta, dt)` that advances `theta` by dt and returns dt,theta.
+    This reuses an ODEIntegrator internally for speed and to avoid global captures as in our old approach.
+    """
+    #=function make_one_step(optional; parallel::Bool=true, uneven::Bool=false, alg=Vern9())
+        p = Hyperparams(optional, parallel, uneven)
+    
+        # build a template problem with a *dummy* initial condition
+        u0 = zeros(6)                
+        prob = ODEProblem(t_accel!, u0, (0.0, 1.0), p)  
+    
+        # create an integrator object that we will reuse
+        integ = init(prob, alg; save_everystep=false)
+    
+        # returned function: advance theta by dt
+        function t_step!(theta::Vector{Float64}; dt_period::Float64=1e-2, dt_in::Float64=-1.0)
+            @assert length(theta)==6
+    
+            dt = dt_in
+            if dt == -1.0
+                @inbounds begin
+                    a = theta[1]
+                    M_WD = theta[2]
+                    M_NS = theta[3]
+                    dt = dt_period * Math.period(a, M_WD + M_NS)
+                end
+            end
+    
+            # redefine initial conditions to our problem
+            integ.u .= theta
+    
+            # advances integrator by dt
+            step!(integ, dt)   
+    
+            # copy result back to theta (in-place)
+            theta .= integ.u
+    
+            return dt, theta
+        end
+    
+        return t_step!
+    end=#
+
+    function make_one_step(optional::Vector{Any};
+        parallel::Bool=true,
+        uneven::Bool=false,
+        alg=Vern9(),
+        tspan=(0.0, 1.0)
+    )
+    
+        # Build parameter container
+        p = Hyperparams(parallel, uneven, optional)
+    
+        # ODE RHS
+        f = (du, θ, t) -> t_accel!(du, θ, p, t)
+    
+        # Build a problem with dummy initial condition
+        prob = ODEProblem(f, zeros(9), tspan, p)
+    
+        # Build integrator
+        integrator = init(prob, alg; dt=1e-2)
+    
+        # Return stepping function
+        return function(theta; dt_period=1e-2, dt_in=-1)
+            dt = dt_in
+            if dt == -1.0
+                @inbounds begin
+                    a = theta[1]
+                    M_WD = theta[2]
+                    M_NS = theta[3]
+                    dt = dt_period * Math.period(a, M_WD + M_NS)
+                end
+            end
+        
+            # overwrite integrator state with user-supplied theta
+            integrator.u .= theta
+    
+            # perform one step of size dt_period
+            step!(integrator, dt)
+    
+            # return updated dt and theta
+            return dt, copy(integrator.u)
+        end
+    end=#
