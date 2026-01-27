@@ -41,8 +41,8 @@ module Integrate
         #returns keplerian orbital parameters, theta, at initial Roche Lobe overflow
         #M_NS=1.35 M_\odot is typical NS mass
         @assert M_WD<M_ch #Chandrasekar mass, beyond which we cannot calculate R_WD(see initial function)
-        a=Math.RL_contact(M_WD,M_WD;optional=optional)
-        J=Math.circular_J(a,M_WD,M_WD)
+        a=Math.RL_contact(M_WD,M_NS;optional=optional)
+        J=Math.circular_J(a,M_WD,M_NS)
         R_WD=Math.R0_WD(M_WD)
         return([a, M_WD, M_NS, R_WD, J, 0.])
     end
