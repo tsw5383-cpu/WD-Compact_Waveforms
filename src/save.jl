@@ -18,11 +18,11 @@ module Save
             
 		if filename==-1 
 		        today_str = Dates.format(Dates.now(), "yyyymmdd")
-		        base_filename = "Outputs_2/$(today_str)_M_WD=$(M_WD)_M_NS=$(M_NS)_A=$(A)_mode=$(m_str).csv"
+		        base_filename = "Outputs_3/$(today_str)_M_WD=$(M_WD)_M_NS=$(M_NS)_A=$(A)_mode=$(m_str).csv"
 		        filename = base_filename
 		        suffix = 2
 		        while isfile(filename)
-		            filename = "Outputs_2/$(today_str)_M_WD=$(M_WD)_M_NS=$(M_NS)_A=$(A)_$(suffix).csv"
+		            filename = "Outputs_3/$(today_str)_M_WD=$(M_WD)_M_NS=$(M_NS)_A=$(A)_$(suffix).csv"
 		            suffix += 1
 				end
 		end
@@ -37,7 +37,7 @@ module Save
 		filename=format_filename(M_WD,M_NS,A,mode;filename=filename)
 		# Writes the file to a CSV titled filename
 
-		isdir("Outputs_2") || mkdir("Outputs_2")
+		isdir("Outputs_3") || mkdir("Outputs_3")
 		#creates output directory if not already extant
 		
 			CSV.write(filename, 
@@ -62,7 +62,7 @@ module Save
             filename = Save.format_filename(M_WD, M_NS, A, mode; filename=filename)
         end
     
-        isdir("Outputs_2") || mkdir("Outputs_2")
+        isdir("Outputs_3") || mkdir("Outputs_3")
     
         header_needed = !isfile(filename)
     

@@ -105,7 +105,130 @@ module Integrate
         
     end
 
+    #NEWER code--tries to eliminate the problem of making a new integrator every step to avoid unnecessary memory allocations
+   function make_one_step_new(theta, optional=optional_default; parallel::Bool=true, uneven::Bool=false, time_limit=3.16e7)
+        #First we set up the integration problem once which will then be used every subsequent time when the temporary function (ftn!) is called
+        prob = nothing
+
+        t_acceleration! = nothing
     
+        # There's a warning from SciMLBase here:
+        #   Warning: Using arrays or dicts to store parameters of different types can hurt performance.
+        #   Consider using tuples instead.
+        #   @ SciMLBase ~/.julia/packages/SciMLBase/MzuF2/src/performance_warnings.jl:33
+        # but we can't use tuples because ForwardDiff uses only arrays. So we suppress all warnings temporarily here.
+        redirect_stderr(devnull) do 
+             if uneven #define the acceleration problem based on parallelization choices
+                t_acceleration! = Math.acceleration_uneven!
+            else
+                parallel ?
+                    t_acceleration! = (du, θ, p, t) -> Math.acceleration_even!(du, θ, p, t; optional=optional) :
+                    t_acceleration! = (du, θ, p, t) -> Math.acceleration_serial!(du, θ, p, t; optional=optional)
+            end
+        end
+
+        #integ = init(prob, alg=Vern9()) #We build the integrator once and will reuse it every time
+
+
+        @assert length(theta)==6
+            #integrates forward one step with time interval either given explicitly (dt!=-1)
+            #or as a fraction of the orbital period determined by dt_period
+            if dt==-1
+                @inbounds begin
+                    a = theta[1]
+                    M_WD = theta[2]
+                    M_NS = theta[3]
+                    dt=dt_period*Math.period(a, M_WD + M_NS)
+                end
+            end
+
+            #resetting initial values for prob to current values
+            # Construct a tiny problem
+            prob  = ODEProblem(t_acceleration!, theta, (0., time_limit), Any[])
+            integ = init(prob, Vern9(); save_everystep=false, save_start=false, save_end=false, tstops=Float64[])
+        
+        function ftn!(theta::Vector{Float64}; dt_period::Float64=1e-2, dt::Float64=-1.)::Tuple{Float64, Vector{Float64}}
+            integ.dt = 0.01 
+        
+            step!(integ)
+            theta .= integ.u        
+            
+            return integ.t, copy(theta)
+        end
+    
+        return ftn!
+        
+    end 
+
+
+    #NEWEST code--resets the initial conditions of the integrator for each time step while controlling size of the time step
+
+    function make_one_step_reuse(optional=optional_default;
+                             parallel::Bool=true,
+                             uneven::Bool=false,
+                             alg=Vern9())
+
+        # There's a warning from SciMLBase here:
+        #   Warning: Using arrays or dicts to store parameters of different types can hurt performance.
+        #   Consider using tuples instead.
+        #   @ SciMLBase ~/.julia/packages/SciMLBase/MzuF2/src/performance_warnings.jl:33
+        # but we can't use tuples because ForwardDiff uses only arrays. So we suppress all warnings temporarily here.
+        t_acceleration! = nothing
+        redirect_stderr(devnull) do
+            if uneven
+                t_acceleration! = Math.acceleration_uneven!
+            else
+                parallel ?
+                    t_acceleration! = (du, θ, p, t) ->
+                        Math.acceleration_even!(du, θ, p, t; optional=optional) :
+                    t_acceleration! = (du, θ, p, t) ->
+                        Math.acceleration_serial!(du, θ, p, t; optional=optional)
+            end
+        end
+    
+        # Dummy initial state (will be overwritten by reinit!)
+        θ0 = zeros(6)
+    
+        prob = ODEProblem(t_acceleration!, θ0, (0.0, 1.0), Any[])
+        integ = init(prob, alg;
+                     save_everystep=false,
+                     save_start=false,
+                     save_end=false)
+    
+        function ftn!(theta::Vector{Float64};
+                      dt_period::Float64=1e-2,
+                      dt::Float64=-1.0)::Tuple{Float64,Vector{Float64}}
+    
+            @assert length(theta) == 6
+    
+            # Determines time step as a fraction of the physical step
+            if dt == -1.0
+                @inbounds begin
+                    a     = theta[1]
+                    M_WD  = theta[2]
+                    M_NS  = theta[3]
+                    dt = dt_period * Math.period(a, M_WD + M_NS)
+                end
+            end
+    
+            # Reset integrator state 
+            reinit!(integ; u0=theta, t0=0.0) 
+            #no explicit time-dependent variable here 
+            #(i.e., time translation invariant) 
+            #so it is okay to start over at t=0 
+    
+            # Force integration to exactly dt
+            empty!(integ.opts.tstops)
+            add_tstop!(integ, dt)
+    
+            advance_to_tstop!(integ)
+    
+            theta .= integ.u
+            return dt, copy(theta)
+        end
+    
+        return ftn!
+    end
 
 
     
@@ -113,7 +236,7 @@ module Integrate
     function integrate(M_WD::Float64; M_NS::Float64=1.35,mu_e::Float64=2., 
             orbit_limit::Float64=1e5, step_limit::Int=10^7, mass_limit::Float64=1e-3, dt_period=1e-2,
             parallel::Bool=true, uneven::Bool=false, write_file::Bool=true, verbose=false, filename::Union{String,Int}=-1,
-        optional=optional_default)::AbstractMatrix{<:Real}
+        optional=optional_default,time_limit=3.16e7)::AbstractMatrix{<:Real}
         #returns time series second derivatives of the quadrupole moment
         @assert M_WD > mass_limit
         @assert M_WD < Math.M_ch # Chandrasekhar mass
@@ -134,6 +257,9 @@ module Integrate
         datumses[1,:].=[t, ddI[1,1], ddI[1,2], theta... ]
         i=1
 
+
+        
+    
         @inbounds begin
             phase = theta[6]
             M_WD = theta[2]
@@ -171,7 +297,8 @@ module Integrate
                                 write_file::Bool=true, filename::Union{String,Int}=-1,
                                 optional=optional_default,
                                 checkpoint_every::Int=500,
-                                verbose::Bool=false)
+                                verbose::Bool=false,
+                                time_limit=3.16e7)
 
         if verbose
             println("I am using the new version.")
@@ -179,7 +306,8 @@ module Integrate
         @assert M_WD > mass_limit
         @assert M_WD < Math.M_ch
     
-        one_step! = make_one_step(optional; parallel=parallel, uneven=uneven) # NEW  # new -- defines the problem once here 
+        #one_step! = make_one_step(optional; parallel=parallel, uneven=uneven) # NEW  # new -- defines the problem once here 
+         
     
         if filename==-1
             filename=Save.format_filename(M_WD,M_NS,optional.A,optional.mode)
@@ -188,6 +316,9 @@ module Integrate
         t = 0.
         theta = initial_circular_orbit(M_WD, M_NS=M_NS, optional=optional)
         ddI = Math.ddI_from_theta(theta, optional=optional)
+
+        one_step! = make_one_step_reuse(optional; parallel=parallel, uneven=uneven) 
+        # NEWER--implements improved memory allocation technique
     
         # buffer for checkpointing
         buffer = zeros(checkpoint_every, 9)
@@ -198,10 +329,14 @@ module Integrate
        
         rss_mb=0
         
-        while theta[6] < 2*π*orbit_limit && i < step_limit && theta[2] > mass_limit && rss_mb < 30000
+        while theta[6] < 2*π*orbit_limit && i < step_limit && theta[2] > mass_limit && rss_mb < 30000 && t<time_limit
             
-            #dt, theta = one_step!(theta; dt_period=dt_period, parallel=parallel, uneven=uneven, optional=optional) #old
-            dt,theta=one_step!(theta, dt_period=dt_period) #new--calls the function defined internally
+            dt, theta = one_step!(theta; dt_period=dt_period) #old
+        
+            #t_dt= dt_period*Math.period(theta[1], theta[2] + theta[3])#NEWER
+        
+            #dt,theta=one_step!(theta, dt_period=dt_period) #new--calls the function defined internally
+            #dt,theta=one_step!(theta, dt_period=dt_period) #newer--calls the function defined internally
             
             ddI = Math.ddI_from_theta(theta, optional=optional)
             t += dt
@@ -215,7 +350,7 @@ module Integrate
                 Save.save_as_csv_append(buffer, M_WD, M_NS, optional.A, optional.mode; filename=filename)
                 buffer .= 0.0          # clear buffer
                 buffer_count = 0       # reset counter
-                GC.gc()                # release unused memory
+                #GC.gc()                # release unused memory
             end
         
             if mod(i, 100) == 0
