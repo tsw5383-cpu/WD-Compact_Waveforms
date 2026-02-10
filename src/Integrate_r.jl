@@ -12,8 +12,11 @@ module Integrate_r
     #calculates dtheta/dr
     #nu=[a,M_WD,M_NS,R_WD,J,theta,t]
     #theta=[a,M_WD,M_NS,R_WD,J,theta]
-    function dnu_dr!(du::Vector{Float64}, nu::Vector{Float64},p::Vector{Any},t::Float64; parallel::Bool=true, uneven::Bool=false, optional=optional_default)
+    function dnu_dr!(du::Vector{Float64}, nu::Vector{Float64},p::Vector{Any},t::Float64; parallel::Bool=true, uneven::Bool=false, optional=optional_default,evolve_R_WD=false)
         theta=nu[1:6]
+        if !evolve_R_WD #if t_dyn<<time step, the radius of the white dwarf evolves essentially instantanously 
+            theta[4]=Math.R0_WD(theta[2])
+        end
         #println("theta",theta)
         if parallel && uneven
             #keyword argument dictates the style of parallelization to be used 
@@ -45,7 +48,11 @@ module Integrate_r
     
         dt_dr=(dtheta[1])^(-1)
 
-        dnu_dr=[1, dtheta[2] * dt_dr, dtheta[3] * dt_dr, dtheta[4] * dt_dr, dtheta[5] * dt_dr, dtheta[6] * dt_dr, dt_dr]
+        if evolve_R_WD #evolve R_WD on dynamical timescale
+            dnu_dr=[1, dtheta[2] * dt_dr, dtheta[3] * dt_dr, dtheta[4] * dt_dr, dtheta[5] * dt_dr, dtheta[6] * dt_dr, dt_dr]
+        else #assume R_WD is R_WD_0 (i.e., equilibrium radius)
+            dnu_dr=[1, dtheta[2] * dt_dr, dtheta[3] * dt_dr, 0, dtheta[5] * dt_dr, dtheta[6] * dt_dr, dt_dr]
+        end
         # dt/da, dM_WD/da, dM_NS/da, dR_WD/da, dtheta/da
 
     
@@ -59,14 +66,14 @@ module Integrate_r
         
 
     """ Normal parallelization implementation of in-place acceleration! function""" 
-    function dnu_dr_even!(du::Vector{Float64}, theta::Vector{Float64},p::Vector{Any},t::Float64; optional=optional_default)
-        dnu_dr!(du, theta, p, t; optional=optional)
+    function dnu_dr_even!(du::Vector{Float64}, theta::Vector{Float64},p::Vector{Any},t::Float64; optional=optional_default,evolve_R_WD=false)
+        dnu_dr!(du, theta, p, t; optional=optional,evolve_R_WD=evolve_R_WD)
     end
 
         
     """ Serial implementation of in-place acceleration! function"""
-    function dnu_dr_serial!(du::Vector{Float64}, theta::Vector{Float64},p::Vector{Any},t::Float64; optional=optional_default)
-        dnu_dr!(du, theta, p, t; parallel=false, optional=optional)
+    function dnu_dr_serial!(du::Vector{Float64}, theta::Vector{Float64},p::Vector{Any},t::Float64; optional=optional_default,evolve_R_WD=false)
+        dnu_dr!(du, theta, p, t; parallel=false, optional=optional,evolve_R_WD=evolve_R_WD)
     end
 
 
@@ -130,7 +137,7 @@ module Integrate_r
                              uneven::Bool=false,
                              alg=Vern9(),dr=0.1,
                             frac=5,step_count=5,
-                            res=1e-4)
+                            res=1e-4,evolve_R_WD=false)
 
         @assert sign == 1 || sign == -1 #posive if binary is widening, negative if binary is hardening
 
@@ -150,9 +157,9 @@ module Integrate_r
             else
                 parallel ?
                     t_acceleration! = (du, θ, p, t) ->
-                        dnu_dr_even!(du, θ, p, t; optional=optional) :
+                        dnu_dr_even!(du, θ, p, t; optional=optional,evolve_R_WD=evolve_R_WD) :
                     t_acceleration! = (du, θ, p, t) ->
-                        dnu_dr_serial!(du, θ, p, t; optional=optional)
+                        dnu_dr_serial!(du, θ, p, t; optional=optional,evolve_R_WD=evolve_R_WD)
             end
         end
 
@@ -202,8 +209,8 @@ module Integrate_r
 
     """Integrate the change from the initial state rather than the initial state itself to mitigate floating point errors """
     function dnu_dr_sneaky(nu_init::Vector{Float64})
-            function ftn!(du::Vector{Float64}, delta_nu::Vector{Float64},p::Vector{Any},t::Float64; parallel::Bool=true, uneven::Bool=false, optional=optional_default)
-                 dnu_dr!(du, nu_init.+delta_nu,p,t; parallel=parallel, uneven=uneven, optional=optional)
+            function ftn!(du::Vector{Float64}, delta_nu::Vector{Float64},p::Vector{Any},t::Float64; parallel::Bool=true, uneven::Bool=false, optional=optional_default,evolve_R_WD=false)
+                 dnu_dr!(du, nu_init.+delta_nu,p,t; parallel=parallel, uneven=uneven, optional=optional,evolve_R_WD=evolve_R_WD)
             end
             return ftn!
         end
@@ -211,16 +218,14 @@ module Integrate_r
 
 
     """ Normal parallelization implementation of in-place acceleration! function""" 
-    function dnu_dr_even_skeaky!(du::Vector{Float64}, nu_init::Vector{Float64}, delta_nu::Vector{Float64},p::Vector{Any},t::Float64; optional=optional_default)
-        ftn!=dnu_dr_sneaky(nu_init)
-        ftn!(du, delta_nu, p, t; optional=optional)
+    function dnu_dr_even_skeaky!(du::Vector{Float64}, nu_init::Vector{Float64}, delta_nu::Vector{Float64},p::Vector{Any},t::Float64; optional=optional_default,evolve_R_WD=evolve_R_WD)
+        (dnu_dr_sneaky(nu_init))(du, delta_nu, p, t; optional=optional,evolve_R_WD=evolve_R_WD)
     end
 
         
     """ Serial implementation of in-place acceleration! function"""
-    function dnu_dr_serial_skeaky!(du::Vector{Float64}, nu_init::Vector{Float64}, delta_nu::Vector{Float64},p::Vector{Any},t::Float64; optional=optional_default)
-        ftn!=dnu_dr_sneaky(nu_init)
-        ftn!(du, delta_nu, p, t; parallel=false, optional=optional)
+    function dnu_dr_serial_skeaky!(du::Vector{Float64}, nu_init::Vector{Float64}, delta_nu::Vector{Float64},p::Vector{Any},t::Float64; optional=optional_default,evolve_R_WD=false)
+        (dnu_dr_sneaky(nu_init))(du, delta_nu, p, t; parallel=false, optional=optional,evolve_R_WD=evolve_R_WD)
     end
 
 
@@ -231,7 +236,8 @@ module Integrate_r
                              uneven::Bool=false,
                              alg=Vern9(),dr=0.1,
                             frac=5,step_count=5,
-                            res=1e-4)
+                            res=1e-4,evolve_R_WD=false,
+                            final_return=true)
 
         @assert sign == 1 || sign == -1 #posive if binary is widening, negative if binary is hardening
 
@@ -247,53 +253,104 @@ module Integrate_r
             else
                 parallel ?
                     t_acceleration! = (du, θ, p, t) ->
-                        dnu_dr_even_skeaky!(du, nu_init, θ, p, t; optional=optional) :
+                        dnu_dr_even_skeaky!(du, nu_init, θ, p, t; optional=optional,evolve_R_WD=evolve_R_WD) :
                     t_acceleration! = (du, θ, p, t) ->
-                        dnu_dr_serial_skeaky!(du, nu_init, θ, p, t; optional=optional)
+                        dnu_dr_serial_skeaky!(du, nu_init, θ, p, t; optional=optional,evolve_R_WD=evolve_R_WD)
             end
         end
 
 
         flag=true
-        out=zeros(1000000,7)
+        out=zeros(1000000,7)#for the output to go here
+        #HELP
         i=0
+        l=1
 
-        steps=10*2^step_count
+        steps=10*2^step_count #adjust step count for finer resolution
         println(dr)
     
         while flag
             try
-                prob = ODEProblem(t_acceleration!, delta, (delta[1], delta[1]+sign*steps*dr), Any[])
+                prob = ODEProblem(t_acceleration!, delta, (delta[1], delta[1]+sign*steps*dr), Any[]) 
+                #defines the problem based on starting position (delta) and step count
                 sol=solve(prob,alg,dt=dr,adaptive=false,save_everystep=true)
-                #println(sol.u)
-            
-                for j in i*10+1:i*11
-                    out[i*10+1+j,:].=sol.u[j]
+                t_flag=true
+                for j in 1:length(sol.u)-1
+                    if t_flag && (sol.u[j][2]<sol.u[j+1][2] || sol.u[j][7]>sol.u[j+1][7]) 
+                        #if the WD mass (sol.u[j][2]) starts increasing or time sol.u[j][7]
+                        #starts decreasing, this means that da/dt has switched signs and this
+                        #integration problem is no longer valid
+                        #=println("")
+                        println("Integrate forward in time please")
+                        println("Offending Step:", sol.u[j])
+                        println(sol.u[j])
+                        println("")=#
+                        delta.=sol.u[j] #updates delta to start the next integration
+                        for k in 1:j #save the output up until the problem step
+                            out[l,:].=sol.u[k]#HELP
+                            l+=1
+                        end
+                        #l=i*steps+1+j#number of steps taken
+                        #HELP
+                        t_flag=false
+                        flag=false
+                        error("Integrate forward in time please")
+                        
+                    end
                 end
-                delta.=sol.u[end]
-                println(delta)
-                i+=1
+                for j in 1:steps 
+                    #save the output--
+                    #overwrite the last step of the last integration since it is the same as the first in this one 
+                    out[l , :] .= sol.u[j]
+                    l+=1
+                end #FIX THIS LATER
+                if t_flag 
+                    delta.=sol.u[end] #updates delta to start the next integration
+                    println(delta)
+                    i+=1
+                end
                 
-            catch
-                if steps>10
-                    steps/=2
+            catch #if dr/dt switches signs, dt/dr becomes singular, 
+                #sometimes causing an error which triggers this "try-catch"  
+                println("New delta we are starting from:", delta)
+                if steps>10 && flag
+                    steps/=2 #shorter integration with same time resolution
+                    #is this wasteful since we save up until the failure in the last one?
                 else
                     flag=false
-                    if dr>res
+                    if dr>res #stops at a resolution limit 
+                        #return(out[1:l-1,:])
                         new_out=integrate_r_sneaky(nu_init,sign;
                             delta=delta,
                             optional=optional,
                              parallel=parallel,
                              uneven=uneven,
-                             alg=alg,dr=dr/frac)
-                        println(1:size(new_out)[1])
-                        #=for j in 1:(size(new_out)[1]) 
-                            out[i*10+1+j,:].=new_out[j]
-                        end
-                        return(out[1:i*10+1+size(new_out),:])=#
+                             res=res,
+                             alg=alg,dr=dr/frac,final_return=false) 
+                            #try a new integration from this stopping point with increased resolution
+
+
+                        N = size(new_out, 1)
+                        out[l : l + N - 1, :] .= new_out
+                    
+                        #=for j in 1:length(new_out[1:end,1]) #append solutions from the new integration
+                            out[l+j-1,:].=new_out[j,:] 
+                        end=#
+                        #print(out[1:l + N - 2,:])
+                        return(out[1:l + N - 2,:])
                     else
-                        return(out[1:i*10+1,:])
+                        #print(out[1:l-1,:])
+                        return(out[1:l-1,:])
                     end
+
+
+                    
+                    
+                        #=return(out[1:l+s,:])
+                    else
+                        return(l+s, out[1:l+s,:])
+                    end=#
+                    
                 end
             end
         end
