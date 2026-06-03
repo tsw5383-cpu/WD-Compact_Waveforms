@@ -3,6 +3,7 @@ module Integrate_r
     using OrdinaryDiffEq
     using FLoops
     using DistributedArrays
+    using Printf
     include("math.jl")
     include("save.jl")
     include("Integrate.jl")
@@ -235,7 +236,7 @@ module Integrate_r
                              parallel::Bool=true,
                              uneven::Bool=false,
                              alg=Vern9(),dr=0.1,
-                            frac=5,step_count=5,
+                            frac=5,step_count=8,
                             res=1e-4,evolve_R_WD=false,
                             final_return=true)
 
@@ -276,7 +277,7 @@ module Integrate_r
                 sol=solve(prob,alg,dt=dr,adaptive=false,save_everystep=true)
                 t_flag=true
                 for j in 1:length(sol.u)-1
-                    if t_flag && (sol.u[j][2]<sol.u[j+1][2] || sol.u[j][7]>sol.u[j+1][7]) 
+                    if t_flag && (sol.u[j][2]<sol.u[j+1][2] || sol.u[j][7]>sol.u[j+1][7] || (nu_init[2]+sol.u[j][2])<0.10) 
                         #if the WD mass (sol.u[j][2]) starts increasing or time sol.u[j][7]
                         #starts decreasing, this means that da/dt has switched signs and this
                         #integration problem is no longer valid
@@ -356,7 +357,181 @@ module Integrate_r
         end
     end
 
+
+
+
+    function integrate_r_sneaky_end(nu_init,sign;
+                            delta=zeros(7),
+                            optional=optional_default,
+                             parallel::Bool=true,
+                             uneven::Bool=false,
+                             alg=Vern9(),dr=0.1,
+                            frac=5,step_count=8,
+                            res=1e-4,evolve_R_WD=false,
+                            final_return=true)
+
+        @assert sign == 1 || sign == -1 #posive if binary is widening, negative if binary is hardening
+
+        # There's a warning from SciMLBase here:
+        #   Warning: Using arrays or dicts to store parameters of different types can hurt performance.
+        #   Consider using tuples instead.
+        #   @ SciMLBase ~/.julia/packages/SciMLBase/MzuF2/src/performance_warnings.jl:33
+        # but we can't use tuples because ForwardDiff uses only arrays. So we suppress all warnings temporarily here.
+        t_acceleration! = nothing
+        redirect_stderr(devnull) do
+            if uneven
+                throw("We don't do that here.") 
+            else
+                parallel ?
+                    t_acceleration! = (du, θ, p, t) ->
+                        dnu_dr_even_skeaky!(du, nu_init, θ, p, t; optional=optional,evolve_R_WD=evolve_R_WD) :
+                    t_acceleration! = (du, θ, p, t) ->
+                        dnu_dr_serial_skeaky!(du, nu_init, θ, p, t; optional=optional,evolve_R_WD=evolve_R_WD)
+            end
+        end
+
+
+        flag=true
+        out=zeros(1000000,7)#for the output to go here
+        #HELP
+        i=0
+        l=1
+
+        steps=10*2^step_count #adjust step count for finer resolution
+        println(dr)
     
+        while flag
+            try
+                prob = ODEProblem(t_acceleration!, delta, (delta[1], delta[1]+sign*steps*dr), Any[]) 
+                #defines the problem based on starting position (delta) and step count
+                sol=solve(prob,alg,dt=dr,adaptive=false,save_everystep=true)
+                t_flag=true
+                for j in 1:length(sol.u)-1
+                    if t_flag && (sol.u[j+1][6]-sol.u[j][6]<2*pi) 
+                        #if the integration step is less than a period
+                        delta.=sol.u[j] #updates delta to start the next integration
+                        for k in 1:j #save the output up until the problem step
+                            out[l,:].=sol.u[k]#HELP
+                            l+=1
+                        end
+                        #l=i*steps+1+j#number of steps taken
+                        #HELP
+                        #t_flag=false
+                        #flag=false
+                        #error("Integrate forward in time please")
+                        return(out[1:l-1,:])
+                        
+                    end
+                end
+                for j in 1:steps 
+                    #save the output--
+                    #overwrite the last step of the last integration since it is the same as the first in this one 
+                    out[l , :] .= sol.u[j]
+                    l+=1
+                end #FIX THIS LATER
+                if t_flag 
+                    delta.=sol.u[end] #updates delta to start the next integration
+                    println(delta)
+                    i+=1
+                end
+            
+            #unnecessary in this code    
+            catch #if dr/dt switches signs, dt/dr becomes singular, 
+                #sometimes causing an error which triggers this "try-catch"  
+                println("New delta we are starting from:", delta)
+                
+                if steps>10 && flag
+                    steps/=2 #shorter integration with same time resolution
+                    #is this wasteful since we save up until the failure in the last one?
+                else
+                    flag=false
+                    if dr>res #stops at a resolution limit 
+                        #return(out[1:l-1,:])
+                        new_out=integrate_r_sneaky(nu_init,sign;
+                            delta=delta,
+                            optional=optional,
+                             parallel=parallel,
+                             uneven=uneven,
+                             res=res,
+                             alg=alg,dr=dr/frac,final_return=false) 
+                            #try a new integration from this stopping point with increased resolution
+
+
+                        N = size(new_out, 1)
+                        out[l : l + N - 1, :] .= new_out
+                    
+                        #=for j in 1:length(new_out[1:end,1]) #append solutions from the new integration
+                            out[l+j-1,:].=new_out[j,:] 
+                        end=#
+                        #print(out[1:l + N - 2,:])
+                        return(out[1:l + N - 2,:])
+                    else
+                        #print(out[1:l-1,:])
+                        return(out[1:l-1,:])
+                    end
+
+
+                    
+                    
+                        #=return(out[1:l+s,:])
+                    else
+                        return(l+s, out[1:l+s,:])
+                    end=#
+                    
+                end
+            end
+        end
+    end
+
+
+    """Integrates forward a specific amount (R) in the r-basis"""
+    function integrate_r_specific(nu_init,sign,R;
+                            delta=zeros(7),
+                            optional=optional_default,
+                             parallel::Bool=true,
+                             uneven::Bool=false,
+                             alg=Vern9(),dr=0.1,
+                            frac=5,step_count=8,
+                            res=1e-4,evolve_R_WD=false,
+                            final_return=true)
+
+        @assert sign == 1 || sign == -1 #posive if binary is widening, negative if binary is hardening
+
+        # There's a warning from SciMLBase here:
+        #   Warning: Using arrays or dicts to store parameters of different types can hurt performance.
+        #   Consider using tuples instead.
+        #   @ SciMLBase ~/.julia/packages/SciMLBase/MzuF2/src/performance_warnings.jl:33
+        # but we can't use tuples because ForwardDiff uses only arrays. So we suppress all warnings temporarily here.
+        t_acceleration! = nothing
+        redirect_stderr(devnull) do
+            if uneven
+                throw("We don't do that here.") 
+            else
+                parallel ?
+                    t_acceleration! = (du, θ, p, t) ->
+                        dnu_dr_even_skeaky!(du, nu_init, θ, p, t; optional=optional,evolve_R_WD=evolve_R_WD) :
+                    t_acceleration! = (du, θ, p, t) ->
+                        dnu_dr_serial_skeaky!(du, nu_init, θ, p, t; optional=optional,evolve_R_WD=evolve_R_WD)
+            end
+        end
+
+
+        flag=true
+        out=zeros(1000000,7)#for the output to go here
+        #HELP
+        i=0
+        l=1
+
+        steps=10*2^step_count #adjust step count for finer resolution
+        println(dr)
+
+        prob = ODEProblem(t_acceleration!, delta, (delta[1], delta[1]+R), Any[]) 
+                #defines the problem based on starting position (delta) and step count
+        sol=solve(prob,alg,dt=dr,adaptive=false,save_everystep=true)
+
+        return(sol)
+    
+    end
 
 
 

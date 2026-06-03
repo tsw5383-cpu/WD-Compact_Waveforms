@@ -189,7 +189,7 @@ module Integrate
         # Dummy initial state (will be overwritten by reinit!)
         θ0 = zeros(6)
     
-        prob = ODEProblem(t_acceleration!, θ0, (0.0, 1.0), Any[])
+        prob = ODEProblem(t_acceleration!, θ0, (0.0, Inf), Any[])
         integ = init(prob, alg;
                      save_everystep=false,
                      save_start=false,
@@ -212,7 +212,8 @@ module Integrate
             end
     
             # Reset integrator state 
-            reinit!(integ; u0=theta, t0=0.0) 
+            #reinit!(integ; u0=theta, t0=0.0) 
+            reinit!(integ, theta; t0=0.0, reset_dt=true)
             #no explicit time-dependent variable here 
             #(i.e., time translation invariant) 
             #so it is okay to start over at t=0 
@@ -231,9 +232,95 @@ module Integrate
     end
 
 
+    #EXTRA MOST NEWESTEST 
+    #set up a problem and integrate it for a
+    #set number of steps with set size
+    function solve_one_orbit(theta::Vector{Float64};
+                             t_init=0,
+                             optional=optional_default,
+                             parallel::Bool=true,
+                             uneven::Bool=false,
+                             alg=Vern9(),
+                             steps=100)
+
+        # There's a warning from SciMLBase here:
+        #   Warning: Using arrays or dicts to store parameters of different types can hurt performance.
+        #   Consider using tuples instead.
+        #   @ SciMLBase ~/.julia/packages/SciMLBase/MzuF2/src/performance_warnings.jl:33
+        # but we can't use tuples because ForwardDiff uses only arrays. So we suppress all warnings temporarily here.
+        t_acceleration! = nothing
+        redirect_stderr(devnull) do
+            if uneven
+                t_acceleration! = Math.acceleration_uneven!
+            else
+                parallel ?
+                    t_acceleration! = (du, θ, p, t) ->
+                        Math.acceleration_even!(du, θ, p, t; optional=optional) :
+                    t_acceleration! = (du, θ, p, t) ->
+                        Math.acceleration_serial!(du, θ, p, t; optional=optional)
+                end
+            end
+
+        a = theta[1]
+        M_WD = theta[2]
+        M_NS = theta[3]
+        P=Math.period(a, M_WD + M_NS)
+        dt=P/steps
+        
+    
+        prob = ODEProblem(t_acceleration!, theta, (t_init, t_init+P), Any[])
+        sol=solve(prob,alg,dt=dt,adaptive=false,save_everystep=true)
+    
+        return(sol.t,sol.u)
+    end
+
+ function integrate_chunk(theta;
+                            orbit_limit::Float64=1e5, step_limit::Int=10^7,
+                                mass_limit::Float64=1e-2, dt_period=1e-2,
+                                parallel::Bool=true, uneven::Bool=false,
+                                write_file::Bool=true, filename::Union{String,Int}=-1,
+                                optional=optional_default,
+                                checkpoint_every::Int=500,
+                                verbose::Bool=false,
+                                time_limit=3.16e7,
+                                theta_init::Vector{Float64}=[-1.0],
+                                steps=100,
+                                alg=Vern9())
+
+        t=0
+        i=1
+
+        out=zeros(step_limit,7)
+
+    
+        while theta[6] < 2*π*orbit_limit && i < step_limit-steps && theta[2] > mass_limit && t<time_limit && theta[1]> 6 * Math.G * theta[3]/Math.c^2
+            new_t,new_thetas=solve_one_orbit(theta; 
+                             t_init=t,
+                             optional=optional,
+                             parallel=parallel,
+                             uneven=uneven,
+                             alg=alg,
+                             steps=steps)
+            println(new_t[end],new_thetas[end])
+            for j in 1:steps 
+                    #save the output--
+                    #overwrite the last step of the last integration since it is the same as the first in this one 
+                    out[i , 1:6] .= new_thetas[j]
+                    i+=1 
+                    out[i , 7] = new_t[j]
+            end
+
+            t=new_t[end]
+            theta=out[i,:]
+        
+        end
+
+        return(out[1:i,:])
+    end
+
     
     """Given an initial set of masses, `integrate` solves for the equations of motion from initial Roche Lobe overflow until the eventual complete dissipation of the white dwarf or the integration finishes according to user defined cutoff (either a limit on the number of orbits completed or on the integration steps taken). `integrate` stores and returns the second derivative of the quadrupole moment as a function of time for the orbit. The function also saves the run to a file named by the date and initial conditions if `write_file`. """
-    function integrate(M_WD::Float64; M_NS::Float64=1.35,mu_e::Float64=2., 
+    function integrate(M_WD::Float64=1.0; M_NS::Float64=1.35, theta_init::Vector{Float64}=[-1.0], mu_e::Float64=2., 
             orbit_limit::Float64=1e5, step_limit::Int=10^7, mass_limit::Float64=1e-3, dt_period=1e-2,
             parallel::Bool=true, uneven::Bool=false, write_file::Bool=true, verbose=false, filename::Union{String,Int}=-1,
         optional=optional_default,time_limit=3.16e7)::AbstractMatrix{<:Real}
@@ -251,7 +338,12 @@ module Integrate
         one_step! = make_one_step(optional; parallel=parallel, uneven=uneven) # NEW 
     
         t=0.
-        theta=initial_circular_orbit(M_WD,M_NS=M_NS,optional=optional)
+        if theta_init[1]==-1.0
+            theta=initial_circular_orbit(M_WD,M_NS=M_NS,optional=optional)
+        else
+            @assert length(theta_init)==6
+            theta=theta_init
+        end
         ddI=Math.ddI_from_theta(theta,optional=optional)
         datumses=zeros(step_limit+1,9)
         datumses[1,:].=[t, ddI[1,1], ddI[1,2], theta... ]
@@ -290,7 +382,7 @@ module Integrate
 
 
     """Same as above but with checkpoints """
-    function integrate_checkpointed(M_WD::Float64; M_NS::Float64=1.35, mu_e::Float64=2.,
+    function integrate_checkpointed(M_WD::Float64=1.0; M_NS::Float64=1.35, mu_e::Float64=2.,
                                 orbit_limit::Float64=1e5, step_limit::Int=10^7,
                                 mass_limit::Float64=1e-2, dt_period=1e-2,
                                 parallel::Bool=true, uneven::Bool=false,
@@ -298,7 +390,8 @@ module Integrate
                                 optional=optional_default,
                                 checkpoint_every::Int=500,
                                 verbose::Bool=false,
-                                time_limit=3.16e7)
+                                time_limit=3.16e7,
+                                theta_init::Vector{Float64}=[-1.0])
 
         if verbose
             println("I am using the new version.")
@@ -307,7 +400,14 @@ module Integrate
         @assert M_WD < Math.M_ch
     
         #one_step! = make_one_step(optional; parallel=parallel, uneven=uneven) # NEW  # new -- defines the problem once here 
-         
+
+
+        if theta_init[1]==-1.0
+            theta=initial_circular_orbit(M_WD,M_NS=M_NS,optional=optional)
+        else
+            @assert length(theta_init)==6
+            theta=theta_init
+        end
     
         if filename==-1
             filename=Save.format_filename(M_WD,M_NS,optional.A,optional.mode)

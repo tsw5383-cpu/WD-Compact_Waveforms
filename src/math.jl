@@ -231,7 +231,7 @@ module Math
     
         M_WD_dot = decretion_rate(a, R_WD, M_WD, M_NS; optional=optional)
         one_minus_b = 1.0 - b
-        return -2.0 * a * M_WD_dot / M_WD * (one_minus_b * M_WD / M_NS - one_minus_b * (g + 0.5) * M_WD / (M_WD + M_NS))
+        return -2.0 * a * M_WD_dot / M_WD * (1 - b * M_WD / M_NS - one_minus_b * (g + 0.5) * M_WD / (M_WD + M_NS))
     end
     
     
@@ -460,12 +460,12 @@ module Math
     dddphase_vector=next_derivative(ddphase_vector,n=2)
     
     dI_xx_vector=next_derivative(Ixx_vector)
-    ddI_xx_vector=next_derivative(Ixx_vector,n=2)
-    dddI_xx_vector=next_derivative(Ixx_vector,n=3)
+    ddI_xx_vector=next_derivative(dI_xx_vector,n=2)
+    dddI_xx_vector=next_derivative(ddI_xx_vector,n=3)
     
     dI_xy_vector=next_derivative(Ixy_vector)
-    ddI_xy_vector=next_derivative(Ixy_vector,n=2)
-    dddI_xy_vector=next_derivative(Ixy_vector,n=3)
+    ddI_xy_vector=next_derivative(dI_xy_vector,n=2)
+    dddI_xy_vector=next_derivative(ddI_xy_vector,n=3)
     
     #=bundling derivatives together which will prove convenient later=#
     first_derivatives=[da_vector, dM_WD_vector, dM_NS_vector, dR_WD_vector, dJ_vector, dphase_vector]
@@ -645,7 +645,7 @@ module Math
 
     
     """ An "in place" implementation of the full time derivative of theta including effects from both mass transfer and radiation reaction.""" 
-    function acceleration!(du::Vector{Float64}, theta::Vector{Float64},p::Vector{Any},t::Float64; parallel::Bool=true, uneven::Bool=false, optional=optional_default)
+    function acceleration!(du::Vector{Float64}, theta::Vector{Float64},p::Vector{Any},t::Float64; parallel::Bool=true, uneven::Bool=false, optional=optional_default,verbose=false)
         if parallel && uneven
             #keyword argument dictates the style of parallelization to be used 
             #(mostly for benchmarking purposes)
@@ -660,10 +660,19 @@ module Math
             a::Float64 = theta[1]
             J::Float64 = theta[5]
             t_da_rr::Float64 = 2.0 * a * t_dJ_rr / J
+
+            #println(t_ddI,t_dddI)
+            #println(t_dJ_rr)
+            #println(t_da_rr)# For debugging--DELETE LATER
+            #println()
         
             #adding RR forces to MT forces
             dtheta[1]+=t_da_rr
-            dtheta[5]+=t_da_rr
+            dtheta[5]+=t_dJ_rr
+        end
+
+        if verbose
+            println(dtheta)
         end
     
         #mutate du
