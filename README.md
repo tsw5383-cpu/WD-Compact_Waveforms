@@ -1,4 +1,6 @@
-# Astro 528 [Class Project](https://psuastro528.github.io/Fall2025/project/)
+<!--# Astro 528 [Class Project](https://psuastro528.github.io/Fall2025/project/)-->
+
+This code serves as the basis of the analysis in [Weaver et al. 2026](https://arxiv.org/abs/2607.24951); please cite it if you use any results derived from this code in published work.
 
 GitHub Actions : [![Build Status](https://github.com/PsuAstro528/project-template/workflows/CI/badge.svg)](https://github.com/PsuAstro528/project-wd_ns_interaction/actions)
 
@@ -30,7 +32,7 @@ The second part of the code involves uniting the effects of mass transfer and '2
 The key producable of our code is a time-series waveform given an initial mass WD orbiting compact object of arbitrary mass. 
 
 # Mathematical Basis
-Please see [this note](https://www.overleaf.com/read/zzzprcdvzkzz#d5f227) which serves as the mathematical basis for our project and especially for `src/math.jl`. (I was unable to get these notes in `README.md` in a nice format.)
+Please see Section II of [Weaver et al. 2026](https://arxiv.org/abs/2607.24951) which serves as the mathematical basis for our project and especially for `src/math.jl`. 
 
 The units for everything are in solar masses, km, and seconds. Notably, the simulation's output file contains:
 - t, time in seconds
@@ -51,7 +53,7 @@ cd project-wd_ns_interaction
 julia src/install.jl
 ```
 
-# For Reviewers
+<!--# For Reviewers
 The code is located in the `src/` folder. The `integrate` function in `Integrate.jl` contains the code that the user should interact with directly: it takes in the mass of a white dwarf and neutron star in solar masses (and optional parameters), and then outputs a .csv file in the `Outputs/` folder that contains output of the simulation run at each time step. See the section "Mathematical Basis" in this README for physical quantities and units of the output file.
 
 Our tests are in `test/runtests.jl`
@@ -74,7 +76,7 @@ Overview of our package structure:
 - `polytrope.jl` contains math and helper functions for the polytropic equation of state for a white dwarf.
 - `install.jl` makes sure all necessary packages are installed and sets up the package environment.
 
-<!--
+
 The following section documents the mathematical treatment of the 2.5-PN RR and MT forces used to calculate a gravitational waveform in a close WD-NS binary. 
 ## Mass Transfer
 Below are the kinetics used to evolve a circular orbit. The set of elements evolved in this framework $\vec\theta= \{a, M_{\rm WD}, M_{\rm NS}, R_{\rm WD}, J, \theta\}$, the orbital separation, white dwarf mass, neutron star mass, white dwarf radius, and angular velocity. Both radiation reaction and (isotropic) mass transfer tend to be circularizing effects, so we assume that the orbit stays circular. This makes tracking both $a$ and $J$ slightly redundant in theory, but in practice it is helpful since radiation reaction and mass transfer forces become comparable so the instantaneous relationship between velocity and separation is non-trivial.
